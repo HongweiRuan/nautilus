@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eval-temporal-rr${REPLAN_RATE}-ef${EVAL_FRAMES}-a${ALPHA_SAFE}-ns${NUM_SAMPLES}-${SPLIT}
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: eval-temporal-rr${REPLAN_RATE}-ef${EVAL_FRAMES}-a${ALPHA_SAFE}-ns${NUM_SAMPLES}-${SPLIT}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: Always
+          command:
+            - "sh"
+            - "-c"
+          args:
+            - |
+              cp -r /closed-loop-e2e/MetaBench /root/ &&  
+              conda create -n mdsn python=3.9 pip -y && 
+              cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e .[cuda] && 
+              /opt/conda/envs/mdsn/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && 
+              /opt/conda/envs/mdsn/bin/pip install cupy-cuda11x && 
+              /opt/conda/envs/mdsn/bin/pip install cuda-python && 
+              mkdir /usr/lib/dri && 
+              ln -s /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so && 
+              ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 && 
+              cd /root/MetaBench/scenarionet && 
+              /opt/conda/envs/mdsn/bin/pip install -e . && 
+              /opt/conda/envs/mdsn/bin/pip install --upgrade numpy==1.21.6 && 
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc && 
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc && 
+              /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm && 
+              bash /closed-loop-e2e/run_eval_calibrated_temporal.sh \
+                  diffusiondrivev2 \
+                  /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt \
+                  /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
+                  /avl-west/navsim/navhard_md_logs \
+                  /closed-loop-e2e/fig1/no-lidar-calibrate-temporal \
+                  ${REPLAN_RATE} \
+                  ${EVAL_FRAMES} \
+                  /closed-loop-e2e/navhard_test_split/50-${SPLIT}.txt \
+                  ${ALPHA} \
+                  ${NUM_SAMPLES}
+          resources:
+            requests:
+              cpu: "3"
+              memory: "20Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "4"
+              memory: "24Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-4090
+                - NVIDIA-GeForce-RTX-3090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-13.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob

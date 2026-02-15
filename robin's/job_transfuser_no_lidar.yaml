@@ -1,0 +1,111 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name:  train-navsim-no-lidar-bev-calibrator-transfuser-xl-2
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app:  train-navsim-no-lidar-bev-calibrator-transfuser-xl-2
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: Always
+          command:
+            - "sh"
+            - "-c"
+          args:
+            - |
+              cp -r /closed-loop-e2e/MetaBench /root/ &&  
+              conda create -n mdsn python=3.9 pip -y && 
+              cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e .[cuda] && 
+              /opt/conda/envs/mdsn/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && 
+              /opt/conda/envs/mdsn/bin/pip install cupy-cuda11x && 
+              /opt/conda/envs/mdsn/bin/pip install cuda-python && 
+              mkdir /usr/lib/dri && 
+              ln -s /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so && 
+              ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 && 
+              cd /root/MetaBench/scenarionet && 
+              /opt/conda/envs/mdsn/bin/pip install -e . && 
+              /opt/conda/envs/mdsn/bin/pip install --upgrade numpy==1.21.6 && 
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc && 
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc && 
+              /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm && 
+              echo "Start copying ... " && cp -r /closed-loop-e2e/bev_cache_navsim/transfuser /root/ &&
+              /opt/conda/envs/mdsn/bin/python /root/MetaBench/calibration/train_transfuser_bev_flow.py \
+                  --train-pairs /root/transfuser/navtrain_pairs.jsonl \
+                  --val-pairs /root/transfuser/navtest_pairs.jsonl \
+                  --target-domain navsim_no_lidar \
+                  --batch-size 1024 \
+                  --epochs 500 \
+                  --lr 1e-4 \
+                  --dit-variant DiT-XL/2 \
+                  --ckpt-dir /closed-loop-e2e/weights/navsim_bev_flow_1 \
+                  --num-workers 8 \
+                  --old-path-prefix /closed-loop-e2e/bev_cache_navsim/transfuser \
+                  --new-path-prefix /root/transfuser \
+                  --wandb \
+                  --model-name transfuser
+          resources:
+            requests:
+              cpu: "24"
+              memory: "450Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 600Gi
+            limits:
+              cpu: "24"
+              memory: "450Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 600Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-4090
+                - NVIDIA-GeForce-RTX-3090
+                # - NVIDIA-RTX-A5000
+                # - Quadro-RTX-6000
+                # - NVIDIA-TITAN-RTX 
+                # - NVIDIA-A10
+                # - Tesla-V130-SXM2-32GB
+                # - NVIDIA-A40
+                # - NVIDIA-RTX-A6000
+                # - Quadro-RTX-8000
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob

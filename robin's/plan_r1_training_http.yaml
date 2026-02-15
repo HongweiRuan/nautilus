@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ambient-diffusion-1-1-http # replace with ${USER_NAME}-http
+  labels:
+    k8s-app: ambient-diffusion-1-1-http
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: ambient-diffusion-1-1-http
+  template:
+    metadata:
+      labels:
+        k8s-app: ambient-diffusion-1-1-http
+    spec:
+      # nodeName: ry-gpu-13.sdsc.optiputer.net
+      containers:
+        - image: robinwangucsd/ambient_diffusion_planner:latest
+          name: http-server
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            requests:
+              cpu: "6"
+              memory: "100Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 400Gi
+            limits:
+              cpu: "6"
+              memory: "100Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 400Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: robin-west-vol
+              mountPath: /robin-west
+            - name: cogrob-avl-west-vol
+              mountPath: /cogrob-avl-west
+            - name: avl-west-vol
+              mountPath: /avl-west
+      volumes:
+        - name: dshm # shared memory, required for the multi-worker dataloader
+          emptyDir:
+            medium: Memory
+        - name: robin-west-vol
+          persistentVolumeClaim:
+            claimName: robin-west-vol
+        - name: cogrob-avl-west-vol
+          persistentVolumeClaim:
+            claimName: cogrob-avl-west-vol
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-4090
+                - NVIDIA-GeForce-RTX-3090
+                # - NVIDIA-RTX-A5000
+                # - Quadro-RTX-6000
+                # - NVIDIA-TITAN-RTX 
+                # - NVIDIA-A10
+                # - Tesla-V130-SXM2-32GB
+                # - NVIDIA-A40
+                # - NVIDIA-RTX-A6000
+                # - Quadro-RTX-8000
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob

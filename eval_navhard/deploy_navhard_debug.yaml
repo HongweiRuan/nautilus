@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-navhard-debug
+  namespace: cogrob
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: deploy-navhard-debug
+  template:
+    metadata:
+      labels:
+        k8s-app: deploy-navhard-debug
+    spec:
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: Always
+          command: ["sleep", "infinity"]
+          resources:
+            requests:
+              cpu: "3"
+              memory: "20Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "4"
+              memory: "24Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-4090
+                - NVIDIA-GeForce-RTX-3090
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-1.sdsc.optiputer.net
+                - ry-gpu-2.sdsc.optiputer.net
+                - ry-gpu-3.sdsc.optiputer.net
+                - ry-gpu-4.sdsc.optiputer.net
+                - ry-gpu-5.sdsc.optiputer.net
+                - ry-gpu-6.sdsc.optiputer.net
+                - ry-gpu-7.sdsc.optiputer.net
+                - ry-gpu-8.sdsc.optiputer.net
+                - ry-gpu-9.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net

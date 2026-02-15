@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drivor-http
+  labels:
+    k8s-app: drivor-http
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: drivor-http
+  template:
+    metadata:
+      labels:
+        k8s-app: drivor-http
+    spec:
+      containers:
+        - image: robinwangucsd/ambient_diffusion_planner
+          name: drivor-container
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            requests:
+              cpu: "20"
+              memory: "400Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: "50Gi"
+            limits:
+              cpu: "24"
+              memory: "400Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: "100Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: closed-loop-e2e
+              mountPath: /workspace/closed_loop_e2e
+            - name: avl-west
+              mountPath: /workspace/avl_west
+            - name: hugsim-storage
+              mountPath: /workspace
+          env:
+            - name: PIXI_CACHE_DIR
+              value: "/workspace/.pixi_cache"
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "256Gi"
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: avl-west
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-3090
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob

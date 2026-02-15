@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-pod
+spec:
+  containers:
+    - name: gpu-container
+      image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
+      command: ["jupyter", "lab", "--NotebookApp.token=627a7b3b"]
+      volumeMounts:
+        - mountPath: /tutorial
+          name: horuan-volume
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "8G"
+          cpu: "4"
+  restartPolicy: Never
+  volumes:
+    - name: horuan-volume
+      persistentVolumeClaim:
+        claimName: horuan-volume
