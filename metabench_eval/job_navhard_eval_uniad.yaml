@@ -50,12 +50,14 @@ spec:
               echo "=== Installing MetaBench ===" &&
               cd /root/MetaBench &&
               /opt/conda/envs/mmcv/bin/pip install -e . &&
+              echo "=== Copying UniAD weight to /root ===" &&
+              cp /closed-loop-e2e/weights/bench2drive/UniAD/uniad_base_b2d.pth /root/uniad_base_b2d.pth &&
               echo "=== Creating mdsn symlink for run_eval.sh compatibility ===" &&
               ln -s /opt/conda/envs/mmcv /opt/conda/envs/mdsn &&
               echo "=== Starting eval: uniad ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   uniad \
-                  /closed-loop-e2e/weights/bench2drive/UniAD/uniad_base_b2d.pth \
+                  /root/uniad_base_b2d.pth \
                   /root/MetaBench/bridgesim/modelzoo/bench2drive/adzoo/uniad/configs/stage2_e2e/base_e2e_b2d.py \
                   /avl-west/navsim/navhard_md_logs \
                   /closed-loop-e2e/experiments/zero_shot_results/uniad/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \

@@ -50,12 +50,14 @@ spec:
               echo "=== Installing MetaBench ===" &&
               cd /root/MetaBench &&
               /opt/conda/envs/mmcv/bin/pip install -e . &&
+              echo "=== Copying VAD weight to /root ===" &&
+              cp /closed-loop-e2e/weights/bench2drive/VAD/vad_b2d_base.pth /root/vad_b2d_base.pth &&
               echo "=== Creating mdsn symlink for run_eval.sh compatibility ===" &&
               ln -s /opt/conda/envs/mmcv /opt/conda/envs/mdsn &&
               echo "=== Starting eval: vad ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   vad \
-                  /closed-loop-e2e/weights/bench2drive/VAD/vad_b2d_base.pth \
+                  /root/vad_b2d_base.pth \
                   /root/MetaBench/bridgesim/modelzoo/bench2drive/adzoo/vad/configs/VAD/VAD_base_e2e_b2d.py \
                   /avl-west/navsim/navhard_md_logs \
                   /closed-loop-e2e/experiments/zero_shot_results/vad/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
