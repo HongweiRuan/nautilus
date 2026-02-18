@@ -38,7 +38,6 @@ while read -r scene_id || [ -n "$scene_id" ]; do
         --ego-replay-frames "$EGO_REPLAY_FRAMES" \
         --eval-frames "$EVAL_FRAMES" \
         --score-start-frame 20 \
-        --enable-vis
 done < <(tr -d '\r' < "$SCENE_LIST_FILE")
 
 echo "All scenes processed."

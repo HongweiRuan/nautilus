@@ -36,7 +36,6 @@ while read -r scene_id || [ -n "$scene_id" ]; do
         --replan-rate "$REPLAN_RATE" \
         --ego-replay-frames 20 \
         --eval-frames "$EVAL_FRAMES" \
-        --enable-vis
 done < <(tr -d '\r' < "$SCENE_LIST_FILE")
 
 echo "All scenes processed."
