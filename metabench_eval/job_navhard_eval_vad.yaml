@@ -60,7 +60,7 @@ spec:
                   /root/vad_b2d_base.pth \
                   /root/MetaBench/bridgesim/modelzoo/bench2drive/adzoo/vad/configs/VAD/VAD_base_e2e_b2d.py \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval/vad/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/vad/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt

@@ -50,7 +50,7 @@ spec:
                   /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval/expert/split_${SPLIT}_erf_${EGO_REPLAY_FRAMES}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/expert/split_${SPLIT}_erf_${EGO_REPLAY_FRAMES}_ef_${EVAL_FRAMES} \
                   40 \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
