@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-ddv2-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-ddv2-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-ddv2-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-ddv2-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -45,15 +45,16 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
               echo "=== Starting eval ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
+              bash /closed-loop-e2e/experiments/scripts/run_ddv1v2_eval_calibrated.sh \
                   diffusiondrivev2 \
                   /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt \
                   /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_cali/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
-                  /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
+                  /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
+                  /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt
           resources:
             requests:
               cpu: "3"
@@ -106,6 +107,14 @@ spec:
                     values:
                       - NVIDIA-GeForce-RTX-4090
                       - NVIDIA-GeForce-RTX-3090
+                    # - NVIDIA-RTX-A5000
+                    # - Quadro-RTX-6000
+                    # - NVIDIA-TITAN-RTX
+                    # - NVIDIA-A10
+                    # - Tesla-V130-SXM2-32GB
+                    # - NVIDIA-A40
+                    # - NVIDIA-RTX-A6000
+                    # - Quadro-RTX-8000
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
@@ -123,11 +132,3 @@ spec:
                       - ry-gpu-12.sdsc.optiputer.net
                       - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
-                    # - NVIDIA-RTX-A5000
-                    # - Quadro-RTX-6000
-                    # - NVIDIA-TITAN-RTX
-                    # - NVIDIA-A10
-                    # - Tesla-V130-SXM2-32GB
-                    # - NVIDIA-A40
-                    # - NVIDIA-RTX-A6000
-                    # - Quadro-RTX-8000

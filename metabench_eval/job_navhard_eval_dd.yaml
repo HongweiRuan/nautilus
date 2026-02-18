@@ -50,7 +50,7 @@ spec:
                   /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS \
                   /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
