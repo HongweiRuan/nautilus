@@ -44,10 +44,12 @@ spec:
               /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Copying transfuser ckpt to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt /root/transfuser_seed_0.ckpt &&
               echo "=== Starting eval: transfuser ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   transfuser \
-                  /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt \
+                  /root/transfuser_seed_0.ckpt \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
                   /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \

@@ -44,11 +44,14 @@ spec:
               /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Copying ddv2 ckpt to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
+              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
               echo "=== Starting eval ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   diffusiondrivev2 \
-                  /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt \
-                  /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
+                  /root/diffusiondrivev2_sel.ckpt \
+                  /root/kmeans_navsim_traj_20.npy \
                   /avl-west/navsim/navhard_md_logs \
                   /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \

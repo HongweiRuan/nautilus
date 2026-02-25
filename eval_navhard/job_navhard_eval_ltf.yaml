@@ -48,10 +48,12 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Copying ltf ckpt to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/ltf/ltf_seed_0.ckpt /root/ltf_seed_0.ckpt &&
               echo "=== Starting eval: ltf ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   ltf \
-                  /closed-loop-e2e/weights/navsimv2/ltf/ltf_seed_0.ckpt \
+                  /root/ltf_seed_0.ckpt \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
                   /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/ltf/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
