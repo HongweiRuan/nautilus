@@ -11,6 +11,7 @@ REPLAN_RATE="$6"
 EVAL_FRAMES="$7"
 SCENE_LIST_FILE="$8"
 BEV_CALIBRATOR_CHECKPOINT="$9"
+NUM_GROUPS="${10}"
 
 # Read file line by line
 while read -r scene_id || [ -n "$scene_id" ]; do
@@ -30,7 +31,7 @@ while read -r scene_id || [ -n "$scene_id" ]; do
         --checkpoint "$CHECKPOINT" \
         $EXTRA_ARGS \
         --trajectory-scorer epdms_ego \
-        --num-groups 5 \
+        --num-groups "$NUM_GROUPS" \
         --scenario-path "${SCENARIO_BASE_PATH}/${scene_id}" \
         --traffic-mode log_replay \
         --output-dir "$OUTPUT_DIR" \

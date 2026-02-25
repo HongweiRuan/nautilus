@@ -58,7 +58,8 @@ spec:
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  /root/epoch=300-step=3913.ckpt
+                  /root/epoch=300-step=3913.ckpt \
+                  ${NUM_GROUPS}
           resources:
             requests:
               cpu: "3"
@@ -122,8 +123,8 @@ spec:
                       # - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
                       # - ry-gpu-08.sdsc.optiputer.net
-                      - ry-gpu-09.sdsc.optiputer.net
-                      # - ry-gpu-10.sdsc.optiputer.net
+                      # - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-10.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       # - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
