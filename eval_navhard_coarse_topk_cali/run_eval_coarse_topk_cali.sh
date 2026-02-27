@@ -12,6 +12,7 @@ EVAL_FRAMES="$7"
 SCENE_LIST_FILE="$8"
 BEV_CALIBRATOR_CHECKPOINT="$9"
 V2_SCORER_CHECKPOINT="${10}"
+NUM_GROUPS="${11}"
 
 # Read file line by line
 while read -r scene_id || [ -n "$scene_id" ]; do
@@ -31,7 +32,7 @@ while read -r scene_id || [ -n "$scene_id" ]; do
         --checkpoint "$CHECKPOINT" \
         $EXTRA_ARGS \
         --trajectory-scorer coarse_topk \
-        --num-groups 20 \
+        --num-groups "$NUM_GROUPS" \
         --v2-scorer-checkpoint "$V2_SCORER_CHECKPOINT" \
         --scenario-path "${SCENARIO_BASE_PATH}/${scene_id}" \
         --traffic-mode log_replay \

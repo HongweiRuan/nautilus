@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-dd-epdms-ego-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-dd-epdms-ego-cali-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-dd-epdms-ego-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-dd-epdms-ego-cali-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -54,7 +54,7 @@ spec:
                   /root/diffusiondrive_navsim_88p1_PDMS \
                   /root/kmeans_navsim_traj_20.npy \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_EPDMS_ego_cali/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_EPDMS_ego_cali_ng${NUM_GROUPS}/diffusiondrive/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
@@ -115,7 +115,7 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      # - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-01.sdsc.optiputer.net
                       # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
@@ -123,9 +123,9 @@ spec:
                       # - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
                       # - ry-gpu-08.sdsc.optiputer.net
-                      # - ry-gpu-09.sdsc.optiputer.net
-                      - ry-gpu-10.sdsc.optiputer.net
-                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      # - ry-gpu-10.sdsc.optiputer.net
+                      # - ry-gpu-11.sdsc.optiputer.net
                       # - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
                       # - ry-gpu-14.sdsc.optiputer.net
