@@ -624,7 +624,7 @@ def run_visualization(args):
             topdown_base = env.render(
                 mode="top_down",
                 semantic_map=True,
-                film_size=(1000, 1000),
+                film_size=(200, 200),
                 screen_size=(800, 800),
                 draw_target_vehicle_trajectory=True,
                 window=False,

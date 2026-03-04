@@ -10,9 +10,9 @@ set -e
 
 # --- Paths ---
 SCENARIO_BASE="/avl-west/navsim/navhard_md_logs"
-DD_CKPT="/closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS"
-DDV2_CKPT="/closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt"
-PLAN_ANCHOR="/closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy"
+DD_CKPT="/root/diffusiondrive_navsim_88p1_PDMS"
+DDV2_CKPT="/root/diffusiondrivev2_sel.ckpt"
+PLAN_ANCHOR="/root/kmeans_navsim_traj_20.npy"
 OUTPUT_DIR="/root/MetaBench/vis_proposals_output"
 EVAL_FRAMES=40
 

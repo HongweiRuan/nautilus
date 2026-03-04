@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-ddv2-epdms-ego-cali-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-ddv2-epdms-fast-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-ddv2-epdms-ego-cali-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-ddv2-epdms-fast-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -48,18 +48,17 @@ spec:
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
               cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
-              echo "=== Starting eval: ddv2 EPDMS_ego cali ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval_EPDMS_ego_cali.sh \
+              echo "=== Starting eval: ddv2 EPDMS_fast cali ===" &&
+              bash /closed-loop-e2e/experiments/scripts/run_eval_EPDMS_fast_cali.sh \
                   diffusiondrivev2 \
                   /root/diffusiondrivev2_sel.ckpt \
                   /root/kmeans_navsim_traj_20.npy \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_EPDMS_ego_cali_ng${NUM_GROUPS}/diffusiondrivev2/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_EPDMS_fast_cali/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  /root/epoch=300-step=3913.ckpt \
-                  ${NUM_GROUPS}
+                  /root/epoch=300-step=3913.ckpt
           resources:
             requests:
               cpu: "3"
@@ -124,8 +123,8 @@ spec:
                       - ry-gpu-07.sdsc.optiputer.net
                       # - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-09.sdsc.optiputer.net
-                      # - ry-gpu-10.sdsc.optiputer.net
-                      # - ry-gpu-11.sdsc.optiputer.net
-                      # - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-10.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
-                      # - ry-gpu-14.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net

@@ -53,7 +53,7 @@ spec:
                   /root/transfuser_seed_0.ckpt \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_cali/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_cali/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
@@ -113,17 +113,17 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      # - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-01.sdsc.optiputer.net
                       # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
-                      - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-06.sdsc.optiputer.net
+                      # - ry-gpu-05.sdsc.optiputer.net
+                      # - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
+                      # - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-09.sdsc.optiputer.net
                       - ry-gpu-10.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       - ry-gpu-12.sdsc.optiputer.net
-                      - ry-gpu-13.sdsc.optiputer.net
+                      # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
