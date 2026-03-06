@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-waymo-rap-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-waymo-rap-ego-v1-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-waymo-rap-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-waymo-rap-ego-v1-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -61,12 +61,12 @@ spec:
               echo "=== Copying rap ckpt to /root ===" &&
               cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
               echo "=== Starting eval: rap ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
+              bash /closed-loop-e2e/experiments/scripts/run_rap_raster_v1.sh \
                   rap \
                   /root/RAP_DINO_navsimv2.ckpt \
                   "" \
                   /avl-west/waymo_val_converted \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_waymo/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_waymo_ego_v1_cali/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/waymo_split/${SPLIT}.txt
@@ -139,4 +139,3 @@ spec:
                       - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
-
