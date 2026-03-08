@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-advbmt-navhard-rap-ego60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-rap-epdms-ego-raster-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-advbmt-navhard-rap-ego60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-rap-epdms-ego-raster-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -60,13 +60,13 @@ spec:
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
               echo "=== Copying rap ckpt to /root ===" &&
               cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
-              echo "=== Starting eval: rap ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval_60.sh \
+              echo "=== Starting eval: rap EPDMS_ego cali ===" &&
+              bash /closed-loop-e2e/experiments/scripts/run_rap_raster_epdms_ego.sh \
                   rap \
                   /root/RAP_DINO_navsimv2.ckpt \
                   "" \
-                  /avl-west/navsim/navhard_md_adv_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_advbmt_navhard_ego60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /avl-west/navsim/navhard_md_logs \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_EPDMS_ego_cali_ng${NUM_GROUPS}/rap/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
@@ -125,17 +125,17 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      # - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-01.sdsc.optiputer.net
                       # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
-                      - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-06.sdsc.optiputer.net
+                      # - ry-gpu-05.sdsc.optiputer.net
+                      # - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
+                      # - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-09.sdsc.optiputer.net
                       - ry-gpu-10.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       - ry-gpu-12.sdsc.optiputer.net
-                      - ry-gpu-13.sdsc.optiputer.net
+                      # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net

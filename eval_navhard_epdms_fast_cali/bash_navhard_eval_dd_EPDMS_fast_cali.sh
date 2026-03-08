@@ -2,12 +2,12 @@
 
 ALPHA=0.5
 ALPHA_SAFE=0-5
-NUM_SAMPLES=5
+NUM_SAMPLES=1
 export ALPHA ALPHA_SAFE NUM_SAMPLES
 
 for SPLIT in 210-1 211-1; do
-  for REPLAN_RATE in 1 2 5 10 15 20 25 30 35 40; do
-    for EVAL_FRAMES in 40 80; do
+  for REPLAN_RATE in 5; do
+    for EVAL_FRAMES in 120 160; do
       export SPLIT REPLAN_RATE EVAL_FRAMES
       envsubst '${SPLIT} ${REPLAN_RATE} ${EVAL_FRAMES}' < ./job_navhard_eval_dd_EPDMS_fast_cali.yaml | kubectl apply -f -
     done
