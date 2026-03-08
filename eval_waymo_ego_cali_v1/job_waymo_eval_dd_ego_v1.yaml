@@ -49,7 +49,7 @@ spec:
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
               cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
               echo "=== Starting eval: dd ego_v1 cali ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval_EPDMS_ego_v1_cali.sh \
+              bash /closed-loop-e2e/experiments/scripts/run_waymo_eval_EPDMS_ego_v1_cali.sh \
                   diffusiondrive \
                   /root/diffusiondrive_navsim_88p1_PDMS \
                   /root/kmeans_navsim_traj_20.npy \

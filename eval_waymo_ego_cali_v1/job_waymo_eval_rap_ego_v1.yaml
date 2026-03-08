@@ -63,7 +63,7 @@ spec:
               echo "=== Copying rap ckpt to /root ===" &&
               cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
               echo "=== Starting eval: rap ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_rap_raster_v1.sh \
+              bash /closed-loop-e2e/experiments/scripts/run_waymo_rap_raster_v1.sh \
                   rap \
                   /root/RAP_DINO_navsimv2.ckpt \
                   "" \

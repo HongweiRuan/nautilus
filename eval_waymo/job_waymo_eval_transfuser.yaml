@@ -45,7 +45,7 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
               echo "=== Starting eval: transfuser ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
+              bash /closed-loop-e2e/experiments/scripts/run_waymo_eval.sh \
                   transfuser \
                   /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt \
                   "" \
