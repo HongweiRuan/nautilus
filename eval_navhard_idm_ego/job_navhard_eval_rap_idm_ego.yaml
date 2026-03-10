@@ -63,13 +63,14 @@ spec:
                   --model-type rap \
                   --checkpoint /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_ego/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_ego_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
                   --traffic-mode IDM \
                   --trajectory-scorer epdms_ego \
-                  --image-source rasterized_3d
+                  --image-source rasterized_3d \
+                  --ego-replay-frames 60
           resources:
             requests:
               cpu: "3"

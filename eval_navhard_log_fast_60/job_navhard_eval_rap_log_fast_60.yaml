@@ -1,63 +1,76 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-ddv2-idm-ego-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-rap-log-fast-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-ddv2-idm-ego-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-rap-log-fast-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
         - name: gpu-container
           image: robinwangucsd/metabench:latest
           imagePullPolicy: Always
+          env:
+            - name: HF_TOKEN
+              value: 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
           command:
             - "sh"
             - "-c"
           args:
             - |
+              echo "=== Copying MetaBench main ===" &&
+              cp -r /closed-loop-e2e/MetaBench /root/MetaBench_main &&
               echo "=== Copying MetaBench Cleaned ===" &&
               cp -r /hugsim-storage/MetaBench /root/MetaBench &&
               echo "=== Creating conda env ===" &&
-              conda create -n mdsn python=3.9 pip -y &&
-              echo "=== Installing metadrive ===" &&
-              cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e .[cuda] &&
-              echo "=== Installing torch ===" &&
-              /opt/conda/envs/mdsn/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 &&
-              echo "=== Installing cupy & cuda-python ===" &&
-              /opt/conda/envs/mdsn/bin/pip install cupy-cuda11x &&
-              /opt/conda/envs/mdsn/bin/pip install cuda-python &&
-              mkdir /usr/lib/dri &&
-              ln -s /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so &&
+              conda create -n mdsn python=3.9 --yes &&
+              echo "=== Installing imageio ===" &&
+              /opt/conda/envs/mdsn/bin/pip install imageio &&
+              echo "=== Installing PyTorch (cu118) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118 &&
+              echo "=== Installing mmcv ===" &&
+              /opt/conda/envs/mdsn/bin/pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html &&
+              echo "=== Installing mmengine + mmdet ===" &&
+              /opt/conda/envs/mdsn/bin/pip install mmengine mmdet &&
+              echo "=== Installing remaining dependencies ===" &&
+              /opt/conda/envs/mdsn/bin/pip install transformers "diffusers<0.30" timm scipy einops opencv-python pyquaternion cachetools h5py cupy-cuda11x &&
+              echo "=== Installing project packages (main) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install -e /root/MetaBench_main/navsim &&
+              /opt/conda/envs/mdsn/bin/pip install -e /root/MetaBench_main/scenarionet &&
+              /opt/conda/envs/mdsn/bin/pip install -e "/root/MetaBench_main/metadrive[cuda]" &&
+              echo "=== Re-installing torch + mmcv (fix navsim downgrade) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118 &&
+              /opt/conda/envs/mdsn/bin/pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html --force-reinstall --no-deps &&
+              echo "=== Fixing libstdc++ ===" &&
               ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 &&
-              echo "=== Installing scenarionet ===" &&
-              cd /root/MetaBench/scenarionet &&
-              /opt/conda/envs/mdsn/bin/pip install -e . &&
+              mkdir -p /usr/lib/dri &&
+              ln -s /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so &&
               echo "=== Configuring panda3d ===" &&
-              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
-              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
-              echo "=== Installing remaining packages ===" &&
-              /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
+              echo "model-path /root/MetaBench_main/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "model-path /root/MetaBench_main/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "=== HuggingFace login ===" &&
+              /opt/conda/envs/mdsn/bin/huggingface-cli login --token $HF_TOKEN &&
               echo "=== Installing MetaBench (cleaned) ===" &&
+              cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Starting eval: ddv2 idm_ego ===" &&
+              echo "=== Starting eval: rap log_fast 60 ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
-                  --model-type diffusiondrivev2 \
-                  --checkpoint /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt \
-                  --config-or-anchor /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
+                  --model-type rap \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_ego_60/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_log_fast_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  --traffic-mode IDM \
-                  --trajectory-scorer epdms_ego \
-                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt \
-                  --ego-replay-frames 60
+                  --traffic-mode log_replay \
+                  --ego-replay-frames 60 \
+                  --trajectory-scorer epdms_fast \
+                  --image-source rasterized_3d
           resources:
             requests:
               cpu: "3"
@@ -127,4 +140,3 @@ spec:
                       - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
-

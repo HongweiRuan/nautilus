@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-rap-idm-baseline-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-advbmt-navhard-rap-ego60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-rap-idm-baseline-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-advbmt-navhard-rap-ego60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -58,16 +58,19 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Starting eval: rap idm_baseline ===" &&
+              echo "=== Copying rap ckpt to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
+              echo "=== Starting eval: rap ego ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
                   --model-type rap \
                   --checkpoint /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt \
-                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_baseline_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --scenario-base-path /avl-west/navsim/navhard_md_adv_logs \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_advbmt_navhard_ego_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  --traffic-mode IDM \
+                  --trajectory-scorer epdms_ego \
+                  --image-source rasterized_3d \
                   --ego-replay-frames 60
           resources:
             requests:
@@ -124,6 +127,8 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
+                      # - ry-gpu-01.sdsc.optiputer.net
+                      # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
                       - ry-gpu-05.sdsc.optiputer.net

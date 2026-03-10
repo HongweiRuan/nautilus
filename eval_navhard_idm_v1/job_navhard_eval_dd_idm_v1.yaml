@@ -50,13 +50,14 @@ spec:
                   --checkpoint /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS \
                   --config-or-anchor /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_v1/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_v1_60/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
                   --traffic-mode IDM \
                   --trajectory-scorer epdms_ego_v1 \
-                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt
+                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt \
+                  --ego-replay-frames 60
           resources:
             requests:
               cpu: "3"
