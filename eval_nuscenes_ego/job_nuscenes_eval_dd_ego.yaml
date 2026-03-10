@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-waymo-ddv2-ego-v1-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-nuscenes-dd-ego-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-waymo-ddv2-ego-v1-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-nuscenes-dd-ego-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -44,23 +44,19 @@ spec:
               /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Copying checkpoints to /root ===" &&
-              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
-              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
-              cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
-              echo "=== Starting eval: ddv2 ego_v1 cali ===" &&
+              echo "=== Starting eval: dd ego ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
-                  --model-type diffusiondrivev2 \
-                  --checkpoint /root/diffusiondrivev2_sel.ckpt \
-                  --config-or-anchor /root/kmeans_navsim_traj_20.npy \
-                  --scenario-base-path /avl-west/waymo_val_converted \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_waymo_ego_v1_cali/diffusiondrivev2/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --model-type diffusiondrive \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS \
+                  --config-or-anchor /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
+                  --scenario-base-path /hugsim-storage/converted_nuscenes_test \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_nuscenes_ego/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
-                  --scene-list /closed-loop-e2e/waymo_split/${SPLIT}.txt \
-                  --trajectory-scorer epdms_ego_v1 \
-                  --num-groups 1 \
-                  --bev-calibrator-checkpoint /root/epoch=300-step=3913.ckpt
+                  --scene-list /closed-loop-e2e/nuscenes_split/143-1.txt \
+                  --traffic-mode log_replay \
+                  --trajectory-scorer epdms_ego \
+                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt
           resources:
             requests:
               cpu: "3"
@@ -130,4 +126,3 @@ spec:
                       - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
-

@@ -49,16 +49,17 @@ spec:
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
               cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
               echo "=== Starting eval: dd waymo EPDMS_fast cali ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_waymo_eval_EPDMS_fast_cali.sh \
-                  diffusiondrive \
-                  /root/diffusiondrive_navsim_88p1_PDMS \
-                  /root/kmeans_navsim_traj_20.npy \
-                  /avl-west/waymo_val_converted \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_waymo_EPDMS_fast_cali/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
-                  ${REPLAN_RATE} \
-                  ${EVAL_FRAMES} \
-                  /closed-loop-e2e/waymo_split/${SPLIT}.txt \
-                  /root/epoch=400-step=5213.ckpt
+              bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
+                  --model-type diffusiondrive \
+                  --checkpoint /root/diffusiondrive_navsim_88p1_PDMS \
+                  --config-or-anchor /root/kmeans_navsim_traj_20.npy \
+                  --scenario-base-path /avl-west/waymo_val_converted \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_waymo_EPDMS_fast_cali/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --replan-rate ${REPLAN_RATE} \
+                  --eval-frames ${EVAL_FRAMES} \
+                  --scene-list /closed-loop-e2e/waymo_split/${SPLIT}.txt \
+                  --trajectory-scorer epdms_fast \
+                  --bev-calibrator-checkpoint /root/epoch=400-step=5213.ckpt
           resources:
             requests:
               cpu: "3"

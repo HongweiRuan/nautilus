@@ -27,7 +27,7 @@ spec:
         - name: avl-west-vol
           mountPath: /avl-west
         - name: cogrob-avl-west-vol
-          mountPath: /avl-west-2
+          mountPath: /cogrob-avl-west
         - name: closed-loop-e2e
           mountPath: /closed-loop-e2e
         - name: hugsim-storage
@@ -74,20 +74,21 @@ spec:
           - key: kubernetes.io/hostname
             operator: In
             values:
-              # - ry-gpu-01.sdsc.optiputer.net
+              - ry-gpu-01.sdsc.optiputer.net
               # - ry-gpu-02.sdsc.optiputer.net
-              # - ry-gpu-03.sdsc.optiputer.net
-              # - ry-gpu-04.sdsc.optiputer.net
+              - ry-gpu-03.sdsc.optiputer.net
+              - ry-gpu-04.sdsc.optiputer.net
               # - ry-gpu-05.sdsc.optiputer.net
               # - ry-gpu-06.sdsc.optiputer.net
-              # - ry-gpu-07.sdsc.optiputer.net
+              - ry-gpu-07.sdsc.optiputer.net
               # - ry-gpu-08.sdsc.optiputer.net
-              # - ry-gpu-09.sdsc.optiputer.net
-              # - ry-gpu-10.sdsc.optiputer.net
-              # - ry-gpu-11.sdsc.optiputer.net
-              # - ry-gpu-12.sdsc.optiputer.net
+              - ry-gpu-09.sdsc.optiputer.net
+              - ry-gpu-10.sdsc.optiputer.net
+              - ry-gpu-11.sdsc.optiputer.net
+              - ry-gpu-12.sdsc.optiputer.net
               # - ry-gpu-13.sdsc.optiputer.net
               - ry-gpu-14.sdsc.optiputer.net
+
   tolerations:
   - effect: NoSchedule
     key: nautilus.io/reservation

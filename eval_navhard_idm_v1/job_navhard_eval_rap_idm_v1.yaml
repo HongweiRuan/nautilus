@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-waymo-rap-epdms-fast-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-rap-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-waymo-rap-epdms-fast-cali-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-rap-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -58,20 +58,17 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Upgrading numpy for waymo pkl compatibility ==" &&
-              /opt/conda/envs/mdsn/bin/pip install "numpy>=1.25,<2.0" &&
-              echo "=== Copying rap ckpt to /root ===" &&
-              cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
-              echo "=== Starting eval: rap waymo EPDMS_fast cali ===" &&
+              echo "=== Starting eval: rap idm_v1 ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
                   --model-type rap \
-                  --checkpoint /root/RAP_DINO_navsimv2.ckpt \
-                  --scenario-base-path /avl-west/waymo_val_converted \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_waymo_EPDMS_fast_cali/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt \
+                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_v1/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
-                  --scene-list /closed-loop-e2e/waymo_split/${SPLIT}.txt \
-                  --trajectory-scorer epdms_fast \
+                  --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
+                  --traffic-mode IDM \
+                  --trajectory-scorer epdms_ego_v1 \
                   --image-source rasterized_3d
           resources:
             requests:
@@ -128,17 +125,15 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      - ry-gpu-01.sdsc.optiputer.net
-                      # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
-                      # - ry-gpu-05.sdsc.optiputer.net
-                      # - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
-                      # - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-09.sdsc.optiputer.net
                       - ry-gpu-10.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       - ry-gpu-12.sdsc.optiputer.net
-                      # - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net

@@ -63,15 +63,14 @@ spec:
               echo "=== Copying rap ckpt to /root ===" &&
               cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
               echo "=== Starting eval: rap ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_waymo_eval.sh \
-                  rap \
-                  /root/RAP_DINO_navsimv2.ckpt \
-                  "" \
-                  /avl-west/waymo_val_converted \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_waymo/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
-                  ${REPLAN_RATE} \
-                  ${EVAL_FRAMES} \
-                  /closed-loop-e2e/waymo_split/${SPLIT}.txt
+              bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
+                  --model-type rap \
+                  --checkpoint /root/RAP_DINO_navsimv2.ckpt \
+                  --scenario-base-path /avl-west/waymo_val_converted \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_waymo/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --replan-rate ${REPLAN_RATE} \
+                  --eval-frames ${EVAL_FRAMES} \
+                  --scene-list /closed-loop-e2e/waymo_split/${SPLIT}.txt
           resources:
             requests:
               cpu: "3"

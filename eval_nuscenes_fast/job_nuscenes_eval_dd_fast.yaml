@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-waymo-transfuser-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-nuscenes-dd-fast-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-waymo-transfuser-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-nuscenes-dd-fast-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -44,16 +44,19 @@ spec:
               /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Starting eval: transfuser ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_waymo_eval.sh \
-                  transfuser \
-                  /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt \
-                  "" \
-                  /avl-west/waymo_val_converted \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_waymo/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
-                  ${REPLAN_RATE} \
-                  ${EVAL_FRAMES} \
-                  /closed-loop-e2e/waymo_split/${SPLIT}.txt
+              echo "=== Starting eval: dd fast ===" &&
+              bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
+                  --model-type diffusiondrive \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS \
+                  --config-or-anchor /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
+                  --scenario-base-path /hugsim-storage/converted_nuscenes_test \
+                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_nuscenes_fast/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --replan-rate ${REPLAN_RATE} \
+                  --eval-frames ${EVAL_FRAMES} \
+                  --scene-list /closed-loop-e2e/nuscenes_split/143-1.txt \
+                  --traffic-mode log_replay \
+                  --trajectory-scorer epdms_fast \
+                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt
           resources:
             requests:
               cpu: "3"
