@@ -5,7 +5,7 @@ ALPHA_SAFE=0-5
 NUM_SAMPLES=5
 export ALPHA ALPHA_SAFE NUM_SAMPLES
 
-for SPLIT in 210-1 211-1; do
+for SPLIT in 211-1_ego60_missing.txt; do
   for REPLAN_RATE in 5; do
     for EVAL_FRAMES in 80; do
       export SPLIT REPLAN_RATE EVAL_FRAMES
