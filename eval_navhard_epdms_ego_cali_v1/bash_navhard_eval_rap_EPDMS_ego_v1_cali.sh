@@ -7,8 +7,8 @@ NUM_GROUPS=1
 export ALPHA ALPHA_SAFE NUM_SAMPLES NUM_GROUPS
 
 for SPLIT in 210-1 211-1; do
-  for REPLAN_RATE in 5; do
-    for EVAL_FRAMES in 40 80 120 160; do
+  for REPLAN_RATE in 1; do
+    for EVAL_FRAMES in 80; do
       export SPLIT REPLAN_RATE EVAL_FRAMES
       envsubst '${SPLIT} ${REPLAN_RATE} ${EVAL_FRAMES} ${NUM_GROUPS}' < ./job_navhard_eval_rap_EPDMS_ego_v1_cali.yaml | kubectl apply -f -
     done

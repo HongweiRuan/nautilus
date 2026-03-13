@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-drivor-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-drivor-134k-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-drivor-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-drivor-134k-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -47,10 +47,10 @@ spec:
               echo "=== Starting eval: drivor ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval.sh \
                   drivor \
-                  /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav2_10epochs.pth \
+                  /closed-loop-e2e/weights/navsimv2/DrivoR/nav1_30epochs_with_134k_simscale_bis_103ktrainval.pth \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/drivor/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_drivor/drivor/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
@@ -109,8 +109,8 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      # - ry-gpu-01.sdsc.optiputer.net
-                      # - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
                       - ry-gpu-05.sdsc.optiputer.net
