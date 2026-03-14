@@ -110,7 +110,7 @@ spec:
                     operator: In
                     values:
                       - ry-gpu-01.sdsc.optiputer.net
-                      # - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net

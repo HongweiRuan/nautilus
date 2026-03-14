@@ -9,7 +9,7 @@ for SPLIT in 199-1 200-1; do
   for REPLAN_RATE in 5; do
     for EVAL_FRAMES in 80; do
       export SPLIT REPLAN_RATE EVAL_FRAMES
-      envsubst '${SPLIT} ${REPLAN_RATE} ${EVAL_FRAMES}' < ./job_waymo_eval_rap_ego_v1.yaml | kubectl apply -f -
+      envsubst '${SPLIT} ${REPLAN_RATE} ${EVAL_FRAMES}' < ./job_waymo_eval_rap_ego_ttc.yaml | kubectl apply -f -
     done
   done
 done

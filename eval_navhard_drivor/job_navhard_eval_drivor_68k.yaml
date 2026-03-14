@@ -50,7 +50,7 @@ spec:
                   /closed-loop-e2e/weights/navsimv2/DrivoR/nav1_30epochs_with_68k_simscale_103ktrainval.pth \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_drivor/drivor/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_drivor/drivor/68k_split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
