@@ -54,7 +54,7 @@ spec:
                   --checkpoint /root/diffusiondrive_navsim_88p1_PDMS \
                   --config-or-anchor /root/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/waymo_val_converted \
-                  --output-dir /closed-loop-e2e/experiments/waymo/eval_waymo_ego_ttc_cali/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/waymo/eval_waymo_ttc_cali/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/waymo_split/${SPLIT}.txt \

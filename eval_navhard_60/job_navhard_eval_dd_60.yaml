@@ -48,15 +48,16 @@ spec:
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
               cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
               echo "=== Starting eval ===" &&
-              bash /closed-loop-e2e/experiments/scripts/run_eval_60.sh \
-                  diffusiondrive \
-                  /root/diffusiondrive_navsim_88p1_PDMS \
-                  /root/kmeans_navsim_traj_20.npy \
-                  /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_60/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
-                  ${REPLAN_RATE} \
-                  ${EVAL_FRAMES} \
-                  /closed-loop-e2e/navhard_test_split/${SPLIT}.txt
+              bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
+                  --model-type diffusiondrive \
+                  --checkpoint /root/diffusiondrive_navsim_88p1_PDMS \
+                  --config-or-anchor /root/kmeans_navsim_traj_20.npy \
+                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
+                  --output-dir /closed-loop-e2e/experiments/section5.2/eval_navhard_60/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --replan-rate ${REPLAN_RATE} \
+                  --eval-frames ${EVAL_FRAMES} \
+                  --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
+                  --ego-replay-frames 60
           resources:
             requests:
               cpu: "3"
@@ -113,16 +114,16 @@ spec:
                     operator: In
                     values:
                       - ry-gpu-01.sdsc.optiputer.net
-                      # - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
-                      - ry-gpu-04.sdsc.optiputer.net
+                      # - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net
                       # - ry-gpu-06.sdsc.optiputer.net
-                      - ry-gpu-07.sdsc.optiputer.net
+                      # - ry-gpu-07.sdsc.optiputer.net
                       # - ry-gpu-08.sdsc.optiputer.net
-                      - ry-gpu-09.sdsc.optiputer.net
-                      - ry-gpu-10.sdsc.optiputer.net
-                      - ry-gpu-11.sdsc.optiputer.net
-                      - ry-gpu-12.sdsc.optiputer.net
+                      # - ry-gpu-09.sdsc.optiputer.net
+                      # - ry-gpu-10.sdsc.optiputer.net
+                      # - ry-gpu-11.sdsc.optiputer.net
+                      # - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
-                      - ry-gpu-14.sdsc.optiputer.net
+                      # - ry-gpu-14.sdsc.optiputer.net

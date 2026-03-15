@@ -9,7 +9,7 @@ for SPLIT in 210-1 211-1; do
   for REPLAN_RATE in 5; do
     for EVAL_FRAMES in 40 80 120 160; do
       export SPLIT REPLAN_RATE EVAL_FRAMES
-      envsubst '${SPLIT} ${REPLAN_RATE} ${EVAL_FRAMES}' < ./job_navhard_eval_rap_60.yaml | kubectl apply -f -
+      envsubst < ./job_navhard_eval_ltf_idm_baseline.yaml | kubectl apply -f -
     done
   done
 done
