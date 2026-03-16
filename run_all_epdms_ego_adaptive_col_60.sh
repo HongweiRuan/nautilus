@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+# navhard log_replay
+cd /Users/hongwei/Desktop/avl/nautilus/eval_navhard_epdms_ego_adaptive_col_60
+bash bash_navhard_eval_dd_epdms_ego_adaptive_col_60.sh
+bash bash_navhard_eval_ddv2_epdms_ego_adaptive_col_60.sh
+bash bash_navhard_eval_rap_epdms_ego_adaptive_col_60.sh
+
+# advbmt log_replay
+cd /Users/hongwei/Desktop/avl/nautilus/eval_advbmt_navhard_epdms_ego_adaptive_col_60
+bash bash_advbmt_navhard_eval_dd_epdms_ego_adaptive_col_60.sh
+bash bash_advbmt_navhard_eval_ddv2_epdms_ego_adaptive_col_60.sh
+bash bash_advbmt_navhard_eval_rap_epdms_ego_adaptive_col_60.sh
+
+# navhard IDM
+cd /Users/hongwei/Desktop/avl/nautilus/eval_navhard_idm_epdms_ego_adaptive_col_60
+bash bash_navhard_idm_eval_dd_epdms_ego_adaptive_col_60.sh
+bash bash_navhard_idm_eval_ddv2_epdms_ego_adaptive_col_60.sh
+bash bash_navhard_idm_eval_rap_epdms_ego_adaptive_col_60.sh
+
+echo "All 9 eval jobs submitted."
