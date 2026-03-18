@@ -35,6 +35,7 @@ set -e
 #   --v2-scorer-checkpoint PATH  for coarse_topk scorer
 #   --image-source        NAME   e.g. rasterized_3d  (omit = default)
 #   --score-start-frame   N      (omit = not passed)
+#   --num-proposals       N      (omit = not passed)
 #
 # Extra Python args:
 #   Append `-- --some-flag value` at the end to pass arbitrary flags directly
@@ -118,6 +119,9 @@ while [[ $# -gt 0 ]]; do
         # ── Scoring window ──
         --score-start-frame)       SCORE_START_FRAME="$2";       shift 2 ;;
 
+        # ── Num proposals ──
+        --num-proposals)           NUM_PROPOSALS="$2";           shift 2 ;;
+
         # ── End-of-options sentinel: everything after goes to Python ──
         --)
             shift
@@ -195,6 +199,10 @@ IMAGE_ARGS=()
 SCORE_FRAME_ARGS=()
 [[ -n "${SCORE_START_FRAME:-}" ]] && SCORE_FRAME_ARGS=(--score-start-frame "$SCORE_START_FRAME")
 
+# ── Build num-proposals fragment ─────────────────────────────────────────────
+NUM_PROPOSALS_ARGS=()
+[[ -n "${NUM_PROPOSALS:-}" ]] && NUM_PROPOSALS_ARGS=(--num-proposals "$NUM_PROPOSALS")
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo "========================================"
 echo "  run_eval_ultimate.sh"
@@ -215,6 +223,7 @@ echo "  eval-frames      : $EVAL_FRAMES"
 [[ -n "${BEV_CALIBRATOR_CHECKPOINT:-}" ]] && echo "  bev-cal-ckpt     : $BEV_CALIBRATOR_CHECKPOINT (steps=$BEV_SAMPLE_STEPS)"
 [[ -n "${IMAGE_SOURCE:-}"              ]] && echo "  image-source     : $IMAGE_SOURCE"
 [[ -n "${SCORE_START_FRAME:-}"         ]] && echo "  score-start-frame: $SCORE_START_FRAME"
+[[ -n "${NUM_PROPOSALS:-}"            ]] && echo "  num-proposals    : $NUM_PROPOSALS"
 [[ ${#EXTRA_ARGS[@]} -gt 0             ]] && echo "  extra args       : ${EXTRA_ARGS[*]}"
 echo "========================================"
 
@@ -239,6 +248,7 @@ while read -r scene_id || [[ -n "$scene_id" ]]; do
         "${BEV_ARGS[@]}" \
         "${IMAGE_ARGS[@]}" \
         "${SCORE_FRAME_ARGS[@]}" \
+        "${NUM_PROPOSALS_ARGS[@]}" \
         "${EXTRA_ARGS[@]}"
 
 done < <(tr -d '\r' < "$SCENE_LIST_FILE")
