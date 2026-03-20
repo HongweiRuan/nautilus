@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-dd-eac-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-navhard-dd-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-dd-eac-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-navhard-dd-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -44,25 +44,20 @@ spec:
               /opt/conda/envs/mdsn/bin/pip install timm scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Copying checkpoints to /root ===" &&
-              cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
-              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
-              cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
-              echo "=== Starting eval: dd epdms_ego_adaptive_col 60 ===" &&
+              echo "=== Starting eval: dd idm_v1 ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
                   --model-type diffusiondrive \
-                  --checkpoint /root/diffusiondrive_navsim_88p1_PDMS \
-                  --config-or-anchor /root/kmeans_navsim_traj_20.npy \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS \
+                  --config-or-anchor /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/navhard/eval_epdms_ego_adaptive_col_60_ng${NUM_GROUPS}/diffusiondrive/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/eval_navhard_idm_v1_60/diffusiondrive/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  --ego-replay-frames 60 \
-                  --trajectory-scorer epdms_ego_adaptive_col \
-                  --num-groups ${NUM_GROUPS} \
-                  --bev-calibrator-checkpoint /root/epoch=400-step=5213.ckpt \
-                  --bev-sample-steps 10
+                  --traffic-mode IDM \
+                  --trajectory-scorer epdms_ego_v1 \
+                  --bev-calibrator-checkpoint /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt \
+                  --ego-replay-frames 60
           resources:
             requests:
               cpu: "3"
@@ -119,16 +114,16 @@ spec:
                     operator: In
                     values:
                       - ry-gpu-01.sdsc.optiputer.net
-                      - ry-gpu-02.sdsc.optiputer.net
+                      # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
-                      # - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net
                       # - ry-gpu-06.sdsc.optiputer.net
-                      # - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
                       # - ry-gpu-08.sdsc.optiputer.net
-                      # - ry-gpu-09.sdsc.optiputer.net
-                      # - ry-gpu-10.sdsc.optiputer.net
-                      # - ry-gpu-11.sdsc.optiputer.net
-                      # - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-10.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
                       # - ry-gpu-13.sdsc.optiputer.net
-                      # - ry-gpu-14.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net

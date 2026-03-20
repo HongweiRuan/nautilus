@@ -54,7 +54,7 @@ spec:
                   --checkpoint /root/diffusiondrivev2_sel.ckpt \
                   --config-or-anchor /root/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/section5.1/eval_epdms_ego_adaptive_col_60_ng${NUM_GROUPS}/diffusiondrivev2/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/navhard/eval_epdms_ego_adaptive_col_60_ng${NUM_GROUPS}/diffusiondrivev2/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \

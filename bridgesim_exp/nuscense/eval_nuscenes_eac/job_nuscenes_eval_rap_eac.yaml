@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-navhard-rap-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-nuscenes-rap-eac-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-navhard-rap-idm-v1-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-nuscenes-rap-eac-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -58,19 +58,18 @@ spec:
               echo "=== Installing MetaBench (cleaned) ===" &&
               cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
-              echo "=== Starting eval: rap idm_v1 ===" &&
+              echo "=== Starting eval: rap eac ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
                   --model-type rap \
                   --checkpoint /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt \
-                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/zero_shot_results/eval_navhard_idm_v1_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --scenario-base-path /hugsim-storage/converted_nuscenes_test \
+                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/nuscenes/eval_nuscenes_eac/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
-                  --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
-                  --traffic-mode IDM \
-                  --trajectory-scorer epdms_ego_v1 \
-                  --image-source rasterized_3d \
-                  --ego-replay-frames 60
+                  --scene-list /closed-loop-e2e/nuscenes_split/143-1.txt \
+                  --traffic-mode log_replay \
+                  --trajectory-scorer epdms_ego_adaptive_col \
+                  --image-source rasterized_3d
           resources:
             requests:
               cpu: "3"
@@ -126,15 +125,17 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      # - ry-gpu-02.sdsc.optiputer.net
                       - ry-gpu-03.sdsc.optiputer.net
                       - ry-gpu-04.sdsc.optiputer.net
-                      - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-06.sdsc.optiputer.net
+                      # - ry-gpu-05.sdsc.optiputer.net
+                      # - ry-gpu-06.sdsc.optiputer.net
                       - ry-gpu-07.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
+                      # - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-09.sdsc.optiputer.net
                       - ry-gpu-10.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       - ry-gpu-12.sdsc.optiputer.net
-                      - ry-gpu-13.sdsc.optiputer.net
+                      # - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
