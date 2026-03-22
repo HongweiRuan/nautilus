@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-advbmt-rap-ettc-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-idm-rap-ettc-3-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-advbmt-rap-ettc-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-idm-rap-ettc-3-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -60,18 +60,18 @@ spec:
               cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
               echo "=== Copying rap ckpt to /root ===" &&
               cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
-              echo "=== Starting eval: rap advbmt epdms_ego_ttc 60 ===" &&
+              echo "=== Starting eval: rap IDM epdms_ego_ttc_3 60 ===" &&
               bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
                   --model-type rap \
                   --checkpoint /root/RAP_DINO_navsimv2.ckpt \
-                  --scenario-base-path /avl-west/navsim/navhard_md_adv_logs \
-                  --output-dir /closed-loop-e2e/experiments/section5.1/gamma0.99/eval_advbmt_epdms_ego_ttc_60_ng${NUM_GROUPS}/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
+                  --output-dir /closed-loop-e2e/experiments/0ep/idm/ttc3/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
                   --ego-replay-frames 60 \
-                  --trajectory-scorer epdms_ego_ttc \
-                  --num-groups ${NUM_GROUPS} \
+                  --traffic-mode IDM \
+                  --trajectory-scorer epdms_ego_ttc_3 \
                   --image-source rasterized_3d
           resources:
             requests:
