@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: horuan-debug-http
+  labels:
+    k8s-app: horuan-debug-http
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: horuan-debug-http
+  template:
+    metadata:
+      labels:
+        k8s-app: horuan-debug-http
+    spec:
+      # nodeName: ry-gpu-13.sdsc.optiputer.net
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: http-server
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            requests:
+              cpu: "4"
+              memory: "32Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "4"
+              memory: "32Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: cogrob-avl-west-vol
+              mountPath: /cogrob-avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: cogrob-avl-west-vol
+          persistentVolumeClaim:
+            claimName: cogrob-avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - us-west
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-GeForce-RTX-3090
+                    # - NVIDIA-RTX-A4000
+                    # - NVIDIA-RTX-A5000
+                    # - Quadro-RTX-6000
+                    # - NVIDIA-TITAN-RTX
+                    # - NVIDIA-A10
+                    # - Tesla-V130-SXM2-32GB
+                    # - NVIDIA-A40
+                    # - NVIDIA-RTX-A6000
+                    # - Quadro-RTX-8000
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      # - ry-gpu-04.sdsc.optiputer.net
+                      # - ry-gpu-05.sdsc.optiputer.net
+                      # - ry-gpu-06.sdsc.optiputer.net
+                      # - ry-gpu-07.sdsc.optiputer.net
+                      # - ry-gpu-08.sdsc.optiputer.net
+                      # - ry-gpu-09.sdsc.optiputer.net
+                      # - ry-gpu-10.sdsc.optiputer.net
+                      # - ry-gpu-11.sdsc.optiputer.net
+                      # - ry-gpu-12.sdsc.optiputer.net
+                      # - ry-gpu-13.sdsc.optiputer.net
+                      # - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
