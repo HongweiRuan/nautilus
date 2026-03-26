@@ -54,7 +54,7 @@ spec:
                   --checkpoint /root/diffusiondrivev2_sel.ckpt \
                   --config-or-anchor /root/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/section5.1/eval_np_cali/diffusiondrivev2/split_${SPLIT}_np_${NUM_PROPOSALS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/new_np/eval_np_cali/diffusiondrivev2/split_${SPLIT}_np_${NUM_PROPOSALS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
@@ -119,7 +119,7 @@ spec:
                     values:
                       - ry-gpu-01.sdsc.optiputer.net
                       - ry-gpu-02.sdsc.optiputer.net
-                      - ry-gpu-03.sdsc.optiputer.net
+                      # - ry-gpu-03.sdsc.optiputer.net
                       # - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net
                       # - ry-gpu-06.sdsc.optiputer.net
