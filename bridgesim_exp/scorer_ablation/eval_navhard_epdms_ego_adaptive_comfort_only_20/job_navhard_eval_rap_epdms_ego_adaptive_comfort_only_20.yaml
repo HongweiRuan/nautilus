@@ -1,0 +1,143 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-eval-navhard-rap-eac-comfort-only-20-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: job-eval-navhard-rap-eac-comfort-only-20-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: Always
+          env:
+            - name: HF_TOKEN
+              value: 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
+          command:
+            - "sh"
+            - "-c"
+          args:
+            - |
+              echo "=== Copying MetaBench main ===" &&
+              cp -r /closed-loop-e2e/MetaBench /root/MetaBench_main &&
+              echo "=== Copying MetaBench Cleaned ===" &&
+              cp -r /hugsim-storage/MetaBench /root/MetaBench &&
+              echo "=== Creating conda env ===" &&
+              conda create -n mdsn python=3.9 --yes &&
+              echo "=== Installing imageio ===" &&
+              /opt/conda/envs/mdsn/bin/pip install imageio &&
+              echo "=== Installing PyTorch (cu118) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118 &&
+              echo "=== Installing mmcv ===" &&
+              /opt/conda/envs/mdsn/bin/pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html &&
+              echo "=== Installing mmengine + mmdet ===" &&
+              /opt/conda/envs/mdsn/bin/pip install mmengine mmdet &&
+              echo "=== Installing remaining dependencies ===" &&
+              /opt/conda/envs/mdsn/bin/pip install transformers "diffusers<0.30" timm scipy einops opencv-python pyquaternion cachetools h5py cupy-cuda11x &&
+              echo "=== Installing project packages (main) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install -e /root/MetaBench_main/navsim &&
+              /opt/conda/envs/mdsn/bin/pip install -e /root/MetaBench_main/scenarionet &&
+              /opt/conda/envs/mdsn/bin/pip install -e "/root/MetaBench_main/metadrive[cuda]" &&
+              echo "=== Re-installing torch + mmcv (fix navsim downgrade) ===" &&
+              /opt/conda/envs/mdsn/bin/pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118 &&
+              /opt/conda/envs/mdsn/bin/pip install mmcv==2.1.0 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1/index.html --force-reinstall --no-deps &&
+              echo "=== Fixing libstdc++ ===" &&
+              ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 &&
+              mkdir -p /usr/lib/dri &&
+              ln -s /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so &&
+              echo "=== Configuring panda3d ===" &&
+              echo "model-path /root/MetaBench_main/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "model-path /root/MetaBench_main/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "=== HuggingFace login ===" &&
+              /opt/conda/envs/mdsn/bin/huggingface-cli login --token $HF_TOKEN &&
+              echo "=== Installing MetaBench (cleaned) ===" &&
+              cd /root/MetaBench/metadrive && /opt/conda/envs/mdsn/bin/pip install -e . &&
+              cd /root/MetaBench && /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Copying rap ckpt to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/RAP_DINO/RAP_DINO_navsimv2.ckpt /root/RAP_DINO_navsimv2.ckpt &&
+              echo "=== Starting eval: rap epdms_ego_adaptive_comfort_only 20 ===" &&
+              bash /closed-loop-e2e/experiments/scripts/run_eval_ultimate.sh \
+                  --model-type rap \
+                  --checkpoint /root/RAP_DINO_navsimv2.ckpt \
+                  --scenario-base-path /avl-west/navsim/navhard_md_logs \
+                  --output-dir /closed-loop-e2e/experiments/scorer_ablation/log_replay/eac/eval_epdms_ego_adaptive_comfort_only_20_ng${NUM_GROUPS}/rap/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --replan-rate ${REPLAN_RATE} \
+                  --eval-frames ${EVAL_FRAMES} \
+                  --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
+                  --ego-replay-frames 20 \
+                  --trajectory-scorer epdms_ego_adaptive_comfort_only \
+                  --image-source rasterized_3d
+          resources:
+            requests:
+              cpu: "3"
+              memory: "20Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "4"
+              memory: "24Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - us-west
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-GeForce-RTX-3090
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      # - ry-gpu-04.sdsc.optiputer.net
+                      # - ry-gpu-05.sdsc.optiputer.net
+                      # - ry-gpu-06.sdsc.optiputer.net
+                      # - ry-gpu-07.sdsc.optiputer.net
+                      # - ry-gpu-08.sdsc.optiputer.net
+                      # - ry-gpu-09.sdsc.optiputer.net
+                      # - ry-gpu-10.sdsc.optiputer.net
+                      # - ry-gpu-11.sdsc.optiputer.net
+                      # - ry-gpu-12.sdsc.optiputer.net
+                      # - ry-gpu-13.sdsc.optiputer.net
+                      # - ry-gpu-14.sdsc.optiputer.net

@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-idm-ddv2-eac-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-idm-ddv2-eacm-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-idm-ddv2-eac-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-idm-ddv2-eacm-60-ng-${NUM_GROUPS}-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -54,7 +54,7 @@ spec:
                   --checkpoint /root/diffusiondrivev2_sel.ckpt \
                   --config-or-anchor /root/kmeans_navsim_traj_20.npy \
                   --scenario-base-path /avl-west/navsim/navhard_md_logs \
-                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/eval_idm_epdms_ego_adaptive_col_60_ng${NUM_GROUPS}/diffusiondrivev2/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/table2_mttc/idm/eac/eval_idm_epdms_ego_adaptive_col_60_ng${NUM_GROUPS}/diffusiondrivev2/split_${SPLIT}_ng_${NUM_GROUPS}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \

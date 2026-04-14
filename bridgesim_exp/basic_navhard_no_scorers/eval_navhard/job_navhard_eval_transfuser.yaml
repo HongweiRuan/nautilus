@@ -52,7 +52,7 @@ spec:
                   /root/transfuser_seed_0.ckpt \
                   "" \
                   /avl-west/navsim/navhard_md_logs \
-                  /closed-loop-e2e/experiments/zero_shot_results/eval_navhard/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  /closed-loop-e2e/experiments/table4/transfuser/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   ${REPLAN_RATE} \
                   ${EVAL_FRAMES} \
                   /closed-loop-e2e/navhard_test_split/${SPLIT}.txt

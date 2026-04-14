@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-eval-advbmt-rap-eac-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+  name: job-eval-advbmt-rap-eacm-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-eval-advbmt-rap-eac-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
+        k8s-app: job-eval-advbmt-rap-eacm-60-rr-${REPLAN_RATE}-ef-${EVAL_FRAMES}-${SPLIT}
     spec:
       restartPolicy: Never
       containers:
@@ -65,7 +65,7 @@ spec:
                   --model-type rap \
                   --checkpoint /root/RAP_DINO_navsimv2.ckpt \
                   --scenario-base-path /avl-west/navsim/navhard_md_adv_logs \
-                  --output-dir /closed-loop-e2e/experiments/new_adaptive_scorer/gamma0.99/eval_advbmt_epdms_ego_adaptive_col_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
+                  --output-dir /closed-loop-e2e/experiments/table2_mttc/advbmt/eac/eval_advbmt_epdms_ego_adaptive_col_60/rap/split_${SPLIT}_rr_${REPLAN_RATE}_ef_${EVAL_FRAMES} \
                   --replan-rate ${REPLAN_RATE} \
                   --eval-frames ${EVAL_FRAMES} \
                   --scene-list /closed-loop-e2e/navhard_test_split/${SPLIT}.txt \
