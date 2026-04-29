@@ -1,0 +1,856 @@
+=== Copying DrivoR repo ===
+=== Installing nuplan-devkit ===
+Obtaining file:///root/DrivoR/nuplan-devkit
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Installing collected packages: nuplan-devkit
+  DEPRECATION: Legacy editable install of nuplan-devkit==1.2.2 from file:///root/DrivoR/nuplan-devkit (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, try using --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for nuplan-devkit
+Successfully installed nuplan-devkit
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+=== Installing DrivoR ===
+Obtaining file:///root/DrivoR
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting aioboto3 (from navsim==1.1.0)
+  Downloading aioboto3-15.5.0-py3-none-any.whl.metadata (8.9 kB)
+Collecting aiofiles (from navsim==1.1.0)
+  Downloading aiofiles-25.1.0-py3-none-any.whl.metadata (6.3 kB)
+Collecting casadi (from navsim==1.1.0)
+  Downloading casadi-3.7.2-cp39-none-manylinux2014_x86_64.whl.metadata (2.2 kB)
+Collecting geopandas>=0.12.1 (from navsim==1.1.0)
+  Downloading geopandas-1.0.1-py3-none-any.whl.metadata (2.2 kB)
+Collecting hydra-core==1.3.2 (from navsim==1.1.0)
+  Downloading hydra_core-1.3.2-py3-none-any.whl.metadata (5.5 kB)
+Collecting joblib (from navsim==1.1.0)
+  Downloading joblib-1.5.3-py3-none-any.whl.metadata (5.5 kB)
+Collecting matplotlib (from navsim==1.1.0)
+  Downloading matplotlib-3.9.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+Collecting nest_asyncio (from navsim==1.1.0)
+  Downloading nest_asyncio-1.6.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting opencv-python==4.11.0.86 (from navsim==1.1.0)
+  Downloading opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+Collecting pandas (from navsim==1.1.0)
+  Downloading pandas-2.3.3-cp39-cp39-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (91 kB)
+Collecting Pillow (from navsim==1.1.0)
+  Downloading pillow-11.3.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.0 kB)
+Collecting psutil (from navsim==1.1.0)
+  Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl.metadata (22 kB)
+Collecting pyarrow (from navsim==1.1.0)
+  Downloading pyarrow-21.0.0-cp39-cp39-manylinux_2_28_x86_64.whl.metadata (3.3 kB)
+Collecting pyinstrument (from navsim==1.1.0)
+  Downloading pyinstrument-5.1.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (26 kB)
+Collecting pyogrio (from navsim==1.1.0)
+  Downloading pyogrio-0.11.1-cp39-cp39-manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+Collecting pyquaternion>=0.9.5 (from navsim==1.1.0)
+  Downloading pyquaternion-0.9.9-py3-none-any.whl.metadata (1.4 kB)
+Collecting pytest (from navsim==1.1.0)
+  Downloading pytest-8.4.2-py3-none-any.whl.metadata (7.7 kB)
+Collecting rasterio (from navsim==1.1.0)
+  Downloading rasterio-1.4.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (9.1 kB)
+Collecting ray (from navsim==1.1.0)
+  Downloading ray-2.51.2-cp39-cp39-manylinux2014_x86_64.whl.metadata (21 kB)
+Collecting retry (from navsim==1.1.0)
+  Downloading retry-0.9.2-py2.py3-none-any.whl.metadata (5.8 kB)
+Collecting rtree (from navsim==1.1.0)
+  Downloading rtree-1.4.1-py3-none-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (2.1 kB)
+Collecting scipy (from navsim==1.1.0)
+  Downloading scipy-1.13.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+Collecting selenium (from navsim==1.1.0)
+  Downloading selenium-4.36.0-py3-none-any.whl.metadata (7.5 kB)
+Collecting Shapely>=2.0.0 (from navsim==1.1.0)
+  Downloading shapely-2.0.7-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+Collecting sympy (from navsim==1.1.0)
+  Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+Collecting tornado (from navsim==1.1.0)
+  Downloading tornado-6.5.5-cp39-abi3-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (2.8 kB)
+Requirement already satisfied: tqdm in /opt/conda/lib/python3.9/site-packages (from navsim==1.1.0) (4.67.1)
+Collecting ujson (from navsim==1.1.0)
+  Downloading ujson-5.11.0-cp39-cp39-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (9.4 kB)
+Collecting einops (from navsim==1.1.0)
+  Downloading einops-0.8.2-py3-none-any.whl.metadata (13 kB)
+Collecting open3d (from navsim==1.1.0)
+  Downloading open3d-0.19.0-cp39-cp39-manylinux_2_31_x86_64.whl.metadata (4.3 kB)
+Collecting omegaconf<2.4,>=2.2 (from hydra-core==1.3.2->navsim==1.1.0)
+  Downloading omegaconf-2.3.0-py3-none-any.whl.metadata (3.9 kB)
+Collecting antlr4-python3-runtime==4.9.* (from hydra-core==1.3.2->navsim==1.1.0)
+  Downloading antlr4-python3-runtime-4.9.3.tar.gz (117 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Requirement already satisfied: packaging in /opt/conda/lib/python3.9/site-packages (from hydra-core==1.3.2->navsim==1.1.0) (25.0)
+Collecting numpy>=1.17.0 (from opencv-python==4.11.0.86->navsim==1.1.0)
+  Downloading numpy-2.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+Collecting PyYAML>=5.1.0 (from omegaconf<2.4,>=2.2->hydra-core==1.3.2->navsim==1.1.0)
+  Downloading pyyaml-6.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+Collecting pyproj>=3.3.0 (from geopandas>=0.12.1->navsim==1.1.0)
+  Downloading pyproj-3.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (31 kB)
+Collecting python-dateutil>=2.8.2 (from pandas->navsim==1.1.0)
+  Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas->navsim==1.1.0)
+  Downloading pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.7 (from pandas->navsim==1.1.0)
+  Downloading tzdata-2026.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Requirement already satisfied: certifi in /opt/conda/lib/python3.9/site-packages (from pyogrio->navsim==1.1.0) (2025.8.3)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas->navsim==1.1.0)
+  Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting aiobotocore==2.25.1 (from aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading aiobotocore-2.25.1-py3-none-any.whl.metadata (25 kB)
+Collecting aiohttp<4.0.0,>=3.9.2 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading aiohttp-3.13.5-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+Collecting aioitertools<1.0.0,>=0.5.1 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading aioitertools-0.13.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting botocore<1.40.62,>=1.40.46 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading botocore-1.40.61-py3-none-any.whl.metadata (5.7 kB)
+Collecting jmespath<2.0.0,>=0.7.1 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting multidict<7.0.0,>=6.0.0 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading multidict-6.7.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+Collecting wrapt<2.0.0,>=1.10.10 (from aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading wrapt-1.17.3-cp39-cp39-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.4 kB)
+Collecting boto3<1.40.62,>=1.40.46 (from aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading boto3-1.40.61-py3-none-any.whl.metadata (6.6 kB)
+Collecting aiohappyeyeballs>=2.5.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+Collecting aiosignal>=1.4.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+Collecting async-timeout<6.0,>=4.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading async_timeout-5.0.1-py3-none-any.whl.metadata (5.1 kB)
+Collecting attrs>=17.3.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+Collecting frozenlist>=1.1.1 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading frozenlist-1.8.0-cp39-cp39-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (20 kB)
+Collecting propcache>=0.2.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading propcache-0.4.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (13 kB)
+Collecting yarl<2.0,>=1.17.0 (from aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading yarl-1.22.0-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (75 kB)
+Requirement already satisfied: typing_extensions>=4.0 in /opt/conda/lib/python3.9/site-packages (from aioitertools<1.0.0,>=0.5.1->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0) (4.15.0)
+Collecting s3transfer<0.15.0,>=0.14.0 (from boto3<1.40.62,>=1.40.46->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading s3transfer-0.14.0-py3-none-any.whl.metadata (1.7 kB)
+Collecting urllib3<1.27,>=1.25.4 (from botocore<1.40.62,>=1.40.46->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0)
+  Downloading urllib3-1.26.20-py2.py3-none-any.whl.metadata (50 kB)
+Requirement already satisfied: idna>=2.0 in /opt/conda/lib/python3.9/site-packages (from yarl<2.0,>=1.17.0->aiohttp<4.0.0,>=3.9.2->aiobotocore==2.25.1->aiobotocore[boto3]==2.25.1->aioboto3->navsim==1.1.0) (3.7)
+Collecting contourpy>=1.0.1 (from matplotlib->navsim==1.1.0)
+  Downloading contourpy-1.3.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.4 kB)
+Collecting cycler>=0.10 (from matplotlib->navsim==1.1.0)
+  Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting fonttools>=4.22.0 (from matplotlib->navsim==1.1.0)
+  Downloading fonttools-4.60.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (113 kB)
+Collecting kiwisolver>=1.3.1 (from matplotlib->navsim==1.1.0)
+  Downloading kiwisolver-1.4.7-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl.metadata (6.3 kB)
+Collecting pyparsing>=2.3.1 (from matplotlib->navsim==1.1.0)
+  Downloading pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+Collecting importlib-resources>=3.2.0 (from matplotlib->navsim==1.1.0)
+  Downloading importlib_resources-6.5.2-py3-none-any.whl.metadata (3.9 kB)
+Requirement already satisfied: zipp>=3.1.0 in /opt/conda/lib/python3.9/site-packages (from importlib-resources>=3.2.0->matplotlib->navsim==1.1.0) (3.21.0)
+Collecting dash>=2.6.0 (from open3d->navsim==1.1.0)
+  Downloading dash-4.1.0-py3-none-any.whl.metadata (11 kB)
+Collecting werkzeug>=3.0.0 (from open3d->navsim==1.1.0)
+  Downloading werkzeug-3.1.8-py3-none-any.whl.metadata (4.0 kB)
+Collecting flask>=3.0.0 (from open3d->navsim==1.1.0)
+  Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting nbformat>=5.7.0 (from open3d->navsim==1.1.0)
+  Downloading nbformat-5.10.4-py3-none-any.whl.metadata (3.6 kB)
+Collecting configargparse (from open3d->navsim==1.1.0)
+  Downloading configargparse-1.7.5-py3-none-any.whl.metadata (23 kB)
+Collecting ipywidgets>=8.0.4 (from open3d->navsim==1.1.0)
+  Downloading ipywidgets-8.1.8-py3-none-any.whl.metadata (2.4 kB)
+Collecting addict (from open3d->navsim==1.1.0)
+  Downloading addict-2.4.0-py3-none-any.whl.metadata (1.0 kB)
+Collecting scikit-learn>=0.21 (from open3d->navsim==1.1.0)
+  Downloading scikit_learn-1.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (18 kB)
+Collecting plotly>=5.0.0 (from dash>=2.6.0->open3d->navsim==1.1.0)
+  Downloading plotly-6.7.0-py3-none-any.whl.metadata (8.6 kB)
+Requirement already satisfied: importlib-metadata in /opt/conda/lib/python3.9/site-packages (from dash>=2.6.0->open3d->navsim==1.1.0) (8.5.0)
+Requirement already satisfied: requests in /opt/conda/lib/python3.9/site-packages (from dash>=2.6.0->open3d->navsim==1.1.0) (2.32.5)
+Collecting retrying (from dash>=2.6.0->open3d->navsim==1.1.0)
+  Downloading retrying-1.4.2-py3-none-any.whl.metadata (5.5 kB)
+Requirement already satisfied: setuptools in /opt/conda/lib/python3.9/site-packages (from dash>=2.6.0->open3d->navsim==1.1.0) (78.1.1)
+Collecting blinker>=1.9.0 (from flask>=3.0.0->open3d->navsim==1.1.0)
+  Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Requirement already satisfied: click>=8.1.3 in /opt/conda/lib/python3.9/site-packages (from flask>=3.0.0->open3d->navsim==1.1.0) (8.1.8)
+Collecting itsdangerous>=2.2.0 (from flask>=3.0.0->open3d->navsim==1.1.0)
+  Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting jinja2>=3.1.2 (from flask>=3.0.0->open3d->navsim==1.1.0)
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting markupsafe>=2.1.1 (from flask>=3.0.0->open3d->navsim==1.1.0)
+  Downloading markupsafe-3.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+Collecting comm>=0.1.3 (from ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading comm-0.2.3-py3-none-any.whl.metadata (3.7 kB)
+Collecting ipython>=6.1.0 (from ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading ipython-8.18.1-py3-none-any.whl.metadata (6.0 kB)
+Collecting traitlets>=4.3.1 (from ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading traitlets-5.14.3-py3-none-any.whl.metadata (10 kB)
+Collecting widgetsnbextension~=4.0.14 (from ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading widgetsnbextension-4.0.15-py3-none-any.whl.metadata (1.6 kB)
+Collecting jupyterlab_widgets~=3.0.15 (from ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading jupyterlab_widgets-3.0.16-py3-none-any.whl.metadata (20 kB)
+Collecting decorator (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading decorator-5.2.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting jedi>=0.16 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading jedi-0.19.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting matplotlib-inline (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading matplotlib_inline-0.2.1-py3-none-any.whl.metadata (2.3 kB)
+Collecting prompt-toolkit<3.1.0,>=3.0.41 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading prompt_toolkit-3.0.52-py3-none-any.whl.metadata (6.4 kB)
+Requirement already satisfied: pygments>=2.4.0 in /opt/conda/lib/python3.9/site-packages (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0) (2.19.1)
+Collecting stack-data (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading stack_data-0.6.3-py3-none-any.whl.metadata (18 kB)
+Collecting exceptiongroup (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading exceptiongroup-1.3.1-py3-none-any.whl.metadata (6.7 kB)
+Collecting pexpect>4.3 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading pexpect-4.9.0-py2.py3-none-any.whl.metadata (2.5 kB)
+Collecting wcwidth (from prompt-toolkit<3.1.0,>=3.0.41->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading wcwidth-0.6.0-py3-none-any.whl.metadata (30 kB)
+Collecting parso<0.9.0,>=0.8.4 (from jedi>=0.16->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading parso-0.8.6-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting fastjsonschema>=2.15 (from nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Using cached fastjsonschema-2.21.2-py3-none-any.whl.metadata (2.3 kB)
+Collecting jsonschema>=2.6 (from nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Downloading jsonschema-4.25.1-py3-none-any.whl.metadata (7.6 kB)
+Collecting jupyter-core!=5.0.*,>=4.12 (from nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Downloading jupyter_core-5.8.1-py3-none-any.whl.metadata (1.6 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Downloading referencing-0.36.2-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.7.1 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->navsim==1.1.0)
+  Downloading rpds_py-0.27.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
+Requirement already satisfied: platformdirs>=2.5 in /opt/conda/lib/python3.9/site-packages (from jupyter-core!=5.0.*,>=4.12->nbformat>=5.7.0->open3d->navsim==1.1.0) (4.3.7)
+Collecting ptyprocess>=0.5 (from pexpect>4.3->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading ptyprocess-0.7.0-py2.py3-none-any.whl.metadata (1.3 kB)
+Collecting narwhals>=1.15.1 (from plotly>=5.0.0->dash>=2.6.0->open3d->navsim==1.1.0)
+  Downloading narwhals-2.20.0-py3-none-any.whl.metadata (15 kB)
+Collecting threadpoolctl>=3.1.0 (from scikit-learn>=0.21->open3d->navsim==1.1.0)
+  Downloading threadpoolctl-3.6.0-py3-none-any.whl.metadata (13 kB)
+Collecting iniconfig>=1 (from pytest->navsim==1.1.0)
+  Downloading iniconfig-2.1.0-py3-none-any.whl.metadata (2.7 kB)
+Requirement already satisfied: pluggy<2,>=1.5 in /opt/conda/lib/python3.9/site-packages (from pytest->navsim==1.1.0) (1.5.0)
+Requirement already satisfied: tomli>=1 in /opt/conda/lib/python3.9/site-packages (from pytest->navsim==1.1.0) (2.2.1)
+Collecting affine (from rasterio->navsim==1.1.0)
+  Downloading affine-2.4.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting cligj>=0.5 (from rasterio->navsim==1.1.0)
+  Downloading cligj-0.7.2-py3-none-any.whl.metadata (5.0 kB)
+Collecting click-plugins (from rasterio->navsim==1.1.0)
+  Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl.metadata (6.5 kB)
+Collecting filelock (from ray->navsim==1.1.0)
+  Using cached filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+Collecting msgpack<2.0.0,>=1.0.0 (from ray->navsim==1.1.0)
+  Downloading msgpack-1.1.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+Collecting protobuf>=3.20.3 (from ray->navsim==1.1.0)
+  Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl.metadata (593 bytes)
+Requirement already satisfied: charset_normalizer<4,>=2 in /opt/conda/lib/python3.9/site-packages (from requests->dash>=2.6.0->open3d->navsim==1.1.0) (3.3.2)
+Collecting py<2.0.0,>=1.4.26 (from retry->navsim==1.1.0)
+  Downloading py-1.11.0-py2.py3-none-any.whl.metadata (2.8 kB)
+INFO: pip is looking at multiple versions of selenium to determine which version is compatible with other requirements. This could take a while.
+Collecting selenium (from navsim==1.1.0)
+  Downloading selenium-4.35.0-py3-none-any.whl.metadata (7.4 kB)
+  Downloading selenium-4.34.2-py3-none-any.whl.metadata (7.5 kB)
+  Downloading selenium-4.34.1-py3-none-any.whl.metadata (7.5 kB)
+  Downloading selenium-4.34.0-py3-none-any.whl.metadata (7.5 kB)
+  Downloading selenium-4.33.0-py3-none-any.whl.metadata (7.5 kB)
+  Downloading selenium-4.32.0-py3-none-any.whl.metadata (7.5 kB)
+Collecting trio~=0.17 (from selenium->navsim==1.1.0)
+  Downloading trio-0.31.0-py3-none-any.whl.metadata (8.5 kB)
+Collecting trio-websocket~=0.9 (from selenium->navsim==1.1.0)
+  Downloading trio_websocket-0.12.2-py3-none-any.whl.metadata (5.1 kB)
+Collecting websocket-client~=1.8 (from selenium->navsim==1.1.0)
+  Downloading websocket_client-1.9.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting sortedcontainers (from trio~=0.17->selenium->navsim==1.1.0)
+  Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)
+Collecting outcome (from trio~=0.17->selenium->navsim==1.1.0)
+  Downloading outcome-1.3.0.post0-py2.py3-none-any.whl.metadata (2.6 kB)
+Collecting sniffio>=1.3.0 (from trio~=0.17->selenium->navsim==1.1.0)
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting wsproto>=0.14 (from trio-websocket~=0.9->selenium->navsim==1.1.0)
+  Downloading wsproto-1.2.0-py3-none-any.whl.metadata (5.6 kB)
+Requirement already satisfied: PySocks!=1.5.7,<2.0,>=1.5.6 in /opt/conda/lib/python3.9/site-packages (from urllib3[socks]<3,>=1.26->selenium->navsim==1.1.0) (1.7.1)
+Collecting h11<1,>=0.9.0 (from wsproto>=0.14->trio-websocket~=0.9->selenium->navsim==1.1.0)
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting executing>=1.2.0 (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading executing-2.2.1-py2.py3-none-any.whl.metadata (8.9 kB)
+Collecting asttokens>=2.1.0 (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading asttokens-3.0.1-py3-none-any.whl.metadata (4.9 kB)
+Collecting pure-eval (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->navsim==1.1.0)
+  Downloading pure_eval-0.2.3-py3-none-any.whl.metadata (6.3 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy->navsim==1.1.0)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Downloading hydra_core-1.3.2-py3-none-any.whl (154 kB)
+Downloading opencv_python-4.11.0.86-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (63.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.0/63.0 MB 191.4 MB/s eta 0:00:00
+Downloading omegaconf-2.3.0-py3-none-any.whl (79 kB)
+Downloading geopandas-1.0.1-py3-none-any.whl (323 kB)
+Downloading numpy-2.0.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (19.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 19.5/19.5 MB 156.7 MB/s eta 0:00:00
+Downloading pandas-2.3.3-cp39-cp39-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (12.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.8/12.8 MB 207.3 MB/s eta 0:00:00
+Downloading pyogrio-0.11.1-cp39-cp39-manylinux_2_28_x86_64.whl (27.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 27.5/27.5 MB 142.9 MB/s eta 0:00:00
+Downloading pyproj-3.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 142.2 MB/s eta 0:00:00
+Downloading pyquaternion-0.9.9-py3-none-any.whl (14 kB)
+Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Downloading pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+Downloading pyyaml-6.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (750 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 750.8/750.8 kB 219.3 MB/s eta 0:00:00
+Downloading shapely-2.0.7-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 200.2 MB/s eta 0:00:00
+Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+Downloading tzdata-2026.2-py2.py3-none-any.whl (349 kB)
+Downloading aioboto3-15.5.0-py3-none-any.whl (35 kB)
+Downloading aiobotocore-2.25.1-py3-none-any.whl (86 kB)
+Downloading aiohttp-3.13.5-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 261.5 MB/s eta 0:00:00
+Downloading aioitertools-0.13.0-py3-none-any.whl (24 kB)
+Downloading async_timeout-5.0.1-py3-none-any.whl (6.2 kB)
+Downloading boto3-1.40.61-py3-none-any.whl (139 kB)
+Downloading botocore-1.40.61-py3-none-any.whl (14.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.1/14.1 MB 167.1 MB/s eta 0:00:00
+Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+Downloading multidict-6.7.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (240 kB)
+Downloading s3transfer-0.14.0-py3-none-any.whl (85 kB)
+Downloading urllib3-1.26.20-py2.py3-none-any.whl (144 kB)
+Downloading wrapt-1.17.3-cp39-cp39-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (81 kB)
+Downloading yarl-1.22.0-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (346 kB)
+Downloading aiofiles-25.1.0-py3-none-any.whl (14 kB)
+Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+Downloading aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+Downloading frozenlist-1.8.0-cp39-cp39-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (219 kB)
+Downloading propcache-0.4.1-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (197 kB)
+Downloading casadi-3.7.2-cp39-none-manylinux2014_x86_64.whl (75.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 75.6/75.6 MB 125.5 MB/s eta 0:00:00
+Downloading einops-0.8.2-py3-none-any.whl (65 kB)
+Downloading joblib-1.5.3-py3-none-any.whl (309 kB)
+Downloading matplotlib-3.9.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 357.5 MB/s eta 0:00:00
+Downloading contourpy-1.3.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (321 kB)
+Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Downloading fonttools-4.60.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.8/4.8 MB 301.2 MB/s eta 0:00:00
+Downloading importlib_resources-6.5.2-py3-none-any.whl (37 kB)
+Downloading kiwisolver-1.4.7-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 249.6 MB/s eta 0:00:00
+Downloading pillow-11.3.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.6/6.6 MB 243.8 MB/s eta 0:00:00
+Downloading pyparsing-3.3.2-py3-none-any.whl (122 kB)
+Downloading nest_asyncio-1.6.0-py3-none-any.whl (5.2 kB)
+Downloading open3d-0.19.0-cp39-cp39-manylinux_2_31_x86_64.whl (447.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 447.7/447.7 MB 114.9 MB/s eta 0:00:00
+Downloading dash-4.1.0-py3-none-any.whl (7.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.2/7.2 MB 223.6 MB/s eta 0:00:00
+Downloading flask-3.1.3-py3-none-any.whl (103 kB)
+Downloading werkzeug-3.1.8-py3-none-any.whl (226 kB)
+Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Downloading ipywidgets-8.1.8-py3-none-any.whl (139 kB)
+Downloading jupyterlab_widgets-3.0.16-py3-none-any.whl (914 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 914.9/914.9 kB 144.7 MB/s eta 0:00:00
+Downloading widgetsnbextension-4.0.15-py3-none-any.whl (2.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 348.5 MB/s eta 0:00:00
+Downloading comm-0.2.3-py3-none-any.whl (7.3 kB)
+Downloading ipython-8.18.1-py3-none-any.whl (808 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 808.2/808.2 kB 233.6 MB/s eta 0:00:00
+Downloading prompt_toolkit-3.0.52-py3-none-any.whl (391 kB)
+Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Downloading jedi-0.19.2-py2.py3-none-any.whl (1.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 307.7 MB/s eta 0:00:00
+Downloading parso-0.8.6-py2.py3-none-any.whl (106 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading markupsafe-3.0.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (20 kB)
+Downloading nbformat-5.10.4-py3-none-any.whl (78 kB)
+Using cached fastjsonschema-2.21.2-py3-none-any.whl (24 kB)
+Downloading jsonschema-4.25.1-py3-none-any.whl (90 kB)
+Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Downloading jupyter_core-5.8.1-py3-none-any.whl (28 kB)
+Downloading pexpect-4.9.0-py2.py3-none-any.whl (63 kB)
+Downloading plotly-6.7.0-py3-none-any.whl (9.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.9/9.9 MB 186.8 MB/s eta 0:00:00
+Downloading narwhals-2.20.0-py3-none-any.whl (449 kB)
+Downloading ptyprocess-0.7.0-py2.py3-none-any.whl (13 kB)
+Downloading referencing-0.36.2-py3-none-any.whl (26 kB)
+Downloading rpds_py-0.27.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (384 kB)
+Downloading scikit_learn-1.6.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.5/13.5 MB 270.7 MB/s eta 0:00:00
+Downloading scipy-1.13.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (38.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 38.6/38.6 MB 299.3 MB/s eta 0:00:00
+Downloading threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
+Downloading traitlets-5.14.3-py3-none-any.whl (85 kB)
+Downloading addict-2.4.0-py3-none-any.whl (3.8 kB)
+Downloading configargparse-1.7.5-py3-none-any.whl (27 kB)
+Downloading decorator-5.2.1-py3-none-any.whl (9.2 kB)
+Downloading exceptiongroup-1.3.1-py3-none-any.whl (16 kB)
+Downloading matplotlib_inline-0.2.1-py3-none-any.whl (9.5 kB)
+Downloading psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl (155 kB)
+Downloading pyarrow-21.0.0-cp39-cp39-manylinux_2_28_x86_64.whl (42.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 42.7/42.7 MB 192.8 MB/s eta 0:00:00
+Downloading pyinstrument-5.1.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (147 kB)
+Downloading pytest-8.4.2-py3-none-any.whl (365 kB)
+Downloading iniconfig-2.1.0-py3-none-any.whl (6.0 kB)
+Downloading rasterio-1.4.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (22.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 22.2/22.2 MB 117.7 MB/s eta 0:00:00
+Downloading cligj-0.7.2-py3-none-any.whl (7.1 kB)
+Downloading affine-2.4.0-py3-none-any.whl (15 kB)
+Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+Downloading ray-2.51.2-cp39-cp39-manylinux2014_x86_64.whl (71.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 71.2/71.2 MB 157.6 MB/s eta 0:00:00
+Downloading msgpack-1.1.2-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (404 kB)
+Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl (323 kB)
+Using cached filelock-3.19.1-py3-none-any.whl (15 kB)
+Downloading retry-0.9.2-py2.py3-none-any.whl (8.0 kB)
+Downloading py-1.11.0-py2.py3-none-any.whl (98 kB)
+Downloading retrying-1.4.2-py3-none-any.whl (10 kB)
+Downloading rtree-1.4.1-py3-none-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (507 kB)
+Downloading selenium-4.32.0-py3-none-any.whl (9.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.4/9.4 MB 189.3 MB/s eta 0:00:00
+Downloading trio-0.31.0-py3-none-any.whl (512 kB)
+Downloading trio_websocket-0.12.2-py3-none-any.whl (21 kB)
+Downloading websocket_client-1.9.0-py3-none-any.whl (82 kB)
+Downloading outcome-1.3.0.post0-py2.py3-none-any.whl (10 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Downloading wsproto-1.2.0-py3-none-any.whl (24 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+Downloading stack_data-0.6.3-py3-none-any.whl (24 kB)
+Downloading asttokens-3.0.1-py3-none-any.whl (27 kB)
+Downloading executing-2.2.1-py2.py3-none-any.whl (28 kB)
+Downloading pure_eval-0.2.3-py3-none-any.whl (11 kB)
+Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 347.7 MB/s eta 0:00:00
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 143.5 MB/s eta 0:00:00
+Downloading tornado-6.5.5-cp39-abi3-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (447 kB)
+Downloading ujson-5.11.0-cp39-cp39-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (57 kB)
+Downloading wcwidth-0.6.0-py3-none-any.whl (94 kB)
+Building wheels for collected packages: antlr4-python3-runtime
+  DEPRECATION: Building 'antlr4-python3-runtime' using the legacy setup.py bdist_wheel mechanism, which will be removed in a future version. pip 25.3 will enforce this behaviour change. A possible replacement is to use the standardized build interface by setting the `--use-pep517` option, (possibly combined with `--no-build-isolation`), or adding a `pyproject.toml` file to the source tree of 'antlr4-python3-runtime'. Discussion can be found at https://github.com/pypa/pip/issues/6334
+  Building wheel for antlr4-python3-runtime (setup.py): started
+  Building wheel for antlr4-python3-runtime (setup.py): finished with status 'done'
+  Created wheel for antlr4-python3-runtime: filename=antlr4_python3_runtime-4.9.3-py3-none-any.whl size=144590 sha256=904453e43fec0a55170ae5d694a7ea4fbba40cdfc626edcf1033ce9d0198f1c0
+  Stored in directory: /root/.cache/pip/wheels/23/cf/80/f3efa822e6ab23277902ee9165fe772eeb1dfb8014f359020a
+Successfully built antlr4-python3-runtime
+Installing collected packages: sortedcontainers, pytz, pure-eval, ptyprocess, mpmath, fastjsonschema, antlr4-python3-runtime, addict, wrapt, widgetsnbextension, websocket-client, wcwidth, urllib3, ujson, tzdata, traitlets, tornado, threadpoolctl, sympy, sniffio, six, rtree, rpds-py, retrying, PyYAML, pyproj, pyparsing, pyinstrument, pyarrow, py, psutil, protobuf, propcache, Pillow, pexpect, parso, numpy, nest_asyncio, narwhals, multidict, msgpack, markupsafe, kiwisolver, jupyterlab_widgets, joblib, jmespath, itsdangerous, iniconfig, importlib-resources, h11, frozenlist, fonttools, filelock, executing, exceptiongroup, einops, decorator, cycler, configargparse, comm, cligj, click-plugins, blinker, attrs, async-timeout, asttokens, aioitertools, aiohappyeyeballs, aiofiles, affine, yarl, wsproto, werkzeug, stack-data, Shapely, scipy, retry, referencing, rasterio, python-dateutil, pytest, pyquaternion, pyogrio, prompt-toolkit, plotly, outcome, opencv-python, omegaconf, matplotlib-inline, jupyter-core, jinja2, jedi, contourpy, casadi, aiosignal, trio, scikit-learn, pandas, matplotlib, jsonschema-specifications, ipython, hydra-core, flask, botocore, aiohttp, trio-websocket, s3transfer, jsonschema, ipywidgets, geopandas, dash, aiobotocore, selenium, ray, nbformat, boto3, open3d, aioboto3, navsim
+  Attempting uninstall: urllib3
+    Found existing installation: urllib3 2.5.0
+    Uninstalling urllib3-2.5.0:
+      Successfully uninstalled urllib3-2.5.0
+  DEPRECATION: Legacy editable install of navsim==1.1.0 from file:///root/DrivoR (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, try using --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for navsim
+
+Successfully installed Pillow-11.3.0 PyYAML-6.0.3 Shapely-2.0.7 addict-2.4.0 affine-2.4.0 aioboto3-15.5.0 aiobotocore-2.25.1 aiofiles-25.1.0 aiohappyeyeballs-2.6.1 aiohttp-3.13.5 aioitertools-0.13.0 aiosignal-1.4.0 antlr4-python3-runtime-4.9.3 asttokens-3.0.1 async-timeout-5.0.1 attrs-26.1.0 blinker-1.9.0 boto3-1.40.61 botocore-1.40.61 casadi-3.7.2 click-plugins-1.1.1.2 cligj-0.7.2 comm-0.2.3 configargparse-1.7.5 contourpy-1.3.0 cycler-0.12.1 dash-4.1.0 decorator-5.2.1 einops-0.8.2 exceptiongroup-1.3.1 executing-2.2.1 fastjsonschema-2.21.2 filelock-3.19.1 flask-3.1.3 fonttools-4.60.2 frozenlist-1.8.0 geopandas-1.0.1 h11-0.16.0 hydra-core-1.3.2 importlib-resources-6.5.2 iniconfig-2.1.0 ipython-8.18.1 ipywidgets-8.1.8 itsdangerous-2.2.0 jedi-0.19.2 jinja2-3.1.6 jmespath-1.1.0 joblib-1.5.3 jsonschema-4.25.1 jsonschema-specifications-2025.9.1 jupyter-core-5.8.1 jupyterlab_widgets-3.0.16 kiwisolver-1.4.7 markupsafe-3.0.3 matplotlib-3.9.4 matplotlib-inline-0.2.1 mpmath-1.3.0 msgpack-1.1.2 multidict-6.7.1 narwhals-2.20.0 navsim nbformat-5.10.4 nest_asyncio-1.6.0 numpy-2.0.2 omegaconf-2.3.0 open3d-0.19.0 opencv-python-4.11.0.86 outcome-1.3.0.post0 pandas-2.3.3 parso-0.8.6 pexpect-4.9.0 plotly-6.7.0 prompt-toolkit-3.0.52 propcache-0.4.1 protobuf-6.33.6 psutil-7.2.2 ptyprocess-0.7.0 pure-eval-0.2.3 py-1.11.0 pyarrow-21.0.0 pyinstrument-5.1.2 pyogrio-0.11.1 pyparsing-3.3.2 pyproj-3.6.1 pyquaternion-0.9.9 pytest-8.4.2 python-dateutil-2.9.0.post0 pytz-2026.1.post1 rasterio-1.4.3 ray-2.51.2 referencing-0.36.2 retry-0.9.2 retrying-1.4.2 rpds-py-0.27.1 rtree-1.4.1 s3transfer-0.14.0 scikit-learn-1.6.1 scipy-1.13.1 selenium-4.32.0 six-1.17.0 sniffio-1.3.1 sortedcontainers-2.4.0 stack-data-0.6.3 sympy-1.14.0 threadpoolctl-3.6.0 tornado-6.5.5 traitlets-5.14.3 trio-0.31.0 trio-websocket-0.12.2 tzdata-2026.2 ujson-5.11.0 urllib3-1.26.20 wcwidth-0.6.0 websocket-client-1.9.0 werkzeug-3.1.8 widgetsnbextension-4.0.15 wrapt-1.17.3 wsproto-1.2.0 yarl-1.22.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+=== Installing system deps ===
+Get:1 file:/opt/MLNX_OFED_LINUX-23.10-2.1.3.1-ubuntu20.04-x86_64/DEBS ./ InRelease
+Ign:1 file:/opt/MLNX_OFED_LINUX-23.10-2.1.3.1-ubuntu20.04-x86_64/DEBS ./ InRelease
+Get:2 file:/opt/MLNX_OFED_LINUX-23.10-2.1.3.1-ubuntu20.04-x86_64/DEBS ./ Release [1329 B]
+Get:2 file:/opt/MLNX_OFED_LINUX-23.10-2.1.3.1-ubuntu20.04-x86_64/DEBS ./ Release [1329 B]
+Hit:4 http://archive.ubuntu.com/ubuntu jammy InRelease
+Get:5 http://packages.cloud.google.com/apt cloud-sdk InRelease [1621 B]
+Get:6 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+Get:7 http://security.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+Get:8 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64  InRelease [1581 B]
+Get:9 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64  Packages [2546 kB]
+Get:10 http://packages.cloud.google.com/apt cloud-sdk/main all Packages [1988 kB]
+Get:11 http://security.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [6862 kB]
+Get:12 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [69.9 kB]
+Get:14 http://packages.cloud.google.com/apt cloud-sdk/main amd64 Packages [4659 kB]
+Get:15 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [4191 kB]
+Get:16 http://security.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [1292 kB]
+Get:17 http://security.ubuntu.com/ubuntu jammy-security/main amd64 Packages [3863 kB]
+Get:18 http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [61.6 kB]
+Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1601 kB]
+Get:20 http://archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [7066 kB]
+Get:21 http://archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [35.7 kB]
+Get:22 http://archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [82.7 kB]
+Fetched 34.7 MB in 2s (14.4 MB/s)
+Reading package lists...
+W: file:/opt/MLNX_OFED_LINUX-23.10-2.1.3.1-ubuntu20.04-x86_64/DEBS/./Release.gpg: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  cpp-12 gcc-12-base lib32gcc-s1 lib32stdc++6 libasan8 libatomic1 libcc1-0
+  libgcc-12-dev libgcc-s1 libgfortran5 libgomp1 libitm1 liblsan0 libobjc4
+  libquadmath0 libstdc++-12-dev libstdc++6 libtsan2 libubsan1
+Suggested packages:
+  gcc-12-locales cpp-12-doc g++-12-multilib gcc-12-doc gcc-12-multilib
+  libstdc++-12-doc
+The following NEW packages will be installed:
+  cpp-12 g++-12 gcc-12 libasan8 libgcc-12-dev libstdc++-12-dev libtsan2
+  ninja-build
+The following packages will be upgraded:
+  gcc-12-base lib32gcc-s1 lib32stdc++6 libatomic1 libcc1-0 libgcc-s1
+  libgfortran5 libgomp1 libitm1 liblsan0 libobjc4 libquadmath0 libstdc++6
+  libubsan1
+14 upgraded, 8 newly installed, 0 to remove and 174 not upgraded.
+Need to get 59.7 MB of archives.
+After this operation, 197 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 lib32gcc-s1 amd64 12.3.0-1ubuntu1~22.04.3 [63.9 kB]
+Get:2 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libubsan1 amd64 12.3.0-1ubuntu1~22.04.3 [976 kB]
+Get:3 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 gcc-12-base amd64 12.3.0-1ubuntu1~22.04.3 [216 kB]
+Get:4 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libstdc++6 amd64 12.3.0-1ubuntu1~22.04.3 [699 kB]
+Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libquadmath0 amd64 12.3.0-1ubuntu1~22.04.3 [154 kB]
+Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 libobjc4 amd64 12.3.0-1ubuntu1~22.04.3 [48.7 kB]
+Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 liblsan0 amd64 12.3.0-1ubuntu1~22.04.3 [1069 kB]
+Get:8 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libitm1 amd64 12.3.0-1ubuntu1~22.04.3 [30.2 kB]
+Get:9 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgomp1 amd64 12.3.0-1ubuntu1~22.04.3 [127 kB]
+Get:10 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgfortran5 amd64 12.3.0-1ubuntu1~22.04.3 [879 kB]
+Get:11 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libcc1-0 amd64 12.3.0-1ubuntu1~22.04.3 [48.3 kB]
+Get:12 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libatomic1 amd64 12.3.0-1ubuntu1~22.04.3 [10.5 kB]
+Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 lib32stdc++6 amd64 12.3.0-1ubuntu1~22.04.3 [739 kB]
+Get:14 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgcc-s1 amd64 12.3.0-1ubuntu1~22.04.3 [53.9 kB]
+Get:15 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 cpp-12 amd64 12.3.0-1ubuntu1~22.04.3 [10.8 MB]
+Get:16 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libasan8 amd64 12.3.0-1ubuntu1~22.04.3 [2442 kB]
+Get:17 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libtsan2 amd64 12.3.0-1ubuntu1~22.04.3 [2478 kB]
+Get:18 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgcc-12-dev amd64 12.3.0-1ubuntu1~22.04.3 [2618 kB]
+Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 gcc-12 amd64 12.3.0-1ubuntu1~22.04.3 [21.7 MB]
+Get:20 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 libstdc++-12-dev amd64 12.3.0-1ubuntu1~22.04.3 [2192 kB]
+Get:21 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 g++-12 amd64 12.3.0-1ubuntu1~22.04.3 [12.2 MB]
+Get:22 http://archive.ubuntu.com/ubuntu jammy/universe amd64 ninja-build amd64 1.10.1-1 [111 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 59.7 MB in 2s (25.2 MB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 83625 files and directories currently installed.)
+Preparing to unpack .../lib32gcc-s1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking lib32gcc-s1 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../libubsan1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libubsan1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../gcc-12-base_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking gcc-12-base:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Setting up gcc-12-base:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 83625 files and directories currently installed.)
+Preparing to unpack .../libstdc++6_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libstdc++6:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Setting up libstdc++6:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 83625 files and directories currently installed.)
+Preparing to unpack .../0-libquadmath0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libquadmath0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../1-libobjc4_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libobjc4:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../2-liblsan0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking liblsan0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../3-libitm1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libitm1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../4-libgomp1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgomp1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../5-libgfortran5_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgfortran5:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../6-libcc1-0_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libcc1-0:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../7-libatomic1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libatomic1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../8-lib32stdc++6_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking lib32stdc++6 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Preparing to unpack .../9-libgcc-s1_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgcc-s1:amd64 (12.3.0-1ubuntu1~22.04.3) over (12.3.0-1ubuntu1~22.04.2) ...
+Setting up libgcc-s1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package cpp-12.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 83625 files and directories currently installed.)
+Preparing to unpack .../0-cpp-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking cpp-12 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libasan8:amd64.
+Preparing to unpack .../1-libasan8_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libasan8:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libtsan2:amd64.
+Preparing to unpack .../2-libtsan2_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libtsan2:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libgcc-12-dev:amd64.
+Preparing to unpack .../3-libgcc-12-dev_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgcc-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package gcc-12.
+Preparing to unpack .../4-gcc-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking gcc-12 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libstdc++-12-dev:amd64.
+Preparing to unpack .../5-libstdc++-12-dev_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libstdc++-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package g++-12.
+Preparing to unpack .../6-g++-12_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking g++-12 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package ninja-build.
+Preparing to unpack .../7-ninja-build_1.10.1-1_amd64.deb ...
+Unpacking ninja-build (1.10.1-1) ...
+Setting up cpp-12 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libobjc4:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libgomp1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up ninja-build (1.10.1-1) ...
+Setting up lib32gcc-s1 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up lib32stdc++6 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libquadmath0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libatomic1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libgfortran5:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libubsan1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libasan8:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libtsan2:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libcc1-0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up liblsan0:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libitm1:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libgcc-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libstdc++-12-dev:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up gcc-12 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up g++-12 (12.3.0-1ubuntu1~22.04.3) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.4) ...
+=== Installing Python deps ===
+Collecting nvidia-cudnn-cu12==8.9.7.29
+  Downloading nvidia_cudnn_cu12-8.9.7.29-py3-none-manylinux1_x86_64.whl.metadata (1.6 kB)
+Collecting nvidia-cublas-cu12 (from nvidia-cudnn-cu12==8.9.7.29)
+  Downloading nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-cuda-nvrtc-cu12 (from nvidia-cudnn-cu12==8.9.7.29)
+  Downloading nvidia_cuda_nvrtc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl.metadata (1.7 kB)
+Downloading nvidia_cudnn_cu12-8.9.7.29-py3-none-manylinux1_x86_64.whl (704.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 704.7/704.7 MB 116.0 MB/s eta 0:00:00
+Downloading nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_x86_64.whl (581.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 581.2/581.2 MB 187.9 MB/s eta 0:00:00
+Downloading nvidia_cuda_nvrtc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (89.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 89.6/89.6 MB 216.1 MB/s eta 0:00:00
+Installing collected packages: nvidia-cuda-nvrtc-cu12, nvidia-cublas-cu12, nvidia-cudnn-cu12
+
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Successfully installed nvidia-cublas-cu12-12.9.2.10 nvidia-cuda-nvrtc-cu12-12.9.86 nvidia-cudnn-cu12-8.9.7.29
+Collecting torch
+  Downloading torch-2.8.0-cp39-cp39-manylinux_2_28_x86_64.whl.metadata (30 kB)
+Collecting torchvision
+  Downloading torchvision-0.23.0-cp39-cp39-manylinux_2_28_x86_64.whl.metadata (6.1 kB)
+Collecting pytorch-lightning
+  Downloading pytorch_lightning-2.6.0-py3-none-any.whl.metadata (21 kB)
+Collecting wandb
+  Downloading wandb-0.26.1-py3-none-manylinux_2_28_x86_64.whl.metadata (11 kB)
+Collecting timm
+  Downloading timm-1.0.26-py3-none-any.whl.metadata (39 kB)
+Requirement already satisfied: filelock in /opt/conda/lib/python3.9/site-packages (from torch) (3.19.1)
+Requirement already satisfied: typing-extensions>=4.10.0 in /opt/conda/lib/python3.9/site-packages (from torch) (4.15.0)
+Requirement already satisfied: sympy>=1.13.3 in /opt/conda/lib/python3.9/site-packages (from torch) (1.14.0)
+Collecting networkx (from torch)
+  Downloading networkx-3.2.1-py3-none-any.whl.metadata (5.2 kB)
+Requirement already satisfied: jinja2 in /opt/conda/lib/python3.9/site-packages (from torch) (3.1.6)
+Collecting fsspec (from torch)
+  Downloading fsspec-2025.10.0-py3-none-any.whl.metadata (10 kB)
+Collecting nvidia-cuda-nvrtc-cu12==12.8.93 (from torch)
+  Downloading nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cuda-runtime-cu12==12.8.90 (from torch)
+  Downloading nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cuda-cupti-cu12==12.8.90 (from torch)
+  Downloading nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cudnn-cu12==9.10.2.21 (from torch)
+  Downloading nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-cublas-cu12==12.8.4.1 (from torch)
+  Downloading nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cufft-cu12==11.3.3.83 (from torch)
+  Downloading nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-curand-cu12==10.3.9.90 (from torch)
+  Downloading nvidia_curand_cu12-10.3.9.90-py3-none-manylinux_2_27_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cusolver-cu12==11.7.3.90 (from torch)
+  Downloading nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-cusparse-cu12==12.5.8.93 (from torch)
+  Downloading nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-cusparselt-cu12==0.7.1 (from torch)
+  Downloading nvidia_cusparselt_cu12-0.7.1-py3-none-manylinux2014_x86_64.whl.metadata (7.0 kB)
+Collecting nvidia-nccl-cu12==2.27.3 (from torch)
+  Downloading nvidia_nccl_cu12-2.27.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.0 kB)
+Collecting nvidia-nvtx-cu12==12.8.90 (from torch)
+  Downloading nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.8 kB)
+Collecting nvidia-nvjitlink-cu12==12.8.93 (from torch)
+  Downloading nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl.metadata (1.7 kB)
+Collecting nvidia-cufile-cu12==1.13.1.3 (from torch)
+  Downloading nvidia_cufile_cu12-1.13.1.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (1.7 kB)
+Collecting triton==3.4.0 (from torch)
+  Downloading triton-3.4.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (1.7 kB)
+Requirement already satisfied: setuptools>=40.8.0 in /opt/conda/lib/python3.9/site-packages (from triton==3.4.0->torch) (78.1.1)
+Requirement already satisfied: importlib-metadata in /opt/conda/lib/python3.9/site-packages (from triton==3.4.0->torch) (8.5.0)
+Requirement already satisfied: numpy in /opt/conda/lib/python3.9/site-packages (from torchvision) (2.0.2)
+Requirement already satisfied: pillow!=8.3.*,>=5.3.0 in /opt/conda/lib/python3.9/site-packages (from torchvision) (11.3.0)
+Requirement already satisfied: tqdm>=4.57.0 in /opt/conda/lib/python3.9/site-packages (from pytorch-lightning) (4.67.1)
+Requirement already satisfied: PyYAML>5.4 in /opt/conda/lib/python3.9/site-packages (from pytorch-lightning) (6.0.3)
+Collecting torchmetrics>0.7.0 (from pytorch-lightning)
+  Downloading torchmetrics-1.8.2-py3-none-any.whl.metadata (22 kB)
+Requirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.9/site-packages (from pytorch-lightning) (25.0)
+Collecting lightning-utilities>=0.10.0 (from pytorch-lightning)
+  Downloading lightning_utilities-0.15.2-py3-none-any.whl.metadata (5.7 kB)
+Requirement already satisfied: click>=8.0.1 in /opt/conda/lib/python3.9/site-packages (from wandb) (8.1.8)
+Collecting eval-type-backport (from wandb)
+  Downloading eval_type_backport-0.3.1-py3-none-any.whl.metadata (2.4 kB)
+Collecting gitpython!=3.1.29,>=1.0.0 (from wandb)
+  Downloading gitpython-3.1.47-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: platformdirs in /opt/conda/lib/python3.9/site-packages (from wandb) (4.3.7)
+Requirement already satisfied: protobuf!=5.28.0,!=5.29.0,<8,>4.21.0 in /opt/conda/lib/python3.9/site-packages (from wandb) (6.33.6)
+Requirement already satisfied: pydantic<3 in /opt/conda/lib/python3.9/site-packages (from wandb) (2.11.7)
+Requirement already satisfied: requests<3,>=2.0.0 in /opt/conda/lib/python3.9/site-packages (from wandb) (2.32.5)
+Collecting sentry-sdk>=2.0.0 (from wandb)
+  Downloading sentry_sdk-2.58.0-py2.py3-none-any.whl.metadata (10 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in /opt/conda/lib/python3.9/site-packages (from pydantic<3->wandb) (0.6.0)
+Requirement already satisfied: pydantic-core==2.33.2 in /opt/conda/lib/python3.9/site-packages (from pydantic<3->wandb) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in /opt/conda/lib/python3.9/site-packages (from pydantic<3->wandb) (0.4.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in /opt/conda/lib/python3.9/site-packages (from requests<3,>=2.0.0->wandb) (3.3.2)
+Requirement already satisfied: idna<4,>=2.5 in /opt/conda/lib/python3.9/site-packages (from requests<3,>=2.0.0->wandb) (3.7)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /opt/conda/lib/python3.9/site-packages (from requests<3,>=2.0.0->wandb) (1.26.20)
+Requirement already satisfied: certifi>=2017.4.17 in /opt/conda/lib/python3.9/site-packages (from requests<3,>=2.0.0->wandb) (2025.8.3)
+Collecting huggingface_hub (from timm)
+  Downloading huggingface_hub-1.8.0-py3-none-any.whl.metadata (13 kB)
+Collecting safetensors (from timm)
+  Downloading safetensors-0.7.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+Requirement already satisfied: aiohttp!=4.0.0a0,!=4.0.0a1 in /opt/conda/lib/python3.9/site-packages (from fsspec[http]>=2022.5.0->pytorch-lightning) (3.13.5)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (2.6.1)
+Requirement already satisfied: aiosignal>=1.4.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (1.4.0)
+Requirement already satisfied: async-timeout<6.0,>=4.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (5.0.1)
+Requirement already satisfied: attrs>=17.3.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (26.1.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (1.8.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (6.7.1)
+Requirement already satisfied: propcache>=0.2.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (0.4.1)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in /opt/conda/lib/python3.9/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]>=2022.5.0->pytorch-lightning) (1.22.0)
+Collecting gitdb<5,>=4.0.1 (from gitpython!=3.1.29,>=1.0.0->wandb)
+  Downloading gitdb-4.0.12-py3-none-any.whl.metadata (1.2 kB)
+Collecting smmap<6,>=3.0.1 (from gitdb<5,>=4.0.1->gitpython!=3.1.29,>=1.0.0->wandb)
+  Downloading smmap-5.0.3-py3-none-any.whl.metadata (4.6 kB)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /opt/conda/lib/python3.9/site-packages (from sympy>=1.13.3->torch) (1.3.0)
+Collecting hf-xet<2.0.0,>=1.4.2 (from huggingface_hub->timm)
+  Downloading hf_xet-1.4.3-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+Collecting httpx<1,>=0.23.0 (from huggingface_hub->timm)
+  Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Requirement already satisfied: typer in /opt/conda/lib/python3.9/site-packages (from huggingface_hub->timm) (0.17.4)
+Collecting anyio (from httpx<1,>=0.23.0->huggingface_hub->timm)
+  Downloading anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface_hub->timm)
+  Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Requirement already satisfied: h11>=0.16 in /opt/conda/lib/python3.9/site-packages (from httpcore==1.*->httpx<1,>=0.23.0->huggingface_hub->timm) (0.16.0)
+Requirement already satisfied: exceptiongroup>=1.0.2 in /opt/conda/lib/python3.9/site-packages (from anyio->httpx<1,>=0.23.0->huggingface_hub->timm) (1.3.1)
+Requirement already satisfied: zipp>=3.20 in /opt/conda/lib/python3.9/site-packages (from importlib-metadata->triton==3.4.0->torch) (3.21.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /opt/conda/lib/python3.9/site-packages (from jinja2->torch) (3.0.3)
+Requirement already satisfied: shellingham>=1.3.0 in /opt/conda/lib/python3.9/site-packages (from typer->huggingface_hub->timm) (1.5.0)
+Requirement already satisfied: rich>=10.11.0 in /opt/conda/lib/python3.9/site-packages (from typer->huggingface_hub->timm) (13.9.4)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /opt/conda/lib/python3.9/site-packages (from rich>=10.11.0->typer->huggingface_hub->timm) (2.2.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /opt/conda/lib/python3.9/site-packages (from rich>=10.11.0->typer->huggingface_hub->timm) (2.19.1)
+Requirement already satisfied: mdurl~=0.1 in /opt/conda/lib/python3.9/site-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->typer->huggingface_hub->timm) (0.1.2)
+Downloading torch-2.8.0-cp39-cp39-manylinux_2_28_x86_64.whl (888.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 888.0/888.0 MB 192.9 MB/s eta 0:00:00
+Downloading nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_x86_64.whl (594.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 594.3/594.3 MB 148.3 MB/s eta 0:00:00
+Downloading nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (10.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.2/10.2 MB 205.9 MB/s eta 0:00:00
+Downloading nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (88.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 88.0/88.0 MB 145.3 MB/s eta 0:00:00
+Downloading nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (954 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 954.8/954.8 kB 115.9 MB/s eta 0:00:00
+Downloading nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl (706.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 706.8/706.8 MB 132.7 MB/s eta 0:00:00
+Downloading nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (193.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 193.1/193.1 MB 174.1 MB/s eta 0:00:00
+Downloading nvidia_cufile_cu12-1.13.1.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 173.9 MB/s eta 0:00:00
+Downloading nvidia_curand_cu12-10.3.9.90-py3-none-manylinux_2_27_x86_64.whl (63.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.6/63.6 MB 172.9 MB/s eta 0:00:00
+Downloading nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl (267.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 267.5/267.5 MB 178.2 MB/s eta 0:00:00
+Downloading nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (288.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 288.2/288.2 MB 165.9 MB/s eta 0:00:00
+Downloading nvidia_cusparselt_cu12-0.7.1-py3-none-manylinux2014_x86_64.whl (287.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 287.2/287.2 MB 169.0 MB/s eta 0:00:00
+Downloading nvidia_nccl_cu12-2.27.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (322.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 322.4/322.4 MB 236.1 MB/s eta 0:00:00
+Downloading nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (39.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 39.3/39.3 MB 180.1 MB/s eta 0:00:00
+Downloading nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (89 kB)
+Downloading triton-3.4.0-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (155.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 155.4/155.4 MB 257.1 MB/s eta 0:00:00
+Downloading torchvision-0.23.0-cp39-cp39-manylinux_2_28_x86_64.whl (8.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.6/8.6 MB 203.2 MB/s eta 0:00:00
+Downloading pytorch_lightning-2.6.0-py3-none-any.whl (849 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 849.5/849.5 kB 250.1 MB/s eta 0:00:00
+Downloading wandb-0.26.1-py3-none-manylinux_2_28_x86_64.whl (27.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 27.2/27.2 MB 195.3 MB/s eta 0:00:00
+Downloading timm-1.0.26-py3-none-any.whl (2.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.6/2.6 MB 265.7 MB/s eta 0:00:00
+Downloading fsspec-2025.10.0-py3-none-any.whl (200 kB)
+Downloading gitpython-3.1.47-py3-none-any.whl (209 kB)
+Downloading gitdb-4.0.12-py3-none-any.whl (62 kB)
+Downloading smmap-5.0.3-py3-none-any.whl (24 kB)
+Downloading lightning_utilities-0.15.2-py3-none-any.whl (29 kB)
+Downloading sentry_sdk-2.58.0-py2.py3-none-any.whl (460 kB)
+Downloading torchmetrics-1.8.2-py3-none-any.whl (983 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 983.2/983.2 kB 239.5 MB/s eta 0:00:00
+Downloading eval_type_backport-0.3.1-py3-none-any.whl (6.1 kB)
+Downloading huggingface_hub-1.8.0-py3-none-any.whl (625 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 625.2/625.2 kB 158.4 MB/s eta 0:00:00
+Downloading hf_xet-1.4.3-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.2/4.2 MB 232.0 MB/s eta 0:00:00
+Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading anyio-4.12.1-py3-none-any.whl (113 kB)
+Downloading networkx-3.2.1-py3-none-any.whl (1.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 244.8 MB/s eta 0:00:00
+Downloading safetensors-0.7.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (507 kB)
+Installing collected packages: nvidia-cusparselt-cu12, smmap, sentry-sdk, safetensors, nvidia-nvtx-cu12, nvidia-nvjitlink-cu12, nvidia-nccl-cu12, nvidia-curand-cu12, nvidia-cufile-cu12, nvidia-cuda-runtime-cu12, nvidia-cuda-nvrtc-cu12, nvidia-cuda-cupti-cu12, nvidia-cublas-cu12, networkx, lightning-utilities, httpcore, hf-xet, fsspec, eval-type-backport, triton, nvidia-cusparse-cu12, nvidia-cufft-cu12, nvidia-cudnn-cu12, gitdb, anyio, nvidia-cusolver-cu12, httpx, gitpython, wandb, torch, huggingface_hub, torchvision, torchmetrics, timm, pytorch-lightning
+  Attempting uninstall: nvidia-cuda-nvrtc-cu12
+    Found existing installation: nvidia-cuda-nvrtc-cu12 12.9.86
+    Uninstalling nvidia-cuda-nvrtc-cu12-12.9.86:
+      Successfully uninstalled nvidia-cuda-nvrtc-cu12-12.9.86
+  Attempting uninstall: nvidia-cublas-cu12
+    Found existing installation: nvidia-cublas-cu12 12.9.2.10
+    Uninstalling nvidia-cublas-cu12-12.9.2.10:
+      Successfully uninstalled nvidia-cublas-cu12-12.9.2.10
+  Attempting uninstall: nvidia-cudnn-cu12
+    Found existing installation: nvidia-cudnn-cu12 8.9.7.29
+    Uninstalling nvidia-cudnn-cu12-8.9.7.29:
+      Successfully uninstalled nvidia-cudnn-cu12-8.9.7.29
+
+Successfully installed anyio-4.12.1 eval-type-backport-0.3.1 fsspec-2025.10.0 gitdb-4.0.12 gitpython-3.1.47 hf-xet-1.4.3 httpcore-1.0.9 httpx-0.28.1 huggingface_hub-1.8.0 lightning-utilities-0.15.2 networkx-3.2.1 nvidia-cublas-cu12-12.8.4.1 nvidia-cuda-cupti-cu12-12.8.90 nvidia-cuda-nvrtc-cu12-12.8.93 nvidia-cuda-runtime-cu12-12.8.90 nvidia-cudnn-cu12-9.10.2.21 nvidia-cufft-cu12-11.3.3.83 nvidia-cufile-cu12-1.13.1.3 nvidia-curand-cu12-10.3.9.90 nvidia-cusolver-cu12-11.7.3.90 nvidia-cusparse-cu12-12.5.8.93 nvidia-cusparselt-cu12-0.7.1 nvidia-nccl-cu12-2.27.3 nvidia-nvjitlink-cu12-12.8.93 nvidia-nvtx-cu12-12.8.90 pytorch-lightning-2.6.0 safetensors-0.7.0 sentry-sdk-2.58.0 smmap-5.0.3 timm-1.0.26 torch-2.8.0 torchmetrics-1.8.2 torchvision-0.23.0 triton-3.4.0 wandb-0.26.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+=== Setting LD_LIBRARY_PATH for cuDNN ===
+=== Starting DrivoR Training ===
+Seed set to 2
+[2026-04-25 02:46:01,826][__main__][INFO] - Global Seed set to 2
+[2026-04-25 02:46:01,895][__main__][INFO] - Path where all results are stored: /closed-loop-e2e/drivor-exp/ke/training_drivoR_Nav1_traj_long_25epochs_v4/04.25_02.45
+[2026-04-25 02:46:01,910][__main__][INFO] - Building Agent
+loading  timm/vit_small_patch14_reg4_dinov2.lvd142m
+[2026-04-25 02:46:02,607][timm.models._builder][INFO] - Loading pretrained weights from file (weights/vit_small_patch14_reg4_dinov2.lvd142m/model.safetensors)
+[2026-04-25 02:46:02,623][timm.models._helpers][ERROR] - No checkpoint found at 'weights/vit_small_patch14_reg4_dinov2.lvd142m/model.safetensors'
+[2026-04-25 02:46:02,984][timm.models._builder][INFO] - Loading pretrained weights from Hugging Face hub (timm/vit_small_patch14_reg4_dinov2.lvd142m)
+[2026-04-25 02:46:03,700][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/timm/vit_small_patch14_reg4_dinov2.lvd142m/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+[2026-04-25 02:46:04,321][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/timm/vit_small_patch14_reg4_dinov2.lvd142m/xet-read-token/c04b5193082a8d5b0c4856c7937384a48136c5de "HTTP/1.1 200 OK"
+[2026-04-25 02:46:08,166][timm.models._hub][INFO] - [timm/vit_small_patch14_reg4_dinov2.lvd142m] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+[2026-04-25 02:46:08,230][timm.layers.pos_embed][INFO] - Resized position embedding: (37, 37) to (48, 82).
+[2026-04-25 02:46:09,272][__main__][INFO] - Building Lightning Module
+[2026-04-25 02:46:09,288][__main__][INFO] - Building SceneLoader
+Train without caching....
+len(train_scene_filter.log_names)  1192
+Loading logs:   0%|          | 0/1192 [00:00<?, ?it/s]Loading logs:   0%|          | 1/1192 [00:00<05:46,  3.44it/s]Loading logs:   0%|          | 2/1192 [00:00<03:35,  5.52it/s]Loading logs:   0%|          | 3/1192 [00:00<06:21,  3.12it/s]Loading logs:   0%|          | 4/1192 [00:01<05:25,  3.65it/s]Loading logs:   0%|          | 5/1192 [00:01<06:11,  3.19it/s]Loading logs:   1%|          | 6/1192 [00:02<08:36,  2.29it/s]Loading logs:   1%|          | 7/1192 [00:02<08:33,  2.31it/s]Loading logs:   1%|          | 8/1192 [00:02<06:34,  3.00it/s]Loading logs:   1%|          | 10/1192 [00:02<04:10,  4.71it/s]Loading logs:   1%|          | 12/1192 [00:02<03:02,  6.46it/s]Loading logs:   1%|          | 13/1192 [00:03<03:51,  5.10it/s]Loading logs:   1%|          | 14/1192 [00:03<03:24,  5.77it/s]Loading logs:   1%|▏         | 15/1192 [00:03<03:32,  5.55it/s]Loading logs:   1%|▏         | 16/1192 [00:03<03:26,  5.69it/s]Loading logs:   1%|▏         | 17/1192 [00:04<04:11,  4.68it/s]Loading logs:   2%|▏         | 19/1192 [00:04<04:06,  4.75it/s]Loading logs:   2%|▏         | 20/1192 [00:04<04:05,  4.78it/s]Loading logs:   2%|▏         | 22/1192 [00:13<37:31,  1.92s/it]Loading logs:   2%|▏         | 23/1192 [00:18<50:15,  2.58s/it]Loading logs:   2%|▏         | 24/1192 [00:18<40:01,  2.06s/it]Loading logs:   2%|▏         | 25/1192 [00:19<30:58,  1.59s/it]Loading logs:   2%|▏         | 26/1192 [00:19<23:16,  1.20s/it]Loading logs:   2%|▏         | 27/1192 [00:19<18:39,  1.04it/s]Loading logs:   2%|▏         | 28/1192 [00:19<14:36,  1.33it/s]Loading logs:   3%|▎         | 30/1192 [00:24<28:19,  1.46s/it]Loading logs:   3%|▎         | 31/1192 [00:24<22:07,  1.14s/it]Loading logs:   3%|▎         | 32/1192 [00:24<17:18,  1.12it/s]Loading logs:   3%|▎         | 33/1192 [00:24<13:28,  1.43it/s]Loading logs:   3%|▎         | 34/1192 [00:25<10:35,  1.82it/s]Loading logs:   3%|▎         | 35/1192 [00:25<10:52,  1.77it/s]Loading logs:   3%|▎         | 36/1192 [00:25<08:26,  2.28it/s]Loading logs:   3%|▎         | 37/1192 [00:26<09:50,  1.96it/s]Loading logs:   3%|▎         | 38/1192 [00:26<09:20,  2.06it/s]Loading logs:   3%|▎         | 39/1192 [00:33<45:40,  2.38s/it]Loading logs:   3%|▎         | 40/1192 [00:34<33:03,  1.72s/it]Loading logs:   3%|▎         | 41/1192 [00:34<25:48,  1.35s/it]Loading logs:   4%|▎         | 42/1192 [00:34<18:56,  1.01it/s]Loading logs:   4%|▎         | 43/1192 [00:34<15:15,  1.26it/s]Loading logs:   4%|▎         | 44/1192 [00:38<32:42,  1.71s/it]Loading logs:   4%|▍         | 45/1192 [00:42<46:05,  2.41s/it]Loading logs:   4%|▍         | 46/1192 [00:43<33:15,  1.74s/it]Loading logs:   4%|▍         | 47/1192 [00:43<26:12,  1.37s/it]Loading logs:   4%|▍         | 48/1192 [00:44<22:11,  1.16s/it]Loading logs:   4%|▍         | 49/1192 [00:44<16:27,  1.16it/s]Loading logs:   4%|▍         | 50/1192 [00:44<12:12,  1.56it/s]Loading logs:   4%|▍         | 51/1192 [00:54<1:05:35,  3.45s/it]Loading logs:   4%|▍         | 52/1192 [00:54<47:23,  2.49s/it]  Loading logs:   4%|▍         | 53/1192 [00:54<34:15,  1.80s/it]Loading logs:   5%|▍         | 54/1192 [00:55<26:46,  1.41s/it]Loading logs:   5%|▍         | 56/1192 [00:55<15:22,  1.23it/s]Loading logs:   5%|▍         | 57/1192 [00:56<14:56,  1.27it/s]Loading logs:   5%|▍         | 58/1192 [00:56<13:28,  1.40it/s]Loading logs:   5%|▍         | 59/1192 [01:04<47:02,  2.49s/it]Loading logs:   5%|▌         | 60/1192 [01:04<36:00,  1.91s/it]Loading logs:   5%|▌         | 61/1192 [01:04<26:30,  1.41s/it]Loading logs:   5%|▌         | 62/1192 [01:05<20:27,  1.09s/it]Loading logs:   5%|▌         | 63/1192 [01:05<16:38,  1.13it/s]Loading logs:   5%|▌         | 64/1192 [01:05<13:22,  1.41it/s]Loading logs:   5%|▌         | 65/1192 [01:05<10:26,  1.80it/s]Loading logs:   6%|▌         | 66/1192 [01:06<09:50,  1.91it/s]Loading logs:   6%|▌         | 67/1192 [01:06<07:35,  2.47it/s]Loading logs:   6%|▌         | 68/1192 [01:06<05:53,  3.18it/s]Loading logs:   6%|▌         | 69/1192 [01:06<04:47,  3.91it/s]Loading logs:   6%|▌         | 70/1192 [01:06<04:03,  4.61it/s]Loading logs:   6%|▌         | 71/1192 [01:07<05:16,  3.54it/s]Loading logs:   6%|▌         | 72/1192 [01:07<04:25,  4.22it/s]Loading logs:   6%|▌         | 73/1192 [01:16<56:21,  3.02s/it]Loading logs:   6%|▌         | 74/1192 [01:17<44:40,  2.40s/it]Loading logs:   6%|▋         | 75/1192 [01:17<31:55,  1.72s/it]Loading logs:   6%|▋         | 77/1192 [01:18<17:55,  1.04it/s]Loading logs:   7%|▋         | 79/1192 [01:26<41:36,  2.24s/it]Loading logs:   7%|▋         | 80/1192 [01:26<33:37,  1.81s/it]Loading logs:   7%|▋         | 81/1192 [01:36<1:09:41,  3.76s/it]Loading logs:   7%|▋         | 82/1192 [01:37<54:44,  2.96s/it]  Loading logs:   7%|▋         | 83/1192 [01:37<42:02,  2.27s/it]Loading logs:   7%|▋         | 84/1192 [01:37<31:13,  1.69s/it]Loading logs:   7%|▋         | 85/1192 [01:38<24:22,  1.32s/it]Loading logs:   7%|▋         | 86/1192 [01:38<19:23,  1.05s/it]Loading logs:   7%|▋         | 87/1192 [01:38<14:19,  1.29it/s]Loading logs:   7%|▋         | 88/1192 [01:38<10:59,  1.67it/s]Loading logs:   7%|▋         | 89/1192 [01:39<08:56,  2.06it/s]Loading logs:   8%|▊         | 90/1192 [01:39<08:57,  2.05it/s]Loading logs:   8%|▊         | 92/1192 [01:39<05:32,  3.30it/s]Loading logs:   8%|▊         | 93/1192 [01:50<51:44,  2.83s/it]Loading logs:   8%|▊         | 94/1192 [01:50<38:44,  2.12s/it]Loading logs:   8%|▊         | 95/1192 [01:50<29:19,  1.60s/it]Loading logs:   8%|▊         | 96/1192 [01:51<23:39,  1.30s/it]Loading logs:   8%|▊         | 97/1192 [01:51<20:50,  1.14s/it]Loading logs:   8%|▊         | 98/1192 [01:52<16:01,  1.14it/s]Loading logs:   8%|▊         | 99/1192 [02:00<55:36,  3.05s/it]Loading logs:   8%|▊         | 100/1192 [02:00<41:35,  2.28s/it]Loading logs:   8%|▊         | 101/1192 [02:01<30:13,  1.66s/it]Loading logs:   9%|▊         | 102/1192 [02:01<21:54,  1.21s/it]Loading logs:   9%|▊         | 103/1192 [02:01<15:57,  1.14it/s]Loading logs:   9%|▊         | 104/1192 [02:01<13:31,  1.34it/s]Loading logs:   9%|▉         | 105/1192 [02:02<12:04,  1.50it/s]Loading logs:   9%|▉         | 106/1192 [02:02<09:11,  1.97it/s]Loading logs:   9%|▉         | 107/1192 [02:02<08:44,  2.07it/s]Loading logs:   9%|▉         | 108/1192 [02:03<07:29,  2.41it/s]Loading logs:   9%|▉         | 109/1192 [02:03<05:58,  3.02it/s]Loading logs:   9%|▉         | 110/1192 [02:03<05:03,  3.56it/s]Loading logs:   9%|▉         | 111/1192 [02:03<05:05,  3.54it/s]Loading logs:   9%|▉         | 112/1192 [02:03<04:08,  4.35it/s]Loading logs:   9%|▉         | 113/1192 [02:03<03:33,  5.06it/s]Loading logs:  10%|▉         | 114/1192 [02:04<05:07,  3.51it/s]Loading logs:  10%|▉         | 115/1192 [02:09<28:15,  1.57s/it]Loading logs:  10%|▉         | 116/1192 [02:09<21:12,  1.18s/it]Loading logs:  10%|▉         | 118/1192 [02:14<32:28,  1.81s/it]Loading logs:  10%|▉         | 119/1192 [02:43<2:35:32,  8.70s/it]Loading logs:  10%|█         | 120/1192 [02:44<1:55:42,  6.48s/it]Loading logs:  10%|█         | 121/1192 [02:44<1:26:16,  4.83s/it]Loading logs:  10%|█         | 122/1192 [02:44<1:02:57,  3.53s/it]Loading logs:  10%|█         | 123/1192 [02:44<46:04,  2.59s/it]  Loading logs:  10%|█         | 124/1192 [03:00<1:54:01,  6.41s/it]Loading logs:  10%|█         | 125/1192 [03:00<1:21:14,  4.57s/it]Loading logs:  11%|█         | 126/1192 [03:01<1:01:37,  3.47s/it]Loading logs:  11%|█         | 127/1192 [03:02<45:28,  2.56s/it]  Loading logs:  11%|█         | 128/1192 [03:03<36:49,  2.08s/it]Loading logs:  11%|█         | 129/1192 [03:03<26:32,  1.50s/it]Loading logs:  11%|█         | 130/1192 [03:11<1:03:50,  3.61s/it]Loading logs:  11%|█         | 131/1192 [03:19<1:25:04,  4.81s/it]Loading logs:  11%|█         | 133/1192 [03:19<46:44,  2.65s/it]  Loading logs:  11%|█▏        | 135/1192 [03:46<2:00:44,  6.85s/it]Loading logs:  11%|█▏        | 136/1192 [03:46<1:35:36,  5.43s/it]Loading logs:  11%|█▏        | 137/1192 [03:55<1:48:59,  6.20s/it]Loading logs:  12%|█▏        | 138/1192 [04:22<3:25:43, 11.71s/it]Loading logs:  12%|█▏        | 139/1192 [04:23<2:31:58,  8.66s/it]Loading logs:  12%|█▏        | 140/1192 [04:24<1:57:40,  6.71s/it]Loading logs:  12%|█▏        | 141/1192 [04:24<1:24:50,  4.84s/it]Loading logs:  12%|█▏        | 142/1192 [04:35<1:53:24,  6.48s/it]Loading logs:  12%|█▏        | 143/1192 [04:35<1:21:19,  4.65s/it]Loading logs:  12%|█▏        | 144/1192 [04:36<1:00:02,  3.44s/it]Loading logs:  12%|█▏        | 145/1192 [04:41<1:08:19,  3.92s/it]Loading logs:  12%|█▏        | 146/1192 [04:41<48:50,  2.80s/it]  Loading logs:  12%|█▏        | 147/1192 [04:41<35:31,  2.04s/it]Loading logs:  12%|█▏        | 148/1192 [04:41<25:28,  1.46s/it]Loading logs:  12%|█▎        | 149/1192 [04:41<18:41,  1.08s/it]Loading logs:  13%|█▎        | 150/1192 [04:42<15:25,  1.13it/s]Loading logs:  13%|█▎        | 151/1192 [04:43<18:55,  1.09s/it]Loading logs:  13%|█▎        | 152/1192 [04:44<15:08,  1.14it/s]Loading logs:  13%|█▎        | 154/1192 [04:44<10:04,  1.72it/s]Loading logs:  13%|█▎        | 155/1192 [04:45<09:26,  1.83it/s]Loading logs:  13%|█▎        | 157/1192 [04:45<06:21,  2.71it/s]Loading logs:  13%|█▎        | 158/1192 [04:54<42:15,  2.45s/it]Loading logs:  13%|█▎        | 159/1192 [04:55<32:35,  1.89s/it]Loading logs:  14%|█▎        | 161/1192 [04:55<19:41,  1.15s/it]Loading logs:  14%|█▎        | 162/1192 [04:55<15:48,  1.09it/s]Loading logs:  14%|█▎        | 163/1192 [05:04<48:23,  2.82s/it]Loading logs:  14%|█▍        | 164/1192 [05:04<36:58,  2.16s/it]Loading logs:  14%|█▍        | 165/1192 [05:04<28:03,  1.64s/it]Loading logs:  14%|█▍        | 166/1192 [05:04<21:12,  1.24s/it]Loading logs:  14%|█▍        | 167/1192 [05:05<18:00,  1.05s/it]Loading logs:  14%|█▍        | 168/1192 [05:13<53:47,  3.15s/it]Loading logs:  14%|█▍        | 169/1192 [05:14<40:29,  2.37s/it]Loading logs:  14%|█▍        | 170/1192 [05:14<29:05,  1.71s/it]Loading logs:  14%|█▍        | 171/1192 [05:36<2:14:09,  7.88s/it]Loading logs:  14%|█▍        | 172/1192 [05:37<1:35:41,  5.63s/it]Loading logs:  15%|█▍        | 174/1192 [05:37<52:19,  3.08s/it]  Loading logs:  15%|█▍        | 175/1192 [05:37<39:51,  2.35s/it]Loading logs:  15%|█▍        | 176/1192 [05:37<30:29,  1.80s/it]Loading logs:  15%|█▍        | 177/1192 [05:38<23:34,  1.39s/it]Loading logs:  15%|█▌        | 179/1192 [05:52<1:06:42,  3.95s/it]Loading logs:  15%|█▌        | 180/1192 [05:52<51:12,  3.04s/it]  Loading logs:  15%|█▌        | 182/1192 [06:03<1:07:16,  4.00s/it]Loading logs:  15%|█▌        | 183/1192 [06:03<53:15,  3.17s/it]  Loading logs:  16%|█▌        | 185/1192 [06:04<35:33,  2.12s/it]Loading logs:  16%|█▌        | 186/1192 [06:19<1:22:30,  4.92s/it]Loading logs:  16%|█▌        | 187/1192 [06:19<1:03:38,  3.80s/it]Loading logs:  16%|█▌        | 188/1192 [06:20<48:15,  2.88s/it]  Loading logs:  16%|█▌        | 189/1192 [06:20<36:37,  2.19s/it]Loading logs:  16%|█▌        | 190/1192 [06:20<27:57,  1.67s/it]Loading logs:  16%|█▌        | 191/1192 [06:20<20:56,  1.26s/it]Loading logs:  16%|█▌        | 192/1192 [06:21<17:09,  1.03s/it]Loading logs:  16%|█▌        | 193/1192 [06:36<1:26:39,  5.20s/it]Loading logs:  16%|█▋        | 194/1192 [06:36<1:02:10,  3.74s/it]Loading logs:  16%|█▋        | 195/1192 [07:01<2:46:47, 10.04s/it]Loading logs:  16%|█▋        | 196/1192 [07:03<2:03:49,  7.46s/it]Loading logs:  17%|█▋        | 197/1192 [07:03<1:27:26,  5.27s/it]Loading logs:  17%|█▋        | 198/1192 [07:08<1:25:41,  5.17s/it]Loading logs:  17%|█▋        | 200/1192 [07:08<47:05,  2.85s/it]  Loading logs:  17%|█▋        | 201/1192 [07:08<36:00,  2.18s/it]Loading logs:  17%|█▋        | 203/1192 [07:09<22:11,  1.35s/it]Loading logs:  17%|█▋        | 204/1192 [07:09<17:51,  1.08s/it]Loading logs:  17%|█▋        | 205/1192 [07:09<13:56,  1.18it/s]Loading logs:  17%|█▋        | 206/1192 [07:11<18:43,  1.14s/it]Loading logs:  17%|█▋        | 207/1192 [07:11<14:39,  1.12it/s]Loading logs:  18%|█▊        | 209/1192 [07:11<09:16,  1.77it/s]Loading logs:  18%|█▊        | 210/1192 [07:12<08:58,  1.82it/s]Loading logs:  18%|█▊        | 211/1192 [07:12<07:31,  2.17it/s]Loading logs:  18%|█▊        | 212/1192 [07:12<06:22,  2.56it/s]Loading logs:  18%|█▊        | 213/1192 [07:13<06:35,  2.47it/s]Loading logs:  18%|█▊        | 214/1192 [07:13<05:56,  2.74it/s]Loading logs:  18%|█▊        | 215/1192 [07:13<04:46,  3.41it/s]Loading logs:  18%|█▊        | 216/1192 [07:13<04:27,  3.65it/s]Loading logs:  18%|█▊        | 217/1192 [07:14<04:32,  3.58it/s]Loading logs:  18%|█▊        | 218/1192 [07:14<04:55,  3.30it/s]Loading logs:  18%|█▊        | 220/1192 [07:14<03:11,  5.08it/s]Loading logs:  19%|█▊        | 221/1192 [07:14<03:43,  4.33it/s]Loading logs:  19%|█▊        | 222/1192 [07:15<03:14,  4.99it/s]Loading logs:  19%|█▊        | 223/1192 [07:15<03:10,  5.09it/s]Loading logs:  19%|█▉        | 225/1192 [07:15<02:58,  5.43it/s]Loading logs:  19%|█▉        | 226/1192 [07:15<03:01,  5.33it/s]Loading logs:  19%|█▉        | 227/1192 [07:16<03:13,  4.99it/s]Loading logs:  19%|█▉        | 228/1192 [07:16<03:38,  4.41it/s]Loading logs:  19%|█▉        | 229/1192 [07:16<03:28,  4.62it/s]Loading logs:  19%|█▉        | 230/1192 [07:16<03:05,  5.18it/s]Loading logs:  19%|█▉        | 231/1192 [07:16<02:42,  5.90it/s]Loading logs:  19%|█▉        | 232/1192 [07:17<03:46,  4.24it/s]Loading logs:  20%|█▉        | 233/1192 [07:17<05:47,  2.76it/s]Loading logs:  20%|█▉        | 234/1192 [07:17<04:36,  3.47it/s]Loading logs:  20%|█▉        | 235/1192 [07:18<03:55,  4.07it/s]Loading logs:  20%|█▉        | 236/1192 [07:18<05:22,  2.96it/s]Loading logs:  20%|█▉        | 237/1192 [07:18<04:21,  3.65it/s]Loading logs:  20%|█▉        | 238/1192 [07:19<05:36,  2.83it/s]Loading logs:  20%|██        | 239/1192 [07:21<13:01,  1.22it/s]Loading logs:  20%|██        | 240/1192 [07:21<09:55,  1.60it/s]Loading logs:  20%|██        | 241/1192 [07:21<09:10,  1.73it/s]Loading logs:  20%|██        | 242/1192 [07:22<07:21,  2.15it/s]Loading logs:  20%|██        | 243/1192 [07:22<07:08,  2.22it/s]Loading logs:  20%|██        | 244/1192 [07:22<05:50,  2.70it/s]Loading logs:  21%|██        | 245/1192 [07:23<07:12,  2.19it/s]Loading logs:  21%|██        | 246/1192 [07:24<09:47,  1.61it/s]Loading logs:  21%|██        | 247/1192 [07:24<07:32,  2.09it/s]Loading logs:  21%|██        | 248/1192 [07:24<05:52,  2.68it/s]Loading logs:  21%|██        | 249/1192 [07:24<04:41,  3.35it/s]Loading logs:  21%|██        | 250/1192 [07:24<03:58,  3.95it/s]Loading logs:  21%|██        | 252/1192 [07:25<04:38,  3.38it/s]Loading logs:  21%|██        | 253/1192 [07:26<05:07,  3.05it/s]Loading logs:  21%|██▏       | 254/1192 [07:26<04:12,  3.71it/s]Loading logs:  21%|██▏       | 255/1192 [07:26<03:29,  4.47it/s]Loading logs:  22%|██▏       | 257/1192 [07:26<02:39,  5.87it/s]Loading logs:  22%|██▏       | 258/1192 [07:26<02:24,  6.48it/s]Loading logs:  22%|██▏       | 259/1192 [07:26<02:29,  6.26it/s]Loading logs:  22%|██▏       | 260/1192 [07:26<02:43,  5.71it/s]Loading logs:  22%|██▏       | 261/1192 [07:27<03:02,  5.10it/s]Loading logs:  22%|██▏       | 262/1192 [07:27<03:47,  4.09it/s]Loading logs:  22%|██▏       | 263/1192 [07:27<04:39,  3.32it/s]Loading logs:  22%|██▏       | 264/1192 [07:28<05:11,  2.98it/s]Loading logs:  22%|██▏       | 265/1192 [07:28<05:07,  3.01it/s]Loading logs:  22%|██▏       | 266/1192 [07:29<05:33,  2.77it/s]Loading logs:  22%|██▏       | 267/1192 [07:29<04:53,  3.15it/s]Loading logs:  22%|██▏       | 268/1192 [07:29<04:39,  3.31it/s]Loading logs:  23%|██▎       | 269/1192 [07:29<03:46,  4.08it/s]Loading logs:  23%|██▎       | 270/1192 [07:30<06:58,  2.20it/s]Loading logs:  23%|██▎       | 271/1192 [07:30<05:29,  2.79it/s]Loading logs:  23%|██▎       | 272/1192 [07:31<05:06,  3.00it/s]Loading logs:  23%|██▎       | 273/1192 [07:31<04:35,  3.33it/s]Loading logs:  23%|██▎       | 274/1192 [07:31<04:28,  3.42it/s]Loading logs:  23%|██▎       | 275/1192 [07:31<04:16,  3.57it/s]Loading logs:  23%|██▎       | 276/1192 [07:32<06:22,  2.39it/s]Loading logs:  23%|██▎       | 277/1192 [07:32<05:03,  3.02it/s]Loading logs:  23%|██▎       | 278/1192 [07:33<08:51,  1.72it/s]Loading logs:  23%|██▎       | 279/1192 [07:34<07:36,  2.00it/s]Loading logs:  23%|██▎       | 280/1192 [07:34<07:38,  1.99it/s]Loading logs:  24%|██▎       | 281/1192 [07:35<06:52,  2.21it/s]Loading logs:  24%|██▎       | 282/1192 [07:35<06:06,  2.48it/s]Loading logs:  24%|██▎       | 283/1192 [07:35<05:31,  2.74it/s]Loading logs:  24%|██▍       | 284/1192 [07:36<05:46,  2.62it/s]Loading logs:  24%|██▍       | 285/1192 [07:36<04:40,  3.23it/s]Loading logs:  24%|██▍       | 286/1192 [07:36<05:14,  2.88it/s]Loading logs:  24%|██▍       | 287/1192 [07:36<05:28,  2.75it/s]Loading logs:  24%|██▍       | 288/1192 [07:37<04:28,  3.36it/s]Loading logs:  24%|██▍       | 289/1192 [07:37<03:35,  4.20it/s]Loading logs:  24%|██▍       | 290/1192 [07:37<03:08,  4.79it/s]Loading logs:  24%|██▍       | 291/1192 [07:37<03:35,  4.18it/s]Loading logs:  24%|██▍       | 292/1192 [07:37<03:07,  4.80it/s]Loading logs:  25%|██▍       | 293/1192 [07:37<02:45,  5.45it/s]Loading logs:  25%|██▍       | 294/1192 [07:39<07:04,  2.11it/s]Loading logs:  25%|██▍       | 295/1192 [07:39<06:20,  2.36it/s]Loading logs:  25%|██▍       | 296/1192 [07:40<07:59,  1.87it/s]Loading logs:  25%|██▍       | 297/1192 [07:40<06:10,  2.41it/s]Loading logs:  25%|██▌       | 298/1192 [07:40<05:18,  2.81it/s]Loading logs:  25%|██▌       | 299/1192 [07:40<04:50,  3.07it/s]Loading logs:  25%|██▌       | 300/1192 [07:40<04:13,  3.52it/s]Loading logs:  25%|██▌       | 301/1192 [07:42<07:29,  1.98it/s]Loading logs:  25%|██▌       | 302/1192 [07:42<06:05,  2.44it/s]Loading logs:  25%|██▌       | 303/1192 [07:42<04:50,  3.06it/s]Loading logs:  26%|██▌       | 304/1192 [07:42<04:11,  3.53it/s]Loading logs:  26%|██▌       | 305/1192 [07:42<03:26,  4.29it/s]Loading logs:  26%|██▌       | 306/1192 [07:43<05:27,  2.71it/s]Loading logs:  26%|██▌       | 307/1192 [07:43<04:35,  3.22it/s]Loading logs:  26%|██▌       | 308/1192 [07:44<09:34,  1.54it/s]Loading logs:  26%|██▌       | 309/1192 [07:45<07:41,  1.91it/s]Loading logs:  26%|██▌       | 310/1192 [07:45<06:04,  2.42it/s]Loading logs:  26%|██▌       | 312/1192 [07:49<18:37,  1.27s/it]Loading logs:  26%|██▋       | 313/1192 [07:50<14:47,  1.01s/it]Loading logs:  26%|██▋       | 314/1192 [07:50<11:31,  1.27it/s]Loading logs:  26%|██▋       | 315/1192 [07:51<12:19,  1.19it/s]Loading logs:  27%|██▋       | 316/1192 [07:51<10:23,  1.40it/s]Loading logs:  27%|██▋       | 317/1192 [07:51<08:25,  1.73it/s]Loading logs:  27%|██▋       | 318/1192 [07:51<06:24,  2.27it/s]Loading logs:  27%|██▋       | 319/1192 [07:52<06:05,  2.39it/s]Loading logs:  27%|██▋       | 320/1192 [07:52<05:08,  2.83it/s]Loading logs:  27%|██▋       | 321/1192 [07:52<04:10,  3.47it/s]Loading logs:  27%|██▋       | 322/1192 [07:52<03:51,  3.75it/s]Loading logs:  27%|██▋       | 323/1192 [07:52<03:12,  4.51it/s]Loading logs:  27%|██▋       | 324/1192 [07:53<02:42,  5.35it/s]Loading logs:  27%|██▋       | 325/1192 [07:53<02:40,  5.40it/s]Loading logs:  27%|██▋       | 326/1192 [07:53<02:37,  5.48it/s]Loading logs:  27%|██▋       | 327/1192 [07:53<02:44,  5.25it/s]Loading logs:  28%|██▊       | 328/1192 [07:53<02:28,  5.81it/s]Loading logs:  28%|██▊       | 329/1192 [07:53<02:35,  5.54it/s]Loading logs:  28%|██▊       | 331/1192 [07:54<02:44,  5.23it/s]Loading logs:  28%|██▊       | 332/1192 [07:54<02:25,  5.91it/s]Loading logs:  28%|██▊       | 333/1192 [07:54<02:26,  5.86it/s]Loading logs:  28%|██▊       | 334/1192 [07:55<06:40,  2.14it/s]Loading logs:  28%|██▊       | 335/1192 [07:56<05:19,  2.68it/s]Loading logs:  28%|██▊       | 336/1192 [07:56<04:25,  3.23it/s]Loading logs:  28%|██▊       | 337/1192 [07:56<03:38,  3.91it/s]Loading logs:  28%|██▊       | 338/1192 [07:56<03:31,  4.03it/s]Loading logs:  29%|██▊       | 340/1192 [07:56<02:44,  5.19it/s]Loading logs:  29%|██▊       | 341/1192 [07:57<03:12,  4.42it/s]Loading logs:  29%|██▊       | 342/1192 [07:57<02:53,  4.90it/s]Loading logs:  29%|██▉       | 343/1192 [07:57<03:30,  4.03it/s]Loading logs:  29%|██▉       | 344/1192 [07:58<07:00,  2.01it/s]Loading logs:  29%|██▉       | 345/1192 [07:58<05:31,  2.55it/s]Loading logs:  29%|██▉       | 346/1192 [07:59<04:57,  2.85it/s]Loading logs:  29%|██▉       | 347/1192 [07:59<05:34,  2.52it/s]Loading logs:  29%|██▉       | 348/1192 [08:00<05:45,  2.44it/s]Loading logs:  29%|██▉       | 349/1192 [08:00<05:30,  2.55it/s]Loading logs:  29%|██▉       | 350/1192 [08:00<05:17,  2.65it/s]Loading logs:  29%|██▉       | 351/1192 [08:01<04:32,  3.09it/s]Loading logs:  30%|██▉       | 352/1192 [08:01<04:26,  3.15it/s]Loading logs:  30%|██▉       | 353/1192 [08:01<03:55,  3.56it/s]Loading logs:  30%|██▉       | 355/1192 [08:01<02:29,  5.60it/s]Loading logs:  30%|██▉       | 356/1192 [08:02<04:30,  3.10it/s]Loading logs:  30%|██▉       | 357/1192 [08:02<03:59,  3.48it/s]Loading logs:  30%|███       | 359/1192 [08:02<02:59,  4.63it/s]Loading logs:  30%|███       | 360/1192 [08:03<04:11,  3.31it/s]Loading logs:  30%|███       | 361/1192 [08:03<03:42,  3.73it/s]Loading logs:  30%|███       | 362/1192 [08:03<03:41,  3.75it/s]Loading logs:  30%|███       | 363/1192 [08:04<04:04,  3.39it/s]Loading logs:  31%|███       | 364/1192 [08:04<03:51,  3.57it/s]Loading logs:  31%|███       | 365/1192 [08:04<04:13,  3.26it/s]Loading logs:  31%|███       | 366/1192 [08:05<06:10,  2.23it/s]Loading logs:  31%|███       | 367/1192 [08:05<05:16,  2.61it/s]Loading logs:  31%|███       | 368/1192 [08:06<05:03,  2.71it/s]Loading logs:  31%|███       | 369/1192 [08:06<04:18,  3.18it/s]Loading logs:  31%|███       | 370/1192 [08:06<04:01,  3.40it/s]Loading logs:  31%|███       | 371/1192 [08:07<04:33,  3.00it/s]Loading logs:  31%|███       | 372/1192 [08:07<03:54,  3.50it/s]Loading logs:  31%|███▏      | 373/1192 [08:07<03:34,  3.82it/s]Loading logs:  31%|███▏      | 375/1192 [08:07<03:20,  4.07it/s]Loading logs:  32%|███▏      | 377/1192 [08:08<02:47,  4.88it/s]Loading logs:  32%|███▏      | 378/1192 [08:08<03:26,  3.94it/s]Loading logs:  32%|███▏      | 379/1192 [08:08<03:26,  3.94it/s]Loading logs:  32%|███▏      | 380/1192 [08:09<03:19,  4.08it/s]Loading logs:  32%|███▏      | 381/1192 [08:09<02:53,  4.68it/s]Loading logs:  32%|███▏      | 382/1192 [08:09<03:16,  4.13it/s]Loading logs:  32%|███▏      | 383/1192 [08:11<09:23,  1.43it/s]Loading logs:  32%|███▏      | 384/1192 [08:11<07:10,  1.87it/s]Loading logs:  32%|███▏      | 385/1192 [08:12<10:56,  1.23it/s]Loading logs:  32%|███▏      | 386/1192 [08:13<09:03,  1.48it/s]Loading logs:  32%|███▏      | 387/1192 [08:13<07:22,  1.82it/s]Loading logs:  33%|███▎      | 388/1192 [08:13<06:15,  2.14it/s]Loading logs:  33%|███▎      | 389/1192 [08:13<04:54,  2.72it/s]Loading logs:  33%|███▎      | 390/1192 [08:14<04:04,  3.28it/s]Loading logs:  33%|███▎      | 391/1192 [08:14<03:16,  4.07it/s]Loading logs:  33%|███▎      | 392/1192 [08:14<02:55,  4.55it/s]Loading logs:  33%|███▎      | 393/1192 [08:14<03:23,  3.93it/s]Loading logs:  33%|███▎      | 394/1192 [08:15<04:04,  3.27it/s]Loading logs:  33%|███▎      | 396/1192 [08:15<02:48,  4.71it/s]Loading logs:  33%|███▎      | 397/1192 [08:15<02:39,  4.98it/s]Loading logs:  33%|███▎      | 398/1192 [08:15<02:53,  4.57it/s]Loading logs:  33%|███▎      | 399/1192 [08:15<02:38,  5.00it/s]Loading logs:  34%|███▎      | 401/1192 [08:16<02:37,  5.03it/s]Loading logs:  34%|███▎      | 402/1192 [08:16<03:30,  3.75it/s]Loading logs:  34%|███▍      | 403/1192 [08:17<03:38,  3.61it/s]Loading logs:  34%|███▍      | 404/1192 [08:17<03:03,  4.29it/s]Loading logs:  34%|███▍      | 406/1192 [08:17<02:15,  5.80it/s]Loading logs:  34%|███▍      | 407/1192 [08:17<03:29,  3.76it/s]Loading logs:  34%|███▍      | 408/1192 [08:18<03:08,  4.15it/s]Loading logs:  34%|███▍      | 409/1192 [08:18<02:43,  4.79it/s]Loading logs:  34%|███▍      | 410/1192 [08:18<03:25,  3.80it/s]Loading logs:  34%|███▍      | 411/1192 [08:18<02:57,  4.40it/s]Loading logs:  35%|███▍      | 412/1192 [08:18<02:31,  5.16it/s]Loading logs:  35%|███▍      | 413/1192 [08:19<02:10,  5.98it/s]Loading logs:  35%|███▍      | 414/1192 [08:19<02:01,  6.38it/s]Loading logs:  35%|███▍      | 415/1192 [08:19<01:50,  7.03it/s]Loading logs:  35%|███▍      | 416/1192 [08:19<01:51,  6.98it/s]Loading logs:  35%|███▍      | 417/1192 [08:19<02:07,  6.10it/s]Loading logs:  35%|███▌      | 419/1192 [08:19<01:38,  7.84it/s]Loading logs:  35%|███▌      | 420/1192 [08:19<01:38,  7.81it/s]Loading logs:  35%|███▌      | 421/1192 [08:20<02:36,  4.94it/s]Loading logs:  35%|███▌      | 422/1192 [08:20<03:29,  3.67it/s]Loading logs:  35%|███▌      | 423/1192 [08:22<07:07,  1.80it/s]Loading logs:  36%|███▌      | 424/1192 [08:22<05:41,  2.25it/s]Loading logs:  36%|███▌      | 425/1192 [08:22<05:26,  2.35it/s]Loading logs:  36%|███▌      | 426/1192 [08:22<04:17,  2.98it/s]Loading logs:  36%|███▌      | 427/1192 [08:23<05:19,  2.39it/s]Loading logs:  36%|███▌      | 429/1192 [08:23<03:22,  3.76it/s]Loading logs:  36%|███▌      | 430/1192 [08:23<02:53,  4.40it/s]Loading logs:  36%|███▌      | 431/1192 [08:23<02:35,  4.90it/s]Loading logs:  36%|███▌      | 432/1192 [08:24<05:57,  2.13it/s]Loading logs:  36%|███▋      | 433/1192 [08:25<06:25,  1.97it/s]Loading logs:  36%|███▋      | 434/1192 [08:25<04:58,  2.54it/s]Loading logs:  37%|███▋      | 436/1192 [08:26<03:53,  3.23it/s]Loading logs:  37%|███▋      | 437/1192 [08:26<03:55,  3.21it/s]Loading logs:  37%|███▋      | 438/1192 [08:26<03:19,  3.79it/s]Loading logs:  37%|███▋      | 439/1192 [08:27<04:58,  2.52it/s]Loading logs:  37%|███▋      | 440/1192 [08:27<04:40,  2.68it/s]Loading logs:  37%|███▋      | 441/1192 [08:27<04:10,  2.99it/s]Loading logs:  37%|███▋      | 442/1192 [08:27<03:24,  3.67it/s]Loading logs:  37%|███▋      | 443/1192 [08:28<03:00,  4.16it/s]Loading logs:  37%|███▋      | 444/1192 [08:28<03:03,  4.08it/s]Loading logs:  37%|███▋      | 445/1192 [08:28<02:37,  4.75it/s]Loading logs:  37%|███▋      | 446/1192 [08:28<02:13,  5.58it/s]Loading logs:  38%|███▊      | 447/1192 [08:28<02:36,  4.75it/s]Loading logs:  38%|███▊      | 448/1192 [08:29<02:18,  5.37it/s]Loading logs:  38%|███▊      | 449/1192 [08:29<03:10,  3.89it/s]Loading logs:  38%|███▊      | 450/1192 [08:29<02:49,  4.38it/s]Loading logs:  38%|███▊      | 451/1192 [08:29<02:21,  5.23it/s]Loading logs:  38%|███▊      | 452/1192 [08:40<42:22,  3.44s/it]Loading logs:  38%|███▊      | 453/1192 [08:40<30:05,  2.44s/it]Loading logs:  38%|███▊      | 454/1192 [08:41<21:44,  1.77s/it]Loading logs:  38%|███▊      | 455/1192 [08:41<15:38,  1.27s/it]Loading logs:  38%|███▊      | 456/1192 [08:41<11:47,  1.04it/s]Loading logs:  38%|███▊      | 457/1192 [08:49<38:21,  3.13s/it]Loading logs:  38%|███▊      | 458/1192 [08:49<27:31,  2.25s/it]Loading logs:  39%|███▊      | 459/1192 [08:50<20:53,  1.71s/it]Loading logs:  39%|███▊      | 460/1192 [08:50<15:20,  1.26s/it]Loading logs:  39%|███▊      | 461/1192 [08:50<11:18,  1.08it/s]Loading logs:  39%|███▉      | 462/1192 [08:50<08:49,  1.38it/s]Loading logs:  39%|███▉      | 463/1192 [08:51<06:47,  1.79it/s]Loading logs:  39%|███▉      | 464/1192 [08:59<34:27,  2.84s/it]Loading logs:  39%|███▉      | 465/1192 [09:17<1:29:59,  7.43s/it]Loading logs:  39%|███▉      | 466/1192 [09:17<1:03:17,  5.23s/it]Loading logs:  39%|███▉      | 467/1192 [09:17<44:37,  3.69s/it]  Loading logs:  39%|███▉      | 468/1192 [09:17<32:14,  2.67s/it]Loading logs:  39%|███▉      | 469/1192 [09:18<24:22,  2.02s/it]Loading logs:  39%|███▉      | 470/1192 [09:18<17:26,  1.45s/it]Loading logs:  40%|███▉      | 471/1192 [09:18<12:37,  1.05s/it]Loading logs:  40%|███▉      | 472/1192 [09:19<11:18,  1.06it/s]Loading logs:  40%|███▉      | 473/1192 [09:19<08:22,  1.43it/s]Loading logs:  40%|███▉      | 474/1192 [09:20<08:49,  1.35it/s]Loading logs:  40%|███▉      | 475/1192 [09:20<07:20,  1.63it/s]Loading logs:  40%|███▉      | 476/1192 [09:20<05:47,  2.06it/s]Loading logs:  40%|████      | 477/1192 [09:28<32:58,  2.77s/it]Loading logs:  40%|████      | 479/1192 [09:29<19:09,  1.61s/it]Loading logs:  40%|████      | 480/1192 [09:29<15:04,  1.27s/it]Loading logs:  40%|████      | 481/1192 [09:29<11:44,  1.01it/s]Loading logs:  40%|████      | 482/1192 [09:29<09:11,  1.29it/s]Loading logs:  41%|████      | 483/1192 [09:30<07:07,  1.66it/s]Loading logs:  41%|████      | 484/1192 [09:30<06:02,  1.95it/s]Loading logs:  41%|████      | 485/1192 [09:42<46:23,  3.94s/it]Loading logs:  41%|████      | 486/1192 [09:43<34:02,  2.89s/it]Loading logs:  41%|████      | 487/1192 [09:43<24:40,  2.10s/it]Loading logs:  41%|████      | 488/1192 [09:49<39:03,  3.33s/it]Loading logs:  41%|████      | 489/1192 [09:49<28:17,  2.41s/it]Loading logs:  41%|████      | 490/1192 [09:49<20:23,  1.74s/it]Loading logs:  41%|████      | 491/1192 [09:52<22:05,  1.89s/it]Loading logs:  41%|████▏     | 492/1192 [09:52<17:13,  1.48s/it]Loading logs:  41%|████▏     | 493/1192 [09:53<13:10,  1.13s/it]Loading logs:  41%|████▏     | 494/1192 [09:53<09:52,  1.18it/s]Loading logs:  42%|████▏     | 495/1192 [09:54<11:53,  1.02s/it]Loading logs:  42%|████▏     | 496/1192 [10:02<33:54,  2.92s/it]Loading logs:  42%|████▏     | 497/1192 [10:02<24:13,  2.09s/it]Loading logs:  42%|████▏     | 498/1192 [10:02<17:29,  1.51s/it]Loading logs:  42%|████▏     | 499/1192 [10:12<45:48,  3.97s/it]Loading logs:  42%|████▏     | 500/1192 [10:12<32:56,  2.86s/it]Loading logs:  42%|████▏     | 501/1192 [10:12<23:38,  2.05s/it]Loading logs:  42%|████▏     | 502/1192 [10:12<17:17,  1.50s/it]Loading logs:  42%|████▏     | 503/1192 [10:18<32:06,  2.80s/it]Loading logs:  42%|████▏     | 504/1192 [10:18<22:52,  1.99s/it]Loading logs:  42%|████▏     | 505/1192 [10:18<16:28,  1.44s/it]Loading logs:  42%|████▏     | 506/1192 [10:24<32:15,  2.82s/it]Loading logs:  43%|████▎     | 507/1192 [10:24<22:59,  2.01s/it]Loading logs:  43%|████▎     | 508/1192 [10:25<19:00,  1.67s/it]Loading logs:  43%|████▎     | 509/1192 [10:26<14:06,  1.24s/it]Loading logs:  43%|████▎     | 510/1192 [10:26<10:34,  1.07it/s]Loading logs:  43%|████▎     | 511/1192 [10:26<07:47,  1.46it/s]Loading logs:  43%|████▎     | 512/1192 [10:26<05:48,  1.95it/s]Loading logs:  43%|████▎     | 513/1192 [10:27<05:46,  1.96it/s]Loading logs:  43%|████▎     | 515/1192 [10:27<03:45,  3.01it/s]Loading logs:  43%|████▎     | 516/1192 [10:27<03:16,  3.43it/s]Loading logs:  43%|████▎     | 517/1192 [10:27<02:54,  3.88it/s]Loading logs:  43%|████▎     | 518/1192 [10:27<03:06,  3.61it/s]Loading logs:  44%|████▎     | 519/1192 [10:28<02:43,  4.10it/s]Loading logs:  44%|████▎     | 520/1192 [10:35<25:35,  2.29s/it]Loading logs:  44%|████▍     | 522/1192 [10:35<15:04,  1.35s/it]Loading logs:  44%|████▍     | 523/1192 [10:36<11:51,  1.06s/it]Loading logs:  44%|████▍     | 525/1192 [10:36<08:32,  1.30it/s]Loading logs:  44%|████▍     | 526/1192 [10:36<07:10,  1.55it/s]Loading logs:  44%|████▍     | 527/1192 [10:50<41:09,  3.71s/it]Loading logs:  44%|████▍     | 528/1192 [10:58<53:05,  4.80s/it]Loading logs:  44%|████▍     | 529/1192 [10:58<39:11,  3.55s/it]Loading logs:  45%|████▍     | 531/1192 [11:04<36:40,  3.33s/it]Loading logs:  45%|████▍     | 532/1192 [11:04<28:25,  2.58s/it]Loading logs:  45%|████▍     | 533/1192 [11:04<22:29,  2.05s/it]Loading logs:  45%|████▍     | 534/1192 [11:05<18:13,  1.66s/it]Loading logs:  45%|████▍     | 535/1192 [11:05<13:35,  1.24s/it]Loading logs:  45%|████▍     | 536/1192 [11:06<10:43,  1.02it/s]Loading logs:  45%|████▌     | 537/1192 [11:06<08:26,  1.29it/s]Loading logs:  45%|████▌     | 538/1192 [11:06<06:30,  1.67it/s]Loading logs:  45%|████▌     | 539/1192 [11:06<05:24,  2.01it/s]Loading logs:  45%|████▌     | 540/1192 [11:06<04:29,  2.42it/s]Loading logs:  45%|████▌     | 541/1192 [11:15<30:17,  2.79s/it]Loading logs:  45%|████▌     | 542/1192 [11:15<21:44,  2.01s/it]Loading logs:  46%|████▌     | 543/1192 [11:15<15:57,  1.48s/it]Loading logs:  46%|████▌     | 544/1192 [11:15<11:58,  1.11s/it]Loading logs:  46%|████▌     | 545/1192 [11:16<08:45,  1.23it/s]Loading logs:  46%|████▌     | 546/1192 [11:16<06:49,  1.58it/s]Loading logs:  46%|████▌     | 547/1192 [11:16<05:37,  1.91it/s]Loading logs:  46%|████▌     | 548/1192 [11:16<04:20,  2.47it/s]Loading logs:  46%|████▌     | 549/1192 [11:16<03:43,  2.88it/s]Loading logs:  46%|████▌     | 550/1192 [11:17<02:58,  3.60it/s]Loading logs:  46%|████▌     | 551/1192 [11:17<02:35,  4.11it/s]Loading logs:  46%|████▋     | 552/1192 [11:17<02:20,  4.55it/s]Loading logs:  46%|████▋     | 553/1192 [11:17<02:05,  5.11it/s]Loading logs:  46%|████▋     | 554/1192 [11:21<13:37,  1.28s/it]Loading logs:  47%|████▋     | 556/1192 [11:21<07:43,  1.37it/s]Loading logs:  47%|████▋     | 557/1192 [11:35<43:20,  4.10s/it]Loading logs:  47%|████▋     | 558/1192 [11:35<32:21,  3.06s/it]Loading logs:  47%|████▋     | 559/1192 [11:36<23:56,  2.27s/it]Loading logs:  47%|████▋     | 561/1192 [11:36<14:00,  1.33s/it]Loading logs:  47%|████▋     | 562/1192 [11:36<11:08,  1.06s/it]Loading logs:  47%|████▋     | 563/1192 [11:36<08:35,  1.22it/s]Loading logs:  47%|████▋     | 564/1192 [11:37<07:44,  1.35it/s]Loading logs:  47%|████▋     | 565/1192 [11:37<06:28,  1.61it/s]Loading logs:  47%|████▋     | 566/1192 [11:37<05:41,  1.84it/s]Loading logs:  48%|████▊     | 568/1192 [11:44<19:10,  1.84s/it]Loading logs:  48%|████▊     | 569/1192 [11:55<41:03,  3.95s/it]Loading logs:  48%|████▊     | 570/1192 [11:55<30:53,  2.98s/it]Loading logs:  48%|████▊     | 571/1192 [12:05<51:21,  4.96s/it]Loading logs:  48%|████▊     | 572/1192 [12:05<37:34,  3.64s/it]Loading logs:  48%|████▊     | 573/1192 [12:18<1:02:53,  6.10s/it]Loading logs:  48%|████▊     | 574/1192 [12:18<46:08,  4.48s/it]  Loading logs:  48%|████▊     | 575/1192 [12:19<33:47,  3.29s/it]Loading logs:  48%|████▊     | 576/1192 [12:19<24:37,  2.40s/it]Loading logs:  48%|████▊     | 577/1192 [12:19<18:01,  1.76s/it]Loading logs:  48%|████▊     | 578/1192 [12:19<13:00,  1.27s/it]Loading logs:  49%|████▊     | 579/1192 [12:19<09:36,  1.06it/s]Loading logs:  49%|████▊     | 581/1192 [12:20<05:32,  1.83it/s]Loading logs:  49%|████▉     | 582/1192 [12:20<04:26,  2.29it/s]Loading logs:  49%|████▉     | 583/1192 [12:20<04:41,  2.16it/s]Loading logs:  49%|████▉     | 584/1192 [12:21<04:09,  2.44it/s]Loading logs:  49%|████▉     | 585/1192 [12:21<04:16,  2.37it/s]Loading logs:  49%|████▉     | 586/1192 [12:21<03:28,  2.91it/s]Loading logs:  49%|████▉     | 587/1192 [12:21<03:03,  3.30it/s]Loading logs:  49%|████▉     | 588/1192 [12:22<02:40,  3.76it/s]Loading logs:  49%|████▉     | 590/1192 [12:22<02:00,  5.02it/s]Loading logs:  50%|████▉     | 591/1192 [12:29<19:33,  1.95s/it]Loading logs:  50%|████▉     | 592/1192 [12:29<15:09,  1.52s/it]Loading logs:  50%|████▉     | 593/1192 [12:29<11:23,  1.14s/it]Loading logs:  50%|████▉     | 594/1192 [12:30<08:32,  1.17it/s]Loading logs:  50%|████▉     | 595/1192 [12:30<06:31,  1.52it/s]Loading logs:  50%|█████     | 596/1192 [12:30<05:49,  1.71it/s]Loading logs:  50%|█████     | 597/1192 [12:31<05:35,  1.77it/s]Loading logs:  50%|█████     | 598/1192 [12:31<04:27,  2.22it/s]Loading logs:  50%|█████     | 599/1192 [12:39<25:50,  2.61s/it]Loading logs:  50%|█████     | 601/1192 [12:39<14:53,  1.51s/it]Loading logs:  51%|█████     | 602/1192 [12:45<25:39,  2.61s/it]Loading logs:  51%|█████     | 603/1192 [12:54<42:48,  4.36s/it]Loading logs:  51%|█████     | 604/1192 [12:55<32:13,  3.29s/it]Loading logs:  51%|█████     | 605/1192 [12:55<24:30,  2.51s/it]Loading logs:  51%|█████     | 606/1192 [12:56<18:21,  1.88s/it]Loading logs:  51%|█████     | 607/1192 [12:56<13:29,  1.38s/it]Loading logs:  51%|█████     | 608/1192 [12:56<10:02,  1.03s/it]Loading logs:  51%|█████     | 609/1192 [12:56<07:44,  1.26it/s]Loading logs:  51%|█████     | 610/1192 [12:56<06:27,  1.50it/s]Loading logs:  51%|█████▏    | 612/1192 [12:57<04:07,  2.35it/s]Loading logs:  51%|█████▏    | 613/1192 [12:57<03:42,  2.61it/s]Loading logs:  52%|█████▏    | 614/1192 [12:57<03:31,  2.73it/s]Loading logs:  52%|█████▏    | 616/1192 [12:58<02:46,  3.45it/s]Loading logs:  52%|█████▏    | 618/1192 [12:58<02:08,  4.46it/s]Loading logs:  52%|█████▏    | 619/1192 [12:58<02:36,  3.66it/s]Loading logs:  52%|█████▏    | 620/1192 [12:59<02:31,  3.79it/s]Loading logs:  52%|█████▏    | 621/1192 [13:15<41:53,  4.40s/it]Loading logs:  52%|█████▏    | 622/1192 [13:16<31:24,  3.31s/it]Loading logs:  52%|█████▏    | 623/1192 [13:16<23:15,  2.45s/it]Loading logs:  52%|█████▏    | 625/1192 [13:19<18:29,  1.96s/it]Loading logs:  53%|█████▎    | 626/1192 [13:43<1:09:58,  7.42s/it]Loading logs:  53%|█████▎    | 627/1192 [13:44<52:52,  5.62s/it]  Loading logs:  53%|█████▎    | 628/1192 [13:44<39:23,  4.19s/it]Loading logs:  53%|█████▎    | 629/1192 [13:44<29:00,  3.09s/it]Loading logs:  53%|█████▎    | 630/1192 [13:44<21:03,  2.25s/it]Loading logs:  53%|█████▎    | 631/1192 [13:44<15:20,  1.64s/it]Loading logs:  53%|█████▎    | 632/1192 [13:45<11:10,  1.20s/it]Loading logs:  53%|█████▎    | 633/1192 [13:45<08:25,  1.11it/s]Loading logs:  53%|█████▎    | 634/1192 [13:52<26:39,  2.87s/it]Loading logs:  53%|█████▎    | 635/1192 [13:52<19:15,  2.08s/it]Loading logs:  53%|█████▎    | 636/1192 [13:53<14:11,  1.53s/it]Loading logs:  53%|█████▎    | 637/1192 [14:02<36:12,  3.91s/it]Loading logs:  54%|█████▎    | 638/1192 [14:02<25:48,  2.80s/it]Loading logs:  54%|█████▎    | 639/1192 [14:03<18:24,  2.00s/it]Loading logs:  54%|█████▎    | 640/1192 [14:03<13:18,  1.45s/it]Loading logs:  54%|█████▍    | 641/1192 [14:10<28:15,  3.08s/it]Loading logs:  54%|█████▍    | 642/1192 [14:10<20:13,  2.21s/it]Loading logs:  54%|█████▍    | 643/1192 [14:14<24:59,  2.73s/it]Loading logs:  54%|█████▍    | 644/1192 [14:14<18:42,  2.05s/it]Loading logs:  54%|█████▍    | 645/1192 [14:15<14:08,  1.55s/it]Loading logs:  54%|█████▍    | 646/1192 [14:23<32:39,  3.59s/it]Loading logs:  54%|█████▍    | 647/1192 [14:23<23:18,  2.57s/it]Loading logs:  54%|█████▍    | 648/1192 [14:23<16:50,  1.86s/it]Loading logs:  54%|█████▍    | 649/1192 [14:24<13:45,  1.52s/it]Loading logs:  55%|█████▍    | 650/1192 [14:24<10:03,  1.11s/it]Loading logs:  55%|█████▍    | 651/1192 [14:24<07:32,  1.20it/s]Loading logs:  55%|█████▍    | 652/1192 [14:25<05:37,  1.60it/s]Loading logs:  55%|█████▍    | 653/1192 [14:25<05:17,  1.70it/s]Loading logs:  55%|█████▍    | 654/1192 [14:26<05:04,  1.77it/s]Loading logs:  55%|█████▍    | 655/1192 [14:26<03:59,  2.24it/s]Loading logs:  55%|█████▌    | 656/1192 [14:29<12:29,  1.40s/it]Loading logs:  55%|█████▌    | 657/1192 [14:30<09:22,  1.05s/it]Loading logs:  55%|█████▌    | 658/1192 [14:30<07:41,  1.16it/s]Loading logs:  55%|█████▌    | 659/1192 [14:30<06:26,  1.38it/s]Loading logs:  55%|█████▌    | 660/1192 [14:40<29:52,  3.37s/it]Loading logs:  55%|█████▌    | 661/1192 [14:40<22:07,  2.50s/it]Loading logs:  56%|█████▌    | 662/1192 [14:41<16:28,  1.87s/it]Loading logs:  56%|█████▌    | 663/1192 [14:41<12:36,  1.43s/it]Loading logs:  56%|█████▌    | 664/1192 [14:42<10:56,  1.24s/it]Loading logs:  56%|█████▌    | 665/1192 [14:50<27:39,  3.15s/it]Loading logs:  56%|█████▌    | 666/1192 [14:50<20:02,  2.29s/it]Loading logs:  56%|█████▌    | 667/1192 [14:50<15:06,  1.73s/it]Loading logs:  56%|█████▌    | 669/1192 [14:50<08:29,  1.03it/s]Loading logs:  56%|█████▌    | 670/1192 [14:51<06:55,  1.26it/s]Loading logs:  56%|█████▋    | 671/1192 [14:51<05:43,  1.52it/s]Loading logs:  56%|█████▋    | 672/1192 [14:51<04:33,  1.90it/s]Loading logs:  57%|█████▋    | 674/1192 [14:52<03:43,  2.32it/s]Loading logs:  57%|█████▋    | 675/1192 [14:57<13:34,  1.58s/it]Loading logs:  57%|█████▋    | 676/1192 [14:57<10:59,  1.28s/it]Loading logs:  57%|█████▋    | 677/1192 [14:58<08:55,  1.04s/it]Loading logs:  57%|█████▋    | 678/1192 [14:58<07:19,  1.17it/s]Loading logs:  57%|█████▋    | 679/1192 [14:58<05:59,  1.43it/s]Loading logs:  57%|█████▋    | 680/1192 [14:59<05:06,  1.67it/s]Loading logs:  57%|█████▋    | 681/1192 [14:59<04:32,  1.88it/s]Loading logs:  57%|█████▋    | 682/1192 [15:00<04:14,  2.01it/s]Loading logs:  57%|█████▋    | 683/1192 [15:00<03:24,  2.49it/s]Loading logs:  57%|█████▋    | 684/1192 [15:00<03:04,  2.75it/s]Loading logs:  57%|█████▋    | 685/1192 [15:01<03:32,  2.38it/s]Loading logs:  58%|█████▊    | 686/1192 [15:01<02:46,  3.05it/s]Loading logs:  58%|█████▊    | 687/1192 [15:01<02:19,  3.63it/s]Loading logs:  58%|█████▊    | 688/1192 [15:06<14:02,  1.67s/it]Loading logs:  58%|█████▊    | 689/1192 [15:06<10:10,  1.21s/it]Loading logs:  58%|█████▊    | 690/1192 [15:06<07:49,  1.07it/s]Loading logs:  58%|█████▊    | 692/1192 [15:07<05:17,  1.58it/s]Loading logs:  58%|█████▊    | 693/1192 [15:07<04:20,  1.92it/s]Loading logs:  58%|█████▊    | 694/1192 [15:08<05:01,  1.65it/s]Loading logs:  58%|█████▊    | 695/1192 [15:08<04:27,  1.85it/s]Loading logs:  58%|█████▊    | 696/1192 [15:08<03:50,  2.15it/s]Loading logs:  58%|█████▊    | 697/1192 [15:09<04:18,  1.91it/s]Loading logs:  59%|█████▊    | 698/1192 [15:10<04:08,  1.99it/s]Loading logs:  59%|█████▊    | 700/1192 [15:10<02:44,  2.99it/s]Loading logs:  59%|█████▉    | 701/1192 [15:10<02:16,  3.60it/s]Loading logs:  59%|█████▉    | 702/1192 [15:11<03:02,  2.69it/s]Loading logs:  59%|█████▉    | 703/1192 [15:11<02:37,  3.11it/s]Loading logs:  59%|█████▉    | 704/1192 [15:11<02:18,  3.53it/s]Loading logs:  59%|█████▉    | 705/1192 [15:11<02:29,  3.25it/s]Loading logs:  59%|█████▉    | 706/1192 [15:11<02:02,  3.96it/s]Loading logs:  59%|█████▉    | 707/1192 [15:12<02:00,  4.04it/s]Loading logs:  59%|█████▉    | 708/1192 [15:12<02:14,  3.61it/s]Loading logs:  60%|█████▉    | 710/1192 [15:14<05:06,  1.57it/s]Loading logs:  60%|█████▉    | 711/1192 [15:14<04:11,  1.91it/s]Loading logs:  60%|█████▉    | 712/1192 [15:15<03:24,  2.34it/s]Loading logs:  60%|█████▉    | 713/1192 [15:15<02:52,  2.77it/s]Loading logs:  60%|█████▉    | 714/1192 [15:15<02:30,  3.17it/s]Loading logs:  60%|█████▉    | 715/1192 [15:15<02:05,  3.79it/s]Loading logs:  60%|██████    | 716/1192 [15:15<01:49,  4.35it/s]Loading logs:  60%|██████    | 717/1192 [15:15<01:54,  4.16it/s]Loading logs:  60%|██████    | 718/1192 [15:16<01:57,  4.04it/s]Loading logs:  60%|██████    | 719/1192 [15:16<01:52,  4.22it/s]Loading logs:  60%|██████    | 720/1192 [15:16<01:52,  4.21it/s]Loading logs:  61%|██████    | 722/1192 [15:16<01:16,  6.11it/s]Loading logs:  61%|██████    | 723/1192 [15:17<01:30,  5.18it/s]Loading logs:  61%|██████    | 724/1192 [15:17<01:29,  5.21it/s]Loading logs:  61%|██████    | 726/1192 [15:17<01:31,  5.07it/s]Loading logs:  61%|██████    | 727/1192 [15:17<01:21,  5.73it/s]Loading logs:  61%|██████    | 728/1192 [15:17<01:16,  6.04it/s]Loading logs:  61%|██████    | 729/1192 [15:18<01:35,  4.83it/s]Loading logs:  61%|██████    | 730/1192 [15:18<01:23,  5.56it/s]Loading logs:  61%|██████▏   | 731/1192 [15:18<01:26,  5.31it/s]Loading logs:  61%|██████▏   | 732/1192 [15:18<01:26,  5.29it/s]Loading logs:  61%|██████▏   | 733/1192 [15:18<01:21,  5.65it/s]Loading logs:  62%|██████▏   | 734/1192 [15:19<01:24,  5.43it/s]Loading logs:  62%|██████▏   | 735/1192 [15:19<01:14,  6.13it/s]Loading logs:  62%|██████▏   | 736/1192 [15:19<01:11,  6.37it/s]Loading logs:  62%|██████▏   | 737/1192 [15:19<01:04,  7.00it/s]Loading logs:  62%|██████▏   | 739/1192 [15:19<01:10,  6.41it/s]Loading logs:  62%|██████▏   | 740/1192 [15:20<01:20,  5.60it/s]Loading logs:  62%|██████▏   | 741/1192 [15:20<01:13,  6.14it/s]Loading logs:  62%|██████▏   | 742/1192 [15:20<01:09,  6.50it/s]Loading logs:  62%|██████▏   | 743/1192 [15:20<01:30,  4.97it/s]Loading logs:  62%|██████▏   | 744/1192 [15:20<01:22,  5.43it/s]Loading logs:  62%|██████▎   | 745/1192 [15:20<01:24,  5.30it/s]Loading logs:  63%|██████▎   | 746/1192 [15:21<01:16,  5.86it/s]Loading logs:  63%|██████▎   | 748/1192 [15:21<01:10,  6.34it/s]Loading logs:  63%|██████▎   | 750/1192 [15:21<01:00,  7.27it/s]Loading logs:  63%|██████▎   | 751/1192 [15:21<01:12,  6.05it/s]Loading logs:  63%|██████▎   | 752/1192 [15:22<01:45,  4.17it/s]Loading logs:  63%|██████▎   | 753/1192 [15:22<01:32,  4.76it/s]Loading logs:  63%|██████▎   | 754/1192 [15:22<01:38,  4.46it/s]Loading logs:  63%|██████▎   | 755/1192 [15:22<01:42,  4.25it/s]Loading logs:  63%|██████▎   | 756/1192 [15:23<02:16,  3.19it/s]Loading logs:  64%|██████▎   | 757/1192 [15:23<02:31,  2.88it/s]Loading logs:  64%|██████▎   | 758/1192 [15:24<02:25,  2.98it/s]Loading logs:  64%|██████▎   | 759/1192 [15:24<02:01,  3.57it/s]Loading logs:  64%|██████▍   | 761/1192 [15:24<01:40,  4.29it/s]Loading logs:  64%|██████▍   | 762/1192 [15:24<01:40,  4.27it/s]Loading logs:  64%|██████▍   | 763/1192 [15:25<01:30,  4.73it/s]Loading logs:  64%|██████▍   | 764/1192 [15:25<01:43,  4.15it/s]Loading logs:  64%|██████▍   | 765/1192 [15:25<01:39,  4.31it/s]Loading logs:  64%|██████▍   | 767/1192 [15:25<01:10,  6.03it/s]Loading logs:  64%|██████▍   | 768/1192 [15:26<01:26,  4.92it/s]Loading logs:  65%|██████▍   | 769/1192 [15:26<02:00,  3.52it/s]Loading logs:  65%|██████▍   | 770/1192 [15:26<01:49,  3.85it/s]Loading logs:  65%|██████▍   | 771/1192 [15:27<01:50,  3.80it/s]Loading logs:  65%|██████▍   | 772/1192 [15:27<02:14,  3.13it/s]Loading logs:  65%|██████▍   | 773/1192 [15:27<01:52,  3.73it/s]Loading logs:  65%|██████▍   | 774/1192 [15:27<01:32,  4.53it/s]Loading logs:  65%|██████▌   | 775/1192 [15:27<01:24,  4.92it/s]Loading logs:  65%|██████▌   | 776/1192 [15:28<01:14,  5.56it/s]Loading logs:  65%|██████▌   | 778/1192 [15:30<03:48,  1.82it/s]Loading logs:  65%|██████▌   | 779/1192 [15:30<03:10,  2.17it/s]Loading logs:  65%|██████▌   | 780/1192 [15:30<02:45,  2.49it/s]Loading logs:  66%|██████▌   | 781/1192 [15:30<02:37,  2.62it/s]Loading logs:  66%|██████▌   | 782/1192 [15:31<02:37,  2.61it/s]Loading logs:  66%|██████▌   | 783/1192 [15:31<03:12,  2.13it/s]Loading logs:  66%|██████▌   | 785/1192 [15:32<02:03,  3.29it/s]Loading logs:  66%|██████▌   | 786/1192 [15:32<01:51,  3.63it/s]Loading logs:  66%|██████▌   | 787/1192 [15:32<02:03,  3.29it/s]Loading logs:  66%|██████▌   | 788/1192 [15:32<01:44,  3.85it/s]Loading logs:  66%|██████▋   | 790/1192 [15:33<01:24,  4.78it/s]Loading logs:  66%|██████▋   | 792/1192 [15:33<01:24,  4.72it/s]Loading logs:  67%|██████▋   | 793/1192 [15:33<01:34,  4.20it/s]Loading logs:  67%|██████▋   | 794/1192 [15:34<01:32,  4.29it/s]Loading logs:  67%|██████▋   | 795/1192 [15:34<01:37,  4.09it/s]Loading logs:  67%|██████▋   | 796/1192 [15:34<01:23,  4.75it/s]Loading logs:  67%|██████▋   | 797/1192 [15:34<01:15,  5.22it/s]Loading logs:  67%|██████▋   | 798/1192 [15:35<01:43,  3.80it/s]Loading logs:  67%|██████▋   | 799/1192 [15:35<02:05,  3.12it/s]Loading logs:  67%|██████▋   | 800/1192 [15:35<01:48,  3.61it/s]Loading logs:  67%|██████▋   | 801/1192 [15:35<01:44,  3.74it/s]Loading logs:  67%|██████▋   | 803/1192 [15:36<01:13,  5.31it/s]Loading logs:  67%|██████▋   | 804/1192 [15:36<01:12,  5.35it/s]Loading logs:  68%|██████▊   | 805/1192 [15:36<01:12,  5.33it/s]Loading logs:  68%|██████▊   | 806/1192 [15:36<01:30,  4.24it/s]Loading logs:  68%|██████▊   | 807/1192 [15:37<01:24,  4.54it/s]Loading logs:  68%|██████▊   | 808/1192 [15:37<01:43,  3.72it/s]Loading logs:  68%|██████▊   | 809/1192 [15:37<02:00,  3.19it/s]Loading logs:  68%|██████▊   | 810/1192 [15:38<01:47,  3.57it/s]Loading logs:  68%|██████▊   | 811/1192 [15:38<01:35,  3.99it/s]Loading logs:  68%|██████▊   | 812/1192 [15:38<01:23,  4.57it/s]Loading logs:  68%|██████▊   | 813/1192 [15:38<01:31,  4.15it/s]Loading logs:  68%|██████▊   | 814/1192 [15:38<01:26,  4.39it/s]Loading logs:  68%|██████▊   | 815/1192 [15:39<02:20,  2.68it/s]Loading logs:  68%|██████▊   | 816/1192 [15:39<02:12,  2.83it/s]Loading logs:  69%|██████▊   | 818/1192 [15:40<01:25,  4.37it/s]Loading logs:  69%|██████▊   | 819/1192 [15:40<01:24,  4.40it/s]Loading logs:  69%|██████▉   | 820/1192 [15:40<01:48,  3.44it/s]Loading logs:  69%|██████▉   | 821/1192 [15:40<01:29,  4.13it/s]Loading logs:  69%|██████▉   | 822/1192 [15:41<02:19,  2.65it/s]Loading logs:  69%|██████▉   | 823/1192 [15:41<02:00,  3.06it/s]Loading logs:  69%|██████▉   | 825/1192 [15:42<01:29,  4.09it/s]Loading logs:  69%|██████▉   | 826/1192 [15:42<02:17,  2.67it/s]Loading logs:  69%|██████▉   | 827/1192 [15:43<01:56,  3.14it/s]Loading logs:  69%|██████▉   | 828/1192 [15:43<02:06,  2.89it/s]Loading logs:  70%|██████▉   | 829/1192 [15:43<02:19,  2.60it/s]Loading logs:  70%|██████▉   | 830/1192 [15:44<01:59,  3.03it/s]Loading logs:  70%|██████▉   | 831/1192 [15:44<01:43,  3.48it/s]Loading logs:  70%|██████▉   | 832/1192 [15:44<01:32,  3.91it/s]Loading logs:  70%|██████▉   | 833/1192 [15:45<02:40,  2.23it/s]Loading logs:  70%|██████▉   | 834/1192 [15:45<02:12,  2.70it/s]Loading logs:  70%|███████   | 835/1192 [15:45<02:01,  2.93it/s]Loading logs:  70%|███████   | 836/1192 [15:46<01:47,  3.31it/s]Loading logs:  70%|███████   | 837/1192 [15:46<01:27,  4.06it/s]Loading logs:  70%|███████   | 838/1192 [15:46<01:13,  4.79it/s]Loading logs:  70%|███████   | 839/1192 [15:46<01:11,  4.91it/s]Loading logs:  70%|███████   | 840/1192 [15:47<01:59,  2.95it/s]Loading logs:  71%|███████   | 841/1192 [15:47<01:36,  3.63it/s]Loading logs:  71%|███████   | 842/1192 [15:47<01:23,  4.20it/s]Loading logs:  71%|███████   | 843/1192 [15:47<01:24,  4.14it/s]Loading logs:  71%|███████   | 844/1192 [15:47<01:11,  4.89it/s]Loading logs:  71%|███████   | 845/1192 [15:47<01:02,  5.53it/s]Loading logs:  71%|███████   | 846/1192 [15:48<01:07,  5.11it/s]Loading logs:  71%|███████   | 847/1192 [15:48<01:10,  4.92it/s]Loading logs:  71%|███████   | 849/1192 [15:48<00:57,  5.93it/s]Loading logs:  71%|███████▏  | 850/1192 [15:49<02:08,  2.65it/s]Loading logs:  71%|███████▏  | 851/1192 [15:49<01:48,  3.15it/s]Loading logs:  71%|███████▏  | 852/1192 [15:49<01:34,  3.62it/s]Loading logs:  72%|███████▏  | 854/1192 [15:50<01:19,  4.25it/s]Loading logs:  72%|███████▏  | 855/1192 [15:50<01:31,  3.69it/s]Loading logs:  72%|███████▏  | 856/1192 [15:51<02:44,  2.04it/s]Loading logs:  72%|███████▏  | 857/1192 [15:51<02:11,  2.55it/s]Loading logs:  72%|███████▏  | 858/1192 [15:52<01:52,  2.96it/s]Loading logs:  72%|███████▏  | 860/1192 [15:52<01:15,  4.40it/s]Loading logs:  72%|███████▏  | 861/1192 [15:52<01:27,  3.80it/s]Loading logs:  72%|███████▏  | 862/1192 [15:52<01:15,  4.36it/s]Loading logs:  72%|███████▏  | 863/1192 [15:53<01:52,  2.92it/s]Loading logs:  72%|███████▏  | 864/1192 [15:53<01:34,  3.48it/s]Loading logs:  73%|███████▎  | 865/1192 [15:53<01:21,  4.04it/s]Loading logs:  73%|███████▎  | 866/1192 [15:54<01:36,  3.37it/s]Loading logs:  73%|███████▎  | 867/1192 [15:54<01:18,  4.13it/s]Loading logs:  73%|███████▎  | 868/1192 [15:54<01:12,  4.47it/s]Loading logs:  73%|███████▎  | 869/1192 [15:54<01:06,  4.85it/s]Loading logs:  73%|███████▎  | 871/1192 [15:54<00:54,  5.84it/s]Loading logs:  73%|███████▎  | 872/1192 [15:55<01:01,  5.19it/s]Loading logs:  73%|███████▎  | 874/1192 [15:55<01:04,  4.89it/s]Loading logs:  73%|███████▎  | 875/1192 [15:55<00:59,  5.31it/s]Loading logs:  73%|███████▎  | 876/1192 [15:58<04:48,  1.10it/s]Loading logs:  74%|███████▎  | 878/1192 [15:59<03:24,  1.54it/s]Loading logs:  74%|███████▎  | 879/1192 [15:59<02:58,  1.76it/s]Loading logs:  74%|███████▍  | 881/1192 [16:00<02:14,  2.31it/s]Loading logs:  74%|███████▍  | 882/1192 [16:00<01:55,  2.69it/s]Loading logs:  74%|███████▍  | 883/1192 [16:01<02:23,  2.16it/s]Loading logs:  74%|███████▍  | 884/1192 [16:01<01:57,  2.62it/s]Loading logs:  74%|███████▍  | 886/1192 [16:01<01:33,  3.29it/s]Loading logs:  74%|███████▍  | 887/1192 [16:02<01:38,  3.08it/s]Loading logs:  74%|███████▍  | 888/1192 [16:02<01:21,  3.72it/s]Loading logs:  75%|███████▍  | 889/1192 [16:02<01:23,  3.64it/s]Loading logs:  75%|███████▍  | 890/1192 [16:02<01:27,  3.45it/s]Loading logs:  75%|███████▍  | 891/1192 [16:03<02:27,  2.05it/s]Loading logs:  75%|███████▍  | 892/1192 [16:03<01:54,  2.62it/s]Loading logs:  75%|███████▍  | 893/1192 [16:04<01:37,  3.08it/s]Loading logs:  75%|███████▌  | 894/1192 [16:04<01:17,  3.83it/s]Loading logs:  75%|███████▌  | 895/1192 [16:04<01:09,  4.29it/s]Loading logs:  75%|███████▌  | 896/1192 [16:04<01:11,  4.14it/s]Loading logs:  75%|███████▌  | 897/1192 [16:04<00:59,  4.93it/s]Loading logs:  75%|███████▌  | 898/1192 [16:04<00:56,  5.19it/s]Loading logs:  75%|███████▌  | 899/1192 [16:05<01:14,  3.94it/s]Loading logs:  76%|███████▌  | 900/1192 [16:05<01:16,  3.83it/s]Loading logs:  76%|███████▌  | 901/1192 [16:05<01:21,  3.56it/s]Loading logs:  76%|███████▌  | 902/1192 [16:06<01:13,  3.93it/s]Loading logs:  76%|███████▌  | 904/1192 [16:06<01:32,  3.12it/s]Loading logs:  76%|███████▌  | 905/1192 [16:07<01:36,  2.97it/s]Loading logs:  76%|███████▌  | 906/1192 [16:22<19:45,  4.14s/it]Loading logs:  76%|███████▌  | 907/1192 [16:22<15:17,  3.22s/it]Loading logs:  76%|███████▋  | 909/1192 [16:23<09:05,  1.93s/it]Loading logs:  76%|███████▋  | 910/1192 [16:23<07:10,  1.53s/it]Loading logs:  76%|███████▋  | 911/1192 [16:23<05:30,  1.17s/it]Loading logs:  77%|███████▋  | 912/1192 [16:24<05:13,  1.12s/it]Loading logs:  77%|███████▋  | 913/1192 [16:25<04:18,  1.08it/s]Loading logs:  77%|███████▋  | 915/1192 [16:25<02:39,  1.74it/s]Loading logs:  77%|███████▋  | 916/1192 [16:25<02:20,  1.97it/s]Loading logs:  77%|███████▋  | 917/1192 [16:30<07:44,  1.69s/it]Loading logs:  77%|███████▋  | 918/1192 [16:31<05:48,  1.27s/it]Loading logs:  77%|███████▋  | 919/1192 [16:31<04:30,  1.01it/s]Loading logs:  77%|███████▋  | 920/1192 [16:31<03:37,  1.25it/s]Loading logs:  77%|███████▋  | 921/1192 [16:31<02:42,  1.67it/s]Loading logs:  77%|███████▋  | 922/1192 [16:31<02:08,  2.10it/s]Loading logs:  77%|███████▋  | 923/1192 [16:32<01:43,  2.61it/s]Loading logs:  78%|███████▊  | 925/1192 [16:32<01:07,  3.97it/s]Loading logs:  78%|███████▊  | 926/1192 [16:32<01:01,  4.33it/s]Loading logs:  78%|███████▊  | 927/1192 [16:45<16:07,  3.65s/it]Loading logs:  78%|███████▊  | 928/1192 [16:45<11:52,  2.70s/it]Loading logs:  78%|███████▊  | 929/1192 [16:46<08:40,  1.98s/it]Loading logs:  78%|███████▊  | 931/1192 [16:55<14:14,  3.27s/it]Loading logs:  78%|███████▊  | 932/1192 [16:56<10:59,  2.54s/it]Loading logs:  78%|███████▊  | 933/1192 [16:56<08:22,  1.94s/it]Loading logs:  78%|███████▊  | 934/1192 [16:57<07:22,  1.72s/it]Loading logs:  78%|███████▊  | 935/1192 [17:00<09:24,  2.20s/it]Loading logs:  79%|███████▊  | 936/1192 [17:00<06:55,  1.62s/it]Loading logs:  79%|███████▊  | 937/1192 [17:14<21:24,  5.04s/it]Loading logs:  79%|███████▊  | 938/1192 [17:14<15:17,  3.61s/it]Loading logs:  79%|███████▉  | 939/1192 [17:14<11:08,  2.64s/it]Loading logs:  79%|███████▉  | 940/1192 [17:15<07:59,  1.90s/it]Loading logs:  79%|███████▉  | 941/1192 [17:15<06:01,  1.44s/it]Loading logs:  79%|███████▉  | 942/1192 [17:15<04:23,  1.05s/it]Loading logs:  79%|███████▉  | 943/1192 [17:15<03:20,  1.24it/s]Loading logs:  79%|███████▉  | 945/1192 [17:15<02:01,  2.03it/s]Loading logs:  79%|███████▉  | 946/1192 [17:16<01:43,  2.37it/s]Loading logs:  79%|███████▉  | 947/1192 [17:19<04:22,  1.07s/it]Loading logs:  80%|███████▉  | 948/1192 [17:25<10:13,  2.51s/it]Loading logs:  80%|███████▉  | 949/1192 [17:25<07:29,  1.85s/it]Loading logs:  80%|███████▉  | 950/1192 [17:35<16:25,  4.07s/it]Loading logs:  80%|███████▉  | 951/1192 [17:35<11:49,  2.94s/it]Loading logs:  80%|███████▉  | 952/1192 [17:35<08:44,  2.19s/it]Loading logs:  80%|███████▉  | 953/1192 [17:35<06:21,  1.60s/it]Loading logs:  80%|████████  | 954/1192 [17:36<05:39,  1.42s/it]Loading logs:  80%|████████  | 956/1192 [17:37<03:49,  1.03it/s]Loading logs:  80%|████████  | 957/1192 [17:45<10:29,  2.68s/it]Loading logs:  80%|████████  | 959/1192 [17:45<06:15,  1.61s/it]Loading logs:  81%|████████  | 961/1192 [17:46<04:16,  1.11s/it]Loading logs:  81%|████████  | 962/1192 [17:46<03:29,  1.10it/s]Loading logs:  81%|████████  | 963/1192 [17:46<02:50,  1.34it/s]Loading logs:  81%|████████  | 964/1192 [17:47<02:21,  1.61it/s]Loading logs:  81%|████████  | 965/1192 [17:47<01:51,  2.04it/s]Loading logs:  81%|████████  | 966/1192 [17:47<01:36,  2.34it/s]Loading logs:  81%|████████  | 967/1192 [17:47<01:40,  2.23it/s]Loading logs:  81%|████████  | 968/1192 [17:48<01:21,  2.75it/s]Loading logs:  81%|████████▏ | 969/1192 [17:54<07:38,  2.06s/it]Loading logs:  81%|████████▏ | 970/1192 [18:20<33:27,  9.04s/it]Loading logs:  81%|████████▏ | 971/1192 [18:20<24:02,  6.53s/it]Loading logs:  82%|████████▏ | 972/1192 [18:21<17:18,  4.72s/it]Loading logs:  82%|████████▏ | 973/1192 [18:21<12:21,  3.39s/it]Loading logs:  82%|████████▏ | 974/1192 [18:21<08:52,  2.44s/it]Loading logs:  82%|████████▏ | 975/1192 [18:21<06:35,  1.82s/it]Loading logs:  82%|████████▏ | 976/1192 [18:22<04:42,  1.31s/it]Loading logs:  82%|████████▏ | 977/1192 [18:22<03:31,  1.02it/s]Loading logs:  82%|████████▏ | 978/1192 [18:22<02:41,  1.33it/s]Loading logs:  82%|████████▏ | 979/1192 [18:22<02:03,  1.72it/s]Loading logs:  82%|████████▏ | 980/1192 [18:23<01:50,  1.92it/s]Loading logs:  82%|████████▏ | 982/1192 [18:33<09:11,  2.62s/it]Loading logs:  82%|████████▏ | 983/1192 [18:33<07:01,  2.01s/it]Loading logs:  83%|████████▎ | 984/1192 [18:33<05:17,  1.53s/it]Loading logs:  83%|████████▎ | 985/1192 [18:34<04:18,  1.25s/it]Loading logs:  83%|████████▎ | 987/1192 [18:34<02:52,  1.19it/s]Loading logs:  83%|████████▎ | 988/1192 [18:43<09:38,  2.84s/it]Loading logs:  83%|████████▎ | 989/1192 [18:44<07:18,  2.16s/it]Loading logs:  83%|████████▎ | 990/1192 [18:44<05:38,  1.67s/it]Loading logs:  83%|████████▎ | 991/1192 [18:58<16:38,  4.97s/it]Loading logs:  83%|████████▎ | 992/1192 [18:58<12:14,  3.67s/it]Loading logs:  83%|████████▎ | 994/1192 [18:58<06:53,  2.09s/it]Loading logs:  83%|████████▎ | 995/1192 [19:13<17:09,  5.23s/it]Loading logs:  84%|████████▎ | 996/1192 [19:14<12:54,  3.95s/it]Loading logs:  84%|████████▎ | 997/1192 [19:14<09:44,  3.00s/it]Loading logs:  84%|████████▎ | 998/1192 [19:14<07:12,  2.23s/it]Loading logs:  84%|████████▍ | 999/1192 [19:14<05:18,  1.65s/it]Loading logs:  84%|████████▍ | 1000/1192 [19:14<03:52,  1.21s/it]Loading logs:  84%|████████▍ | 1001/1192 [19:15<02:50,  1.12it/s]Loading logs:  84%|████████▍ | 1002/1192 [19:23<09:50,  3.11s/it]Loading logs:  84%|████████▍ | 1003/1192 [19:23<07:02,  2.23s/it]Loading logs:  84%|████████▍ | 1004/1192 [19:24<05:25,  1.73s/it]Loading logs:  84%|████████▍ | 1005/1192 [19:42<20:40,  6.63s/it]Loading logs:  84%|████████▍ | 1006/1192 [19:42<14:51,  4.79s/it]Loading logs:  84%|████████▍ | 1007/1192 [19:42<10:29,  3.40s/it]Loading logs:  85%|████████▍ | 1008/1192 [19:43<07:27,  2.43s/it]Loading logs:  85%|████████▍ | 1009/1192 [19:43<05:39,  1.86s/it]Loading logs:  85%|████████▍ | 1010/1192 [19:43<04:08,  1.36s/it]Loading logs:  85%|████████▍ | 1011/1192 [19:47<06:08,  2.03s/it]Loading logs:  85%|████████▍ | 1012/1192 [19:47<04:27,  1.49s/it]Loading logs:  85%|████████▍ | 1013/1192 [19:47<03:13,  1.08s/it]Loading logs:  85%|████████▌ | 1014/1192 [19:48<02:40,  1.11it/s]Loading logs:  85%|████████▌ | 1015/1192 [19:48<02:03,  1.43it/s]Loading logs:  85%|████████▌ | 1016/1192 [19:54<06:24,  2.18s/it]Loading logs:  85%|████████▌ | 1017/1192 [20:13<21:03,  7.22s/it]Loading logs:  85%|████████▌ | 1018/1192 [20:13<14:44,  5.09s/it]Loading logs:  85%|████████▌ | 1019/1192 [20:18<15:13,  5.28s/it]Loading logs:  86%|████████▌ | 1020/1192 [20:19<10:48,  3.77s/it]Loading logs:  86%|████████▌ | 1021/1192 [20:26<13:23,  4.70s/it]Loading logs:  86%|████████▌ | 1022/1192 [20:26<09:32,  3.37s/it]Loading logs:  86%|████████▌ | 1023/1192 [20:26<07:03,  2.50s/it]Loading logs:  86%|████████▌ | 1024/1192 [20:27<05:02,  1.80s/it]Loading logs:  86%|████████▌ | 1025/1192 [20:27<03:40,  1.32s/it]Loading logs:  86%|████████▌ | 1026/1192 [20:29<04:34,  1.66s/it]Loading logs:  86%|████████▌ | 1028/1192 [20:29<02:37,  1.04it/s]Loading logs:  86%|████████▋ | 1030/1192 [20:30<01:39,  1.63it/s]Loading logs:  86%|████████▋ | 1031/1192 [20:48<12:14,  4.56s/it]Loading logs:  87%|████████▋ | 1032/1192 [20:48<09:21,  3.51s/it]Loading logs:  87%|████████▋ | 1033/1192 [20:55<11:17,  4.26s/it]Loading logs:  87%|████████▋ | 1034/1192 [20:55<08:31,  3.23s/it]Loading logs:  87%|████████▋ | 1035/1192 [20:56<06:28,  2.48s/it]Loading logs:  87%|████████▋ | 1036/1192 [20:56<05:07,  1.97s/it]Loading logs:  87%|████████▋ | 1037/1192 [20:57<03:57,  1.54s/it]Loading logs:  87%|████████▋ | 1038/1192 [20:57<02:59,  1.17s/it]Loading logs:  87%|████████▋ | 1039/1192 [20:57<02:12,  1.16it/s]Loading logs:  87%|████████▋ | 1040/1192 [20:58<01:51,  1.37it/s]Loading logs:  87%|████████▋ | 1041/1192 [20:58<01:25,  1.76it/s]Loading logs:  87%|████████▋ | 1042/1192 [20:58<01:11,  2.10it/s]Loading logs:  88%|████████▊ | 1043/1192 [20:59<01:28,  1.68it/s]Loading logs:  88%|████████▊ | 1044/1192 [20:59<01:10,  2.09it/s]Loading logs:  88%|████████▊ | 1045/1192 [20:59<00:54,  2.70it/s]Loading logs:  88%|████████▊ | 1046/1192 [20:59<00:46,  3.14it/s]Loading logs:  88%|████████▊ | 1048/1192 [21:00<00:45,  3.15it/s]Loading logs:  88%|████████▊ | 1049/1192 [21:00<00:41,  3.43it/s]Loading logs:  88%|████████▊ | 1050/1192 [21:00<00:34,  4.12it/s]Loading logs:  88%|████████▊ | 1051/1192 [21:01<00:43,  3.24it/s]Loading logs:  88%|████████▊ | 1052/1192 [21:01<00:41,  3.38it/s]Loading logs:  88%|████████▊ | 1053/1192 [21:01<00:43,  3.20it/s]Loading logs:  88%|████████▊ | 1054/1192 [21:02<00:48,  2.85it/s]Loading logs:  89%|████████▊ | 1055/1192 [21:02<00:54,  2.51it/s]Loading logs:  89%|████████▊ | 1056/1192 [21:03<00:42,  3.18it/s]Loading logs:  89%|████████▊ | 1057/1192 [21:04<01:22,  1.63it/s]Loading logs:  89%|████████▉ | 1058/1192 [21:04<01:02,  2.15it/s]Loading logs:  89%|████████▉ | 1059/1192 [21:04<00:54,  2.45it/s]Loading logs:  89%|████████▉ | 1060/1192 [21:05<00:48,  2.72it/s]Loading logs:  89%|████████▉ | 1061/1192 [21:05<00:45,  2.89it/s]Loading logs:  89%|████████▉ | 1062/1192 [21:05<00:41,  3.14it/s]Loading logs:  89%|████████▉ | 1063/1192 [21:05<00:33,  3.87it/s]Loading logs:  89%|████████▉ | 1064/1192 [21:05<00:31,  4.12it/s]Loading logs:  89%|████████▉ | 1066/1192 [21:06<00:24,  5.16it/s]Loading logs:  90%|████████▉ | 1067/1192 [21:06<00:32,  3.85it/s]Loading logs:  90%|████████▉ | 1069/1192 [21:07<00:39,  3.13it/s]Loading logs:  90%|████████▉ | 1070/1192 [21:07<00:38,  3.15it/s]Loading logs:  90%|████████▉ | 1071/1192 [21:08<00:47,  2.53it/s]Loading logs:  90%|████████▉ | 1072/1192 [21:08<00:44,  2.67it/s]Loading logs:  90%|█████████ | 1073/1192 [21:08<00:35,  3.33it/s]Loading logs:  90%|█████████ | 1074/1192 [21:09<00:36,  3.23it/s]Loading logs:  90%|█████████ | 1075/1192 [21:09<00:31,  3.70it/s]Loading logs:  90%|█████████ | 1076/1192 [21:09<00:31,  3.73it/s]Loading logs:  90%|█████████ | 1077/1192 [21:09<00:27,  4.14it/s]Loading logs:  90%|█████████ | 1078/1192 [21:10<00:34,  3.30it/s]Loading logs:  91%|█████████ | 1079/1192 [21:10<00:38,  2.95it/s]Loading logs:  91%|█████████ | 1080/1192 [21:10<00:33,  3.38it/s]Loading logs:  91%|█████████ | 1081/1192 [21:10<00:28,  3.96it/s]Loading logs:  91%|█████████ | 1082/1192 [21:11<00:26,  4.22it/s]Loading logs:  91%|█████████ | 1083/1192 [21:12<00:46,  2.36it/s]Loading logs:  91%|█████████ | 1084/1192 [21:12<00:40,  2.68it/s]Loading logs:  91%|█████████ | 1085/1192 [21:12<00:33,  3.20it/s]Loading logs:  91%|█████████ | 1086/1192 [21:12<00:33,  3.13it/s]Loading logs:  91%|█████████ | 1087/1192 [21:12<00:28,  3.64it/s]Loading logs:  91%|█████████▏| 1088/1192 [21:18<03:16,  1.89s/it]Loading logs:  91%|█████████▏| 1089/1192 [21:18<02:25,  1.42s/it]Loading logs:  91%|█████████▏| 1090/1192 [21:19<01:51,  1.09s/it]Loading logs:  92%|█████████▏| 1091/1192 [21:19<01:27,  1.15it/s]Loading logs:  92%|█████████▏| 1092/1192 [21:20<01:18,  1.27it/s]Loading logs:  92%|█████████▏| 1093/1192 [21:20<00:58,  1.69it/s]Loading logs:  92%|█████████▏| 1094/1192 [21:20<00:43,  2.24it/s]Loading logs:  92%|█████████▏| 1095/1192 [21:20<00:44,  2.20it/s]Loading logs:  92%|█████████▏| 1096/1192 [21:22<01:06,  1.45it/s]Loading logs:  92%|█████████▏| 1097/1192 [21:22<01:02,  1.53it/s]Loading logs:  92%|█████████▏| 1098/1192 [21:22<00:47,  2.00it/s]Loading logs:  92%|█████████▏| 1099/1192 [21:23<00:38,  2.40it/s]Loading logs:  92%|█████████▏| 1100/1192 [21:23<00:41,  2.21it/s]Loading logs:  92%|█████████▏| 1101/1192 [21:23<00:36,  2.53it/s]Loading logs:  92%|█████████▏| 1102/1192 [21:24<00:36,  2.46it/s]Loading logs:  93%|█████████▎| 1103/1192 [21:24<00:29,  3.01it/s]Loading logs:  93%|█████████▎| 1104/1192 [21:24<00:32,  2.70it/s]Loading logs:  93%|█████████▎| 1105/1192 [21:25<00:25,  3.36it/s]Loading logs:  93%|█████████▎| 1107/1192 [21:25<00:16,  5.09it/s]Loading logs:  93%|█████████▎| 1108/1192 [21:25<00:22,  3.81it/s]Loading logs:  93%|█████████▎| 1109/1192 [21:26<00:33,  2.51it/s]Loading logs:  93%|█████████▎| 1110/1192 [21:26<00:26,  3.12it/s]Loading logs:  93%|█████████▎| 1111/1192 [21:26<00:22,  3.55it/s]Loading logs:  93%|█████████▎| 1112/1192 [21:28<00:57,  1.39it/s]Loading logs:  93%|█████████▎| 1113/1192 [21:28<00:46,  1.69it/s]Loading logs:  93%|█████████▎| 1114/1192 [21:29<00:44,  1.73it/s]Loading logs:  94%|█████████▎| 1115/1192 [21:29<00:34,  2.26it/s]Loading logs:  94%|█████████▎| 1116/1192 [21:29<00:27,  2.75it/s]Loading logs:  94%|█████████▎| 1117/1192 [21:29<00:23,  3.16it/s]Loading logs:  94%|█████████▍| 1118/1192 [21:30<00:19,  3.88it/s]Loading logs:  94%|█████████▍| 1119/1192 [21:30<00:15,  4.73it/s]Loading logs:  94%|█████████▍| 1120/1192 [21:30<00:14,  5.11it/s]Loading logs:  94%|█████████▍| 1121/1192 [21:31<00:31,  2.23it/s]Loading logs:  94%|█████████▍| 1122/1192 [21:31<00:25,  2.71it/s]Loading logs:  94%|█████████▍| 1123/1192 [21:31<00:23,  2.99it/s]Loading logs:  94%|█████████▍| 1124/1192 [21:32<00:32,  2.08it/s]Loading logs:  94%|█████████▍| 1126/1192 [21:33<00:23,  2.80it/s]Loading logs:  95%|█████████▍| 1127/1192 [21:33<00:21,  3.06it/s]Loading logs:  95%|█████████▍| 1128/1192 [21:33<00:23,  2.68it/s]Loading logs:  95%|█████████▍| 1129/1192 [21:35<00:40,  1.55it/s]Loading logs:  95%|█████████▍| 1130/1192 [21:35<00:34,  1.82it/s]Loading logs:  95%|█████████▍| 1131/1192 [21:36<00:35,  1.73it/s]Loading logs:  95%|█████████▍| 1132/1192 [21:36<00:36,  1.63it/s]Loading logs:  95%|█████████▌| 1134/1192 [21:37<00:22,  2.62it/s]Loading logs:  95%|█████████▌| 1135/1192 [22:02<06:11,  6.52s/it]Loading logs:  95%|█████████▌| 1136/1192 [22:16<07:50,  8.40s/it]Loading logs:  95%|█████████▌| 1137/1192 [22:16<05:46,  6.29s/it]Loading logs:  95%|█████████▌| 1138/1192 [22:17<04:07,  4.58s/it]Loading logs:  96%|█████████▌| 1139/1192 [22:17<03:00,  3.41s/it]Loading logs:  96%|█████████▌| 1140/1192 [22:17<02:08,  2.47s/it]Loading logs:  96%|█████████▌| 1142/1192 [22:17<01:10,  1.41s/it]Loading logs:  96%|█████████▌| 1143/1192 [22:18<00:54,  1.10s/it]Loading logs:  96%|█████████▌| 1144/1192 [22:18<00:40,  1.19it/s]Loading logs:  96%|█████████▌| 1145/1192 [22:18<00:30,  1.52it/s]Loading logs:  96%|█████████▌| 1146/1192 [22:18<00:27,  1.65it/s]Loading logs:  96%|█████████▌| 1147/1192 [22:18<00:21,  2.05it/s]Loading logs:  96%|█████████▋| 1148/1192 [22:32<03:08,  4.29s/it]Loading logs:  96%|█████████▋| 1149/1192 [22:32<02:12,  3.09s/it]Loading logs:  97%|█████████▋| 1151/1192 [22:33<01:11,  1.74s/it]Loading logs:  97%|█████████▋| 1152/1192 [22:33<00:54,  1.35s/it]Loading logs:  97%|█████████▋| 1153/1192 [22:33<00:40,  1.04s/it]Loading logs:  97%|█████████▋| 1154/1192 [22:33<00:33,  1.13it/s]Loading logs:  97%|█████████▋| 1155/1192 [22:39<01:19,  2.14s/it]Loading logs:  97%|█████████▋| 1157/1192 [22:39<00:42,  1.22s/it]Loading logs:  97%|█████████▋| 1158/1192 [22:55<02:45,  4.86s/it]Loading logs:  97%|█████████▋| 1159/1192 [22:55<02:01,  3.69s/it]Loading logs:  97%|█████████▋| 1160/1192 [22:56<01:29,  2.80s/it]Loading logs:  97%|█████████▋| 1161/1192 [22:56<01:06,  2.13s/it]Loading logs:  98%|█████████▊| 1163/1192 [22:57<00:37,  1.30s/it]Loading logs:  98%|█████████▊| 1164/1192 [22:57<00:30,  1.08s/it]Loading logs:  98%|█████████▊| 1165/1192 [22:57<00:23,  1.14it/s]Loading logs:  98%|█████████▊| 1166/1192 [23:02<00:47,  1.81s/it]Loading logs:  98%|█████████▊| 1167/1192 [23:06<01:05,  2.62s/it]Loading logs:  98%|█████████▊| 1168/1192 [23:07<00:49,  2.08s/it]Loading logs:  98%|█████████▊| 1169/1192 [23:07<00:35,  1.53s/it]Loading logs:  98%|█████████▊| 1170/1192 [23:08<00:24,  1.14s/it]Loading logs:  98%|█████████▊| 1171/1192 [23:18<01:18,  3.74s/it]Loading logs:  98%|█████████▊| 1172/1192 [23:18<00:54,  2.72s/it]Loading logs:  98%|█████████▊| 1173/1192 [23:18<00:37,  1.96s/it]Loading logs:  98%|█████████▊| 1174/1192 [23:18<00:27,  1.50s/it]Loading logs:  99%|█████████▊| 1175/1192 [23:23<00:39,  2.30s/it]Loading logs:  99%|█████████▊| 1176/1192 [23:23<00:26,  1.69s/it]Loading logs:  99%|█████████▊| 1177/1192 [23:30<00:51,  3.47s/it]Loading logs:  99%|█████████▉| 1178/1192 [23:31<00:35,  2.50s/it]Loading logs:  99%|█████████▉| 1179/1192 [23:31<00:23,  1.79s/it]Loading logs:  99%|█████████▉| 1180/1192 [23:40<00:47,  3.98s/it]Loading logs:  99%|█████████▉| 1181/1192 [23:40<00:31,  2.83s/it]Loading logs:  99%|█████████▉| 1182/1192 [23:40<00:20,  2.05s/it]Loading logs:  99%|█████████▉| 1183/1192 [23:40<00:13,  1.47s/it]Loading logs:  99%|█████████▉| 1184/1192 [23:41<00:08,  1.08s/it]Loading logs:  99%|█████████▉| 1185/1192 [23:44<00:12,  1.79s/it]Loading logs:  99%|█████████▉| 1186/1192 [23:45<00:08,  1.45s/it]Loading logs: 100%|█████████▉| 1187/1192 [23:45<00:05,  1.10s/it]Loading logs: 100%|█████████▉| 1189/1192 [23:45<00:01,  1.56it/s]Loading logs: 100%|█████████▉| 1190/1192 [23:45<00:01,  1.89it/s]Loading logs: 100%|█████████▉| 1191/1192 [23:46<00:00,  2.23it/s]Loading logs: 100%|██████████| 1192/1192 [23:46<00:00,  2.45it/s]Loading logs: 100%|██████████| 1192/1192 [23:46<00:00,  1.20s/it]
+Loading logs:   0%|          | 0/214 [00:00<?, ?it/s]Loading logs:   2%|▏         | 4/214 [00:00<00:05, 39.50it/s]Loading logs:   4%|▍         | 9/214 [00:00<00:05, 38.80it/s]Loading logs:   6%|▌         | 13/214 [00:00<00:05, 38.85it/s]Loading logs:  10%|▉         | 21/214 [00:00<00:03, 50.65it/s]Loading logs:  13%|█▎        | 27/214 [00:00<00:04, 45.04it/s]Loading logs:  17%|█▋        | 37/214 [00:00<00:03, 47.45it/s]Loading logs:  20%|█▉        | 42/214 [00:00<00:03, 47.90it/s]Loading logs:  23%|██▎       | 50/214 [00:01<00:02, 54.96it/s]Loading logs:  26%|██▌       | 56/214 [00:01<00:03, 51.36it/s]Loading logs:  31%|███       | 66/214 [00:01<00:02, 63.20it/s]Loading logs:  35%|███▌      | 75/214 [00:01<00:02, 68.19it/s]Loading logs:  39%|███▉      | 83/214 [00:01<00:01, 67.01it/s]Loading logs:  42%|████▏     | 90/214 [00:01<00:01, 66.81it/s]Loading logs:  46%|████▌     | 98/214 [00:01<00:01, 65.49it/s]Loading logs:  49%|████▉     | 105/214 [00:01<00:01, 64.30it/s]Loading logs:  54%|█████▎    | 115/214 [00:01<00:01, 69.59it/s]Loading logs:  57%|█████▋    | 122/214 [00:02<00:01, 67.60it/s]Loading logs:  61%|██████    | 130/214 [00:02<00:01, 68.11it/s]Loading logs:  66%|██████▌   | 141/214 [00:02<00:00, 74.52it/s]Loading logs:  70%|██████▉   | 149/214 [00:02<00:00, 67.62it/s]Loading logs:  73%|███████▎  | 156/214 [00:02<00:00, 58.73it/s]Loading logs:  76%|███████▌  | 163/214 [00:02<00:00, 58.98it/s]Loading logs:  82%|████████▏ | 175/214 [00:02<00:00, 73.00it/s]Loading logs:  86%|████████▌ | 183/214 [00:02<00:00, 67.19it/s]Loading logs:  89%|████████▉ | 191/214 [00:03<00:00, 65.36it/s]Loading logs:  93%|█████████▎| 198/214 [00:03<00:00, 61.07it/s]Loading logs:  96%|█████████▌| 205/214 [00:03<00:00, 62.92it/s]Loading logs:  99%|█████████▉| 212/214 [00:03<00:00, 57.78it/s]Loading logs: 100%|██████████| 214/214 [00:03<00:00, 60.74it/s]
+[2026-04-25 03:10:18,354][navsim.planning.training.dataset][INFO] - 
+                Starting caching of 103288 tokens.
+                Note: Caching tokens within the training loader is slow. Only use it with a small number of tokens.
+                You can cache large numbers of tokens using the `run_dataset_caching.py` python script.
+                
+Caching Dataset:   0%|          | 0/103288 [00:00<?, ?it/s]Caching Dataset:   0%|          | 0/103288 [00:35<?, ?it/s]
+Error executing job with overrides: ['agent=drivoR', 'experiment_name=training_drivoR_Nav1_traj_long_25epochs_v4', 'train_test_split=navtrain', 'navsim_log_path=/avl-west/navsim/trainval_navsim_logs/trainval', 'train_test_split.data_split=trainval', '+train_test_split.log_splits=null', 'cache_path=/closed-loop-e2e/drivor-exp/navsim_cache_nommcv_v4', 'use_cache_without_dataset=false', 'sensor_blobs_path=/avl-west/navsim/trainval_sensor_blobs/trainval', 'trainer.params.max_epochs=25', 'dataloader.params.prefetch_factor=2', 'dataloader.params.batch_size=8', 'agent.lr_args.name=AdamW', 'agent.lr_args.base_lr=0.0002', 'agent.num_gpus=8', 'agent.progress_bar=false', 'agent.config.refiner_ls_values=0.0', 'agent.config.image_backbone.focus_front_cam=false', 'agent.config.one_token_per_traj=true', 'agent.config.refiner_num_heads=1', 'agent.config.tf_d_model=256', 'agent.config.tf_d_ffn=1024', 'agent.config.area_pred=false', 'agent.config.agent_pred=false', 'agent.config.ref_num=4', 'agent.loss.prev_weight=0.0', 'agent.config.long_trajectory_additional_poses=2', 'agent.config.latent_learning.enabled=true', 'agent.config.latent_learning.one_step=true', 'agent.loss.latent_weight=1.0', 'seed=2']
+Traceback (most recent call last):
+  File "/root/DrivoR/navsim/planning/script/run_training_full.py", line 244, in <module>
+    main()
+  File "/opt/conda/lib/python3.9/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/utils.py", line 223, in run_and_report
+    raise ex
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+  File "/opt/conda/lib/python3.9/site-packages/hydra/_internal/hydra.py", line 132, in run
+    _ = ret.return_value
+  File "/opt/conda/lib/python3.9/site-packages/hydra/core/utils.py", line 260, in return_value
+    raise self._return_value
+  File "/opt/conda/lib/python3.9/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "/root/DrivoR/navsim/planning/script/run_training_full.py", line 137, in main
+    train_data, val_data = build_datasets(cfg, agent)
+  File "/root/DrivoR/navsim/planning/script/run_training_full.py", line 76, in build_datasets
+    train_data = Dataset(
+  File "/root/DrivoR/navsim/planning/training/dataset.py", line 169, in __init__
+    self.cache_dataset()
+  File "/root/DrivoR/navsim/planning/training/dataset.py", line 268, in cache_dataset
+    self._cache_scene_with_token(token)
+  File "/root/DrivoR/navsim/planning/training/dataset.py", line 214, in _cache_scene_with_token
+    data_dict = builder.compute_features(agent_input)
+  File "/root/DrivoR/navsim/agents/drivoR/drivor_features.py", line 42, in compute_features
+    data_camera = self._get_camera_feature(agent_input)
+  File "/root/DrivoR/navsim/agents/drivoR/drivor_features.py", line 147, in _get_camera_feature
+    data["image_next"] = torch.stack(next_imgs)  # (N_cams, C, H, W) — o_{t+1}
+RuntimeError: stack expects a non-empty TensorList

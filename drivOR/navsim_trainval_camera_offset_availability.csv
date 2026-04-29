@@ -1,0 +1,10 @@
+offset_label, offset, total_eligible_tokens, available_tokens, availability_ratio, cameras                    , navsim_log_path                               , sensor_blobs_path
+t           ,      0,                662866,           151778,           0.228972, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+1         ,      1,                662866,           151472,           0.228511, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+2         ,      2,                662866,           151174,           0.228061, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+3         ,      3,                662866,           150871,           0.227604, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+4         ,      4,                662866,           150567,           0.227145, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+5         ,      5,                662866,           150258,           0.226679, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+6         ,      6,                662866,           149948,           0.226212, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+7         ,      7,                662866,           149636,           0.225741, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval
+t+8         ,      8,                662866,           149315,           0.225257, CAM_F0|CAM_L0|CAM_R0|CAM_B0, /avl-west/navsim/trainval_navsim_logs/trainval, /avl-west/navsim/trainval_sensor_blobs/trainval

@@ -1,0 +1,117 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-count-camera-offset-availability-trainval
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: job-count-camera-offset-availability-trainval
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: cpu-container
+          image: robinwangucsd/ambient_diffusion_planner
+          imagePullPolicy: Always
+          env:
+            - name: NUPLAN_MAP_VERSION
+              value: "nuplan-maps-v1.0"
+            - name: NUPLAN_MAPS_ROOT
+              value: "/avl-west/nuplan/maps"
+            - name: NAVSIM_EXP_ROOT
+              value: "/closed-loop-e2e/drivor-exp"
+            - name: NAVSIM_DEVKIT_ROOT
+              value: "/root/DrivoR"
+            - name: OPENSCENE_DATA_ROOT
+              value: "/avl-west/navsim"
+            - name: SUBSCORE_PATH
+              value: "/closed-loop-e2e/drivor-exp/train_metric_cache"
+            - name: HYDRA_FULL_ERROR
+              value: "1"
+          command:
+            - "sh"
+            - "-c"
+          args:
+            - |
+              set -e &&
+              echo "=== Copying DrivoR repo ===" &&
+              cp -r /hugsim-storage/WorldModel4Driving/DrivoR_vanilla /root/DrivoR &&
+
+              echo "=== Installing nuplan-devkit ===" &&
+              cd /root/DrivoR/nuplan-devkit &&
+              pip install -e . &&
+
+              echo "=== Installing DrivoR ===" &&
+              cd /root/DrivoR &&
+              pip install -e . &&
+
+              echo "=== Installing system deps ===" &&
+              apt-get update && apt-get install -y ninja-build gcc-12 g++-12 &&
+
+              echo "=== Installing Python deps ===" &&
+              pip install torch torchvision pytorch-lightning timm numpy &&
+
+              echo "=== Starting NAVSIM camera offset availability count ===" &&
+              python /root/DrivoR/navsim/planning/script/count_camera_offset_availability.py \
+                  --navsim-log-path /avl-west/navsim/trainval_navsim_logs/trainval \
+                  --sensor-blobs-path /avl-west/navsim/trainval_sensor_blobs/trainval \
+                  --output-path /hugsim-storage/navsim_trainval_camera_offset_availability.csv \
+                  --max-offset 8 \
+                  --cameras CAM_F0 CAM_L0 CAM_R0 CAM_B0
+          resources:
+            requests:
+              cpu: "8"
+              memory: "32Gi"
+              ephemeral-storage: "20Gi"
+            limits:
+              cpu: "12"
+              memory: "48Gi"
+              ephemeral-storage: "40Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "64Gi"
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - us-west
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
