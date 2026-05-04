@@ -1,15 +1,28 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: horuan-debug # replace with ${USER_NAME}-http
+  name: horuan-drivor
   labels:
-    k8s-app: horuan-debug
+    k8s-app: horuan-drivor
 spec:
   # nodeName: ry-gpu-13.sdsc.optiputer.net
   containers:
     - image: robinwangucsd/metabench:latest
-      name: http-server
-      command: ["sh", "-c", "sleep infinity"]
+      name: drivor-container
+      command:
+        - "bash"
+        - "-lc"
+      args:
+        - |
+          set -e
+          cd /hugsim-storage/WorldModel4Driving/DrivoR_vanilla
+          conda create -n drivoR python=3.8 -y
+          source /opt/conda/etc/profile.d/conda.sh
+          conda activate drivoR
+          pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+          pip install -e ./nuplan-devkit
+          pip install -e .
+          sleep infinity
       resources:
         requests:
           cpu: "4"
@@ -76,18 +89,18 @@ spec:
             values:
               - ry-gpu-01.sdsc.optiputer.net
               # - ry-gpu-02.sdsc.optiputer.net
-              - ry-gpu-03.sdsc.optiputer.net
-              - ry-gpu-04.sdsc.optiputer.net
+              # - ry-gpu-03.sdsc.optiputer.net
+              # - ry-gpu-04.sdsc.optiputer.net
               # - ry-gpu-05.sdsc.optiputer.net
               # - ry-gpu-06.sdsc.optiputer.net
-              - ry-gpu-07.sdsc.optiputer.net
+              # - ry-gpu-07.sdsc.optiputer.net
               # - ry-gpu-08.sdsc.optiputer.net
-              - ry-gpu-09.sdsc.optiputer.net
-              - ry-gpu-10.sdsc.optiputer.net
-              - ry-gpu-11.sdsc.optiputer.net
-              - ry-gpu-12.sdsc.optiputer.net
+              # - ry-gpu-09.sdsc.optiputer.net
+              # - ry-gpu-10.sdsc.optiputer.net
+              # - ry-gpu-11.sdsc.optiputer.net
+              # - ry-gpu-12.sdsc.optiputer.net
               # - ry-gpu-13.sdsc.optiputer.net
-              - ry-gpu-14.sdsc.optiputer.net
+              # - ry-gpu-14.sdsc.optiputer.net
 
   tolerations:
   - effect: NoSchedule

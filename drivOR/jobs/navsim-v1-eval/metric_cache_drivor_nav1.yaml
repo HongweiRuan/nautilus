@@ -1,0 +1,172 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-metric-cache-drivor-nav1
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: job-metric-cache-drivor-nav1
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/ambient_diffusion_planner
+          imagePullPolicy: Always
+          env:
+            - name: NUPLAN_MAP_VERSION
+              value: "nuplan-maps-v1.0"
+            - name: NUPLAN_MAPS_ROOT
+              value: "/avl-west/nuplan/maps"
+            - name: NAVSIM_EXP_ROOT
+              value: "/closed-loop-e2e/drivor-exp"
+            - name: NAVSIM_DEVKIT_ROOT
+              value: "/root/DrivoR"
+            - name: OPENSCENE_DATA_ROOT
+              value: "/avl-west/navsim"
+            - name: HYDRA_FULL_ERROR
+              value: "1"
+          command:
+            - "bash"
+            - "-lc"
+          args:
+            - |
+              set -euo pipefail
+
+              echo "=== Copying DrivoR repo ==="
+              rm -rf /root/DrivoR
+              cp -r /hugsim-storage/WorldModel4Driving/DrivoR_vanilla /root/DrivoR
+
+              echo "=== Patching copied metric cache writer for current MetricCache schema ==="
+              python - <<'PY'
+              from pathlib import Path
+
+              path = Path("/root/DrivoR/navsim/planning/metric_caching/metric_cache_processor.py")
+              text = path.read_text()
+              text = text.replace(
+                  "from navsim.planning.metric_caching.metric_cache import MetricCache\n",
+                  "from navsim.common.enums import SceneFrameType\n"
+                  "from navsim.planning.metric_caching.metric_cache import MapParameters, MetricCache\n",
+              )
+              old = (
+                  "        MetricCache(\n"
+                  "            file_name,\n"
+                  "            pdm_closed_trajectory,\n"
+                  "            scenario.initial_ego_state,\n"
+                  "            observation,\n"
+                  "            self._pdm_closed._centerline,\n"
+                  "            list(self._pdm_closed._route_lane_dict.keys()),\n"
+                  "            self._pdm_closed._drivable_area_map,\n"
+                  "        ).dump()\n"
+              )
+              new = (
+                  "        MetricCache(\n"
+                  "            file_path=file_name,\n"
+                  "            log_name=scenario.log_name,\n"
+                  "            timepoint=scenario.start_time,\n"
+                  "            scene_type=SceneFrameType.ORIGINAL,\n"
+                  "            trajectory=pdm_closed_trajectory,\n"
+                  "            human_trajectory=None,\n"
+                  "            past_human_trajectory=pdm_closed_trajectory,\n"
+                  "            ego_state=scenario.initial_ego_state,\n"
+                  "            observation=observation,\n"
+                  "            centerline=self._pdm_closed._centerline,\n"
+                  "            route_lane_ids=list(self._pdm_closed._route_lane_dict.keys()),\n"
+                  "            drivable_area_map=self._pdm_closed._drivable_area_map,\n"
+                  "            past_detections_tracks=[],\n"
+                  "            current_tracked_objects=[scenario.initial_tracked_objects],\n"
+                  "            future_tracked_objects=[],\n"
+                  "            map_parameters=MapParameters(\n"
+                  "                map_root=\"\",\n"
+                  "                map_version=\"\",\n"
+                  "                map_name=getattr(scenario.map_api, \"map_name\", \"\"),\n"
+                  "            ),\n"
+                  "        ).dump()\n"
+              )
+              if old not in text:
+                  raise SystemExit("Expected MetricCache constructor block was not found")
+              path.write_text(text.replace(old, new))
+              PY
+
+              echo "=== Installing nuplan-devkit ==="
+              cd /root/DrivoR/nuplan-devkit
+              pip install -e .
+
+              echo "=== Installing DrivoR ==="
+              cd /root/DrivoR
+              pip install -e .
+
+              echo "=== Installing system deps ==="
+              apt-get update
+              apt-get install -y ninja-build gcc-12 g++-12
+
+              echo "=== Installing Python deps ==="
+              pip install nvidia-cudnn-cu12==8.9.7.29
+              pip install torch torchvision pytorch-lightning wandb timm
+
+              echo "=== Setting LD_LIBRARY_PATH for cuDNN ==="
+              export LD_LIBRARY_PATH="$(python -c "import nvidia.cudnn; print(nvidia.cudnn.__path__[0] + '/lib')"):${LD_LIBRARY_PATH:-}"
+
+              METRIC_CACHE="/closed-loop-e2e/drivor-exp/metric_cache"
+              if [ -n "$(find "${METRIC_CACHE}" -type f -name 'metric_cache.pkl' | head -n 1 || true)" ]; then
+                echo "=== NAVSIM-v1 metric cache already exists: ${METRIC_CACHE} ==="
+                exit 0
+              fi
+
+              echo "=== Building NAVSIM-v1 metric cache at ${METRIC_CACHE} ==="
+              python /root/DrivoR/navsim/planning/script/run_metric_caching.py \
+                train_test_split=navtest \
+                navsim_log_path=/avl-west/navsim/test_navsim_logs/test \
+                cache.cache_path="${METRIC_CACHE}"
+
+              CACHE_COUNT="$(find "${METRIC_CACHE}" -type f -name 'metric_cache.pkl' | wc -l)"
+              echo "=== Built ${CACHE_COUNT} metric_cache.pkl files under ${METRIC_CACHE} ==="
+              test "${CACHE_COUNT}" -gt 0
+          resources:
+            requests:
+              cpu: "8"
+              memory: "128Gi"
+              ephemeral-storage: "50Gi"
+            limits:
+              cpu: "12"
+              memory: "160Gi"
+              ephemeral-storage: "100Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "64Gi"
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - us-west

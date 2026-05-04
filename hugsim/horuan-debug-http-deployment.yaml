@@ -14,11 +14,65 @@ spec:
       labels:
         k8s-app: horuan-debug-http
     spec:
-      # nodeName: ry-gpu-13.sdsc.optiputer.net
       containers:
         - image: robinwangucsd/metabench:latest
           name: http-server
-          command: ["sh", "-c", "sleep infinity"]
+          command:
+            - "sh"
+            - "-c"
+          args:
+            - |
+              set -e &&
+              echo "=== Copying MetaBench Cleaned ===" &&
+              cp -r /hugsim-storage/MetaBench /root/MetaBench &&
+              echo "=== Creating conda env ===" &&
+              conda create -n mdsn python=3.9 pip -y &&
+              echo "=== Installing metadrive ===" &&
+              cd /root/MetaBench/metadrive &&
+              /opt/conda/envs/mdsn/bin/pip install -e .[cuda] &&
+              echo "=== Installing torch ===" &&
+              /opt/conda/envs/mdsn/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 &&
+              echo "=== Installing cupy & cuda-python ===" &&
+              /opt/conda/envs/mdsn/bin/pip install cupy-cuda11x &&
+              /opt/conda/envs/mdsn/bin/pip install cuda-python &&
+              mkdir -p /usr/lib/dri &&
+              ln -sf /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so &&
+              ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 &&
+              echo "=== Installing scenarionet ===" &&
+              cd /root/MetaBench/scenarionet &&
+              /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Configuring panda3d ===" &&
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
+              echo "=== Installing remaining packages ===" &&
+              /opt/conda/envs/mdsn/bin/pip install timm scienceplots scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
+              echo "=== Installing MetaBench (cleaned) ===" &&
+              cd /root/MetaBench &&
+              /opt/conda/envs/mdsn/bin/pip install -e . &&
+              echo "=== Copying checkpoints to /root ===" &&
+              cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
+              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
+              cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
+              cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
+              cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
+              echo "=== Copying DrivoR repo ===" &&
+              cp -r /hugsim-storage/WorldModel4Driving/DrivoR_vanilla /root/DrivoR &&
+              echo "=== Creating DrivoR conda env ===" &&
+              conda create -n drivor python=3.9 pip -y &&
+              echo "=== Installing DrivoR system deps ===" &&
+              apt-get update &&
+              apt-get install -y ninja-build gcc-12 g++-12 &&
+              echo "=== Installing nuplan-devkit ===" &&
+              cd /root/DrivoR/nuplan-devkit &&
+              /opt/conda/envs/drivor/bin/pip install -e . &&
+              echo "=== Installing DrivoR ===" &&
+              cd /root/DrivoR &&
+              /opt/conda/envs/drivor/bin/pip install -e . &&
+              echo "=== Installing DrivoR Python deps ===" &&
+              /opt/conda/envs/drivor/bin/pip install nvidia-cudnn-cu12==8.9.7.29 &&
+              /opt/conda/envs/drivor/bin/pip install torch torchvision pytorch-lightning wandb timm &&
+              echo "=== Environment setup complete; keeping container alive ===" &&
+              sleep infinity
           resources:
             requests:
               cpu: "4"
@@ -84,8 +138,8 @@ spec:
                     operator: In
                     values:
                       - ry-gpu-01.sdsc.optiputer.net
-                      - ry-gpu-02.sdsc.optiputer.net
-                      - ry-gpu-03.sdsc.optiputer.net
+                      # - ry-gpu-02.sdsc.optiputer.net
+                      # - ry-gpu-03.sdsc.optiputer.net
                       # - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net
                       # - ry-gpu-06.sdsc.optiputer.net
