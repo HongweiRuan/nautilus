@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: job-train-drivor-25epochs-v3-bs4
+  name: job-train-drivor-25epochs-v3-bs4-3090
   namespace: cogrob
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        k8s-app: job-train-drivor-25epochs-v3-bs4
+        k8s-app: job-train-drivor-25epochs-v3-bs4-3090
     spec:
       restartPolicy: Never
       containers:
@@ -64,11 +64,11 @@ spec:
               echo "=== Removing stale cache index ===" &&
               rm -f /closed-loop-e2e/drivor-exp/navsim_cache_nommcv/valid_caches.pkl &&
 
-              echo "=== Starting DrivoR v3_bs4 Training ===" &&
+              echo "=== Starting DrivoR v3_bs4_3090 Training ===" &&
               echo "BATCH_SIZE_PER_GPU=4 ACCUMULATE_GRAD_BATCHES=2 EFFECTIVE_GLOBAL_BATCH=64" &&
               python /root/DrivoR/navsim/planning/script/run_training_full.py \
                   agent=drivoR \
-                  experiment_name=training_drivoR_Nav1_traj_long_25epochs_v3_bs4 \
+                  experiment_name=training_drivoR_Nav1_traj_long_25epochs_v3_bs4_3090 \
                   train_test_split=navtrain \
                   navsim_log_path=/avl-west/navsim/trainval_navsim_logs/trainval \
                   train_test_split.data_split=trainval \
@@ -157,4 +157,4 @@ spec:
                       # - ry-gpu-03.sdsc.optiputer.net
                       # - ry-gpu-04.sdsc.optiputer.net
                       # - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net

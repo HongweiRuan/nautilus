@@ -1,0 +1,162 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-eval-drivor-nav1-v7-sigreg-epoch24
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: job-eval-drivor-nav1-v7-sigreg-epoch24
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: robinwangucsd/ambient_diffusion_planner
+          imagePullPolicy: Always
+          env:
+            - name: NUPLAN_MAP_VERSION
+              value: "nuplan-maps-v1.0"
+            - name: NUPLAN_MAPS_ROOT
+              value: "/avl-west/nuplan/maps"
+            - name: NAVSIM_EXP_ROOT
+              value: "/closed-loop-e2e/drivor-exp"
+            - name: NAVSIM_DEVKIT_ROOT
+              value: "/root/DrivoR"
+            - name: OPENSCENE_DATA_ROOT
+              value: "/avl-west/navsim"
+            - name: SUBSCORE_PATH
+              value: "/closed-loop-e2e/drivor-exp"
+            - name: HYDRA_FULL_ERROR
+              value: "1"
+            - name: TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC
+              value: "7200"
+            - name: NCCL_TIMEOUT
+              value: "7200"
+          command:
+            - "bash"
+            - "-lc"
+          args:
+            - |
+              set -euo pipefail
+
+              CHECKPOINT_DIR="/hugsim-storage/WorldModel4Driving/DrivoR_vanilla/checkpoints/training_drivoR_Nav1_traj_long_25epochs_v7_latent_next_sigreg_epoch24"
+              CHECKPOINT="$(find "${CHECKPOINT_DIR}" -maxdepth 2 -type f -name '*.ckpt' | sort | head -n 1 || true)"
+              if [ -z "${CHECKPOINT}" ]; then
+                echo "Missing DrivoR v7 sigreg epoch-24 checkpoint under ${CHECKPOINT_DIR}"
+                echo "Expected checkpoint copied from /dev/shm/ckpts/epoch-24-step-33250.ckpt in job-train-drivor-35epochs-v7-sigreg-lm7kt"
+                exit 2
+              fi
+              echo "Using checkpoint: ${CHECKPOINT}"
+
+              echo "=== Copying DrivoR repo ==="
+              rm -rf /root/DrivoR
+              cp -r /hugsim-storage/WorldModel4Driving/DrivoR_vanilla /root/DrivoR
+
+              echo "=== Installing nuplan-devkit ==="
+              cd /root/DrivoR/nuplan-devkit
+              pip install -e .
+
+              echo "=== Installing DrivoR ==="
+              cd /root/DrivoR
+              pip install -e .
+
+              echo "=== Installing system deps ==="
+              apt-get update
+              apt-get install -y ninja-build gcc-12 g++-12
+
+              echo "=== Installing Python deps ==="
+              pip install nvidia-cudnn-cu12==8.9.7.29
+              pip install torch torchvision pytorch-lightning wandb timm
+
+              echo "=== Setting LD_LIBRARY_PATH for cuDNN ==="
+              export LD_LIBRARY_PATH="$(python -c "import nvidia.cudnn; print(nvidia.cudnn.__path__[0] + '/lib')"):${LD_LIBRARY_PATH:-}"
+
+              METRIC_CACHE="/closed-loop-e2e/drivor-exp/metric_cache"
+              if [ -z "$(find "${METRIC_CACHE}" -type f -name 'metric_cache.pkl' | head -n 1 || true)" ]; then
+                echo "Missing NAVSIM-v1 metric cache files under ${METRIC_CACHE}"
+                echo "Expected nested files named metric_cache.pkl. Run metric caching first."
+                exit 3
+              fi
+              echo "=== Reusing existing metric cache: ${METRIC_CACHE} ==="
+
+              echo "=== Starting NAVSIM-v1 DrivoR evaluation ==="
+              python /root/DrivoR/navsim/planning/script/run_pdm_score_multi_gpu.py \
+                train_test_split=navtest \
+                navsim_log_path=/avl-west/navsim/test_navsim_logs/test \
+                sensor_blobs_path=/avl-west/navsim/test_sensor_blobs/test \
+                metric_cache_path="${METRIC_CACHE}" \
+                agent=drivoR \
+                agent.checkpoint_path="${CHECKPOINT}" \
+                experiment_name=drivoR_nav1_v7_latent_next_sigreg_epoch24 \
+                agent.config.proposal_num=64 \
+                agent.config.refiner_ls_values=0.0 \
+                agent.config.image_backbone.focus_front_cam=false \
+                agent.config.one_token_per_traj=true \
+                agent.config.refiner_num_heads=1 \
+                agent.config.tf_d_model=256 \
+                agent.config.tf_d_ffn=1024 \
+                agent.config.area_pred=false \
+                agent.config.agent_pred=false \
+                agent.config.ref_num=4 \
+                agent.config.noc=1 \
+                agent.config.dac=1 \
+                agent.config.ddc=0.0 \
+                agent.config.ttc=5 \
+                agent.config.ep=5 \
+                agent.config.comfort=2 \
+                agent.config.latent_learning.enabled=true \
+                agent.config.latent_learning.one_step=true \
+                agent.config.latent_learning.loss_weights.sigreg=0.1 \
+                agent.loss.latent_weight=0.3 \
+                dataloader.params.batch_size=32 \
+                +trainer.params.devices=1
+          resources:
+            requests:
+              cpu: "20"
+              memory: "400Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: "50Gi"
+            limits:
+              cpu: "24"
+              memory: "400Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: "100Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "256Gi"
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-3090

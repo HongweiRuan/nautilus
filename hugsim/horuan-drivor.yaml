@@ -95,8 +95,8 @@ spec:
               #     # - ry-gpu-09.sdsc.optiputer.net
               #     # - ry-gpu-10.sdsc.optiputer.net
               #     # - ry-gpu-11.sdsc.optiputer.net
-                  - ry-gpu-12.sdsc.optiputer.net
-              #     # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-12.sdsc.optiputer.net
+                  - ry-gpu-13.sdsc.optiputer.net
               #     # - ry-gpu-14.sdsc.optiputer.net
 
   tolerations:
