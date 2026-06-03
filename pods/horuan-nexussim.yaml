@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nexussim
+  namespace: cogrob
+  labels:
+    k8s-app: horuan-nexussim
+spec:
+  restartPolicy: Never
+  containers:
+    - image: robinwangucsd/metabench:latest
+      name: nexussim-container
+      imagePullPolicy: Always
+      command:
+        - "bash"
+        - "-lc"
+      args:
+        - |
+          set -e
+
+          cd /hugsim-storage/NexusSim
+
+          echo "=== Creating NexusSim conda env if needed ==="
+          if ! conda env list | awk '{print $1}' | grep -qx nexussim; then
+            conda create -n nexussim python=3.11 -y
+          fi
+
+          echo "=== Installing NexusSim runtime dependencies ==="
+          conda run -n nexussim python -m pip install --progress-bar off \
+            "isaacsim[all,extscache]==5.1.0" \
+            --extra-index-url https://pypi.nvidia.com
+
+          conda run -n nexussim python -m pip install --progress-bar off \
+            isaaclab==2.3.2.post1
+
+          echo "=== Installing NexusSim editable package ==="
+          conda run -n nexussim python -m pip install --progress-bar off \
+            -e ".[modelzoo]"
+
+          echo "=== Installing py123d nuPlan runtime ==="
+          conda run -n nexussim python -m pip install --progress-bar off \
+            -e "/hugsim-storage/py123d[nuplan]" msgpack
+
+          echo "=== Restoring IsaacSim-compatible shared dependency pins ==="
+          conda run -n nexussim python -m pip install --progress-bar off --no-deps \
+            aiohappyeyeballs==2.4.4 aiohttp==3.11.11 aiosignal==1.3.2 \
+            psutil==5.9.8 typing_extensions==4.12.2 websockets==12.0 \
+            filelock==3.13.1 packaging==23.0 chardet==5.2.0
+
+          conda run -n nexussim python -m pip install --progress-bar off \
+            "click==8.1.7" pandas hydra-core omegaconf
+
+          echo "=== Writing default NexusSim shell environment ==="
+          cat >/etc/profile.d/nexussim.sh <<'EOF'
+          export CONDA_DEFAULT_ENV=nexussim
+          export PATH=/opt/conda/envs/nexussim/bin:/opt/conda/bin:$PATH
+          export PYTHONPATH=/hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:${PYTHONPATH:-}
+          export OMNI_KIT_ACCEPT_EULA=Y
+          export ACCEPT_EULA=Y
+          EOF
+          source /etc/profile.d/nexussim.sh
+
+          echo "=== NexusSim env smoke check ==="
+          echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}"
+          conda run -n nexussim env OMNI_KIT_ACCEPT_EULA=Y ACCEPT_EULA=Y \
+            python -c "import sys, torch, numpy, gymnasium, hydra, omegaconf, shapely, py123d, isaacsim, isaaclab; from py123d.api import SceneFilter, get_filtered_scenes; print(sys.executable); print('torch', torch.__version__); print('cuda_available', torch.cuda.is_available()); print('py123d', py123d.__version__)"
+
+          echo "=== NexusSim pod ready; keeping container alive ==="
+          sleep infinity
+      env:
+        - name: CONDA_DEFAULT_ENV
+          value: nexussim
+        - name: PATH
+          value: /opt/conda/envs/nexussim/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        - name: PYTHONPATH
+          value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        - name: ACCEPT_EULA
+          value: "Y"
+      resources:
+        requests:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+        limits:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+      volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: cogrob-avl-west-vol
+          mountPath: /cogrob-avl-west
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+  volumes:
+    - name: dshm
+      emptyDir:
+        medium: Memory
+    - name: avl-west-vol
+      persistentVolumeClaim:
+        claimName: avl-west-vol
+    - name: cogrob-avl-west-vol
+      persistentVolumeClaim:
+        claimName: cogrob-avl-west-vol
+    - name: closed-loop-e2e
+      persistentVolumeClaim:
+        claimName: closed-loop-e2e
+    - name: hugsim-storage
+      persistentVolumeClaim:
+        claimName: horuan-hugsim-vol
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                  - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  # - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-GeForce-RTX-3090
+                  # - NVIDIA-RTX-A4000
+                  # - NVIDIA-RTX-A5000
+                  # - Quadro-RTX-6000
+                  # - NVIDIA-TITAN-RTX
+                  # - NVIDIA-A10
+                  # - Tesla-V130-SXM2-32GB
+                  # - NVIDIA-A40
+                  # - NVIDIA-RTX-A6000
+                  # - Quadro-RTX-8000
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  # - ry-gpu-01.sdsc.optiputer.net
+                  # - ry-gpu-02.sdsc.optiputer.net
+                  # - ry-gpu-03.sdsc.optiputer.net
+                  - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  # - ry-gpu-08.sdsc.optiputer.net
+                  # - ry-gpu-09.sdsc.optiputer.net
+                  # - ry-gpu-10.sdsc.optiputer.net
+                  # - ry-gpu-11.sdsc.optiputer.net
+                  # - ry-gpu-12.sdsc.optiputer.net
+                  # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-14.sdsc.optiputer.net
+
+  tolerations:
+    - effect: NoSchedule
+      key: nautilus.io/reservation
+      operator: Equal
+      value: cogrob

@@ -27,10 +27,12 @@ spec:
           cpu: "4"
           memory: "32Gi"
           ephemeral-storage: 100Gi
+          # nvidia.com/gpu: "1"
         limits:
           cpu: "4"
           memory: "32Gi"
           ephemeral-storage: 100Gi
+          # nvidia.com/gpu: "1"
       volumeMounts:
         - name: dshm
           mountPath: /dev/shm
@@ -67,37 +69,10 @@ spec:
                 operator: In
                 values:
                   - us-west
-              # - key: nvidia.com/gpu.product
-              #   operator: In
-              #   values:
-              #     # - NVIDIA-GeForce-RTX-4090
-              #     - NVIDIA-GeForce-RTX-3090
-              #   # - NVIDIA-RTX-A4000
-              #   # - NVIDIA-RTX-A5000
-              #   # - Quadro-RTX-6000
-              #   # - NVIDIA-TITAN-RTX
-              #   # - NVIDIA-A10
-              #   # - Tesla-V130-SXM2-32GB
-              #   # - NVIDIA-A40
-              #   # - NVIDIA-RTX-A6000
-              #   # - Quadro-RTX-8000
-              # - key: kubernetes.io/hostname
-              #   operator: In
-              #   values:
-              #     - ry-gpu-01.sdsc.optiputer.net
-              #     - ry-gpu-02.sdsc.optiputer.net
-              #     - ry-gpu-03.sdsc.optiputer.net
-              #     - ry-gpu-04.sdsc.optiputer.net
-              #     - ry-gpu-05.sdsc.optiputer.net
-              #     - ry-gpu-06.sdsc.optiputer.net
-              #     - ry-gpu-07.sdsc.optiputer.net
-              #     # - ry-gpu-08.sdsc.optiputer.net
-              #     # - ry-gpu-09.sdsc.optiputer.net
-              #     # - ry-gpu-10.sdsc.optiputer.net
-              #     # - ry-gpu-11.sdsc.optiputer.net
-                  # - ry-gpu-12.sdsc.optiputer.net
-                  - ry-gpu-13.sdsc.optiputer.net
-              #     # - ry-gpu-14.sdsc.optiputer.net
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - ry-gpu-11.sdsc.optiputer.net
 
   tolerations:
     - effect: NoSchedule

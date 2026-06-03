@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-bridgesim
+  labels:
+    k8s-app: horuan-bridgesim
+spec:
+  containers:
+    - image: robinwangucsd/metabench:latest
+      name: bridgesim-container
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - |
+          set -e &&
+          echo "=== Copying checkpoints to /root ===" &&
+          cp /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt /root/transfuser_seed_0.ckpt &&
+          cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
+          cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
+          cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
+          cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
+          cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
+          echo "=== Checkpoint copy complete; keeping container alive ===" &&
+          sleep infinity
+      resources:
+        requests:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+        limits:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+      volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: cogrob-avl-west-vol
+          mountPath: /cogrob-avl-west
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+  volumes:
+    - name: dshm
+      emptyDir:
+        medium: Memory
+    - name: avl-west-vol
+      persistentVolumeClaim:
+        claimName: avl-west-vol
+    - name: cogrob-avl-west-vol
+      persistentVolumeClaim:
+        claimName: cogrob-avl-west-vol
+    - name: closed-loop-e2e
+      persistentVolumeClaim:
+        claimName: closed-loop-e2e
+    - name: hugsim-storage
+      persistentVolumeClaim:
+        claimName: horuan-hugsim-vol
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                  - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  # - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-GeForce-RTX-3090
+                  # - NVIDIA-RTX-A4000
+                  # - NVIDIA-RTX-A5000
+                  # - Quadro-RTX-6000
+                  # - NVIDIA-TITAN-RTX
+                  # - NVIDIA-A10
+                  # - Tesla-V130-SXM2-32GB
+                  # - NVIDIA-A40
+                  # - NVIDIA-RTX-A6000
+                  # - Quadro-RTX-8000
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  # - ry-gpu-01.sdsc.optiputer.net
+                  # - ry-gpu-02.sdsc.optiputer.net
+                  # - ry-gpu-03.sdsc.optiputer.net
+                  - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  # - ry-gpu-08.sdsc.optiputer.net
+                  # - ry-gpu-09.sdsc.optiputer.net
+                  # - ry-gpu-10.sdsc.optiputer.net
+                  # - ry-gpu-11.sdsc.optiputer.net
+                  # - ry-gpu-12.sdsc.optiputer.net
+                  # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-14.sdsc.optiputer.net
+
+  tolerations:
+    - effect: NoSchedule
+      key: nautilus.io/reservation
+      operator: Equal
+      value: cogrob

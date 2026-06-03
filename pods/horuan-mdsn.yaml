@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: horuan-mdsn # replace with ${USER_NAME}-http
+  name: horuan-mdsn
   labels:
     k8s-app: horuan-mdsn
 spec:
-  # nodeName: ry-gpu-13.sdsc.optiputer.net
   containers:
     - image: robinwangucsd/metabench:latest
       name: http-server
@@ -51,15 +50,15 @@ spec:
           sleep infinity
       resources:
         requests:
-          cpu: "4"
+          cpu: "16"
           memory: "32Gi"
           nvidia.com/gpu: "1"
-          ephemeral-storage: 100Gi
+          ephemeral-storage: 300Gi
         limits:
-          cpu: "4"
+          cpu: "16"
           memory: "32Gi"
           nvidia.com/gpu: "1"
-          ephemeral-storage: 100Gi
+          ephemeral-storage: 300Gi
       volumeMounts:
         - name: dshm
           mountPath: /dev/shm
@@ -91,45 +90,45 @@ spec:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: topology.kubernetes.io/region
-            operator: In
-            values:
-            - us-west
-          - key: nvidia.com/gpu.product
-            operator: In
-            values:
-            - NVIDIA-GeForce-RTX-4090
-            - NVIDIA-GeForce-RTX-3090
-            # - NVIDIA-RTX-A4000
-            # - NVIDIA-RTX-A5000
-            # - Quadro-RTX-6000
-            # - NVIDIA-TITAN-RTX 
-            # - NVIDIA-A10
-            # - Tesla-V130-SXM2-32GB
-            # - NVIDIA-A40
-            # - NVIDIA-RTX-A6000
-            # - Quadro-RTX-8000
-          - key: kubernetes.io/hostname
-            operator: In
-            values:
-              - ry-gpu-01.sdsc.optiputer.net
-              # - ry-gpu-02.sdsc.optiputer.net
-              - ry-gpu-03.sdsc.optiputer.net
-              - ry-gpu-04.sdsc.optiputer.net
-              # - ry-gpu-05.sdsc.optiputer.net
-              # - ry-gpu-06.sdsc.optiputer.net
-              - ry-gpu-07.sdsc.optiputer.net
-              # - ry-gpu-08.sdsc.optiputer.net
-              - ry-gpu-09.sdsc.optiputer.net
-              - ry-gpu-10.sdsc.optiputer.net
-              - ry-gpu-11.sdsc.optiputer.net
-              - ry-gpu-12.sdsc.optiputer.net
-              # - ry-gpu-13.sdsc.optiputer.net
-              - ry-gpu-14.sdsc.optiputer.net
+          - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                  - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-GeForce-RTX-3090
+                  # - NVIDIA-RTX-A4000
+                  # - NVIDIA-RTX-A5000
+                  # - Quadro-RTX-6000
+                  # - NVIDIA-TITAN-RTX
+                  # - NVIDIA-A10
+                  # - Tesla-V130-SXM2-32GB
+                  # - NVIDIA-A40
+                  # - NVIDIA-RTX-A6000
+                  # - Quadro-RTX-8000
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  # - ry-gpu-01.sdsc.optiputer.net
+                  # - ry-gpu-02.sdsc.optiputer.net
+                  # - ry-gpu-03.sdsc.optiputer.net
+                  - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  # - ry-gpu-08.sdsc.optiputer.net
+                  # - ry-gpu-09.sdsc.optiputer.net
+                  # - ry-gpu-10.sdsc.optiputer.net
+                  # - ry-gpu-11.sdsc.optiputer.net
+                  # - ry-gpu-12.sdsc.optiputer.net
+                  # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-14.sdsc.optiputer.net
 
   tolerations:
-  - effect: NoSchedule
-    key: nautilus.io/reservation
-    operator: Equal
-    value: cogrob
+    - effect: NoSchedule
+      key: nautilus.io/reservation
+      operator: Equal
+      value: cogrob
