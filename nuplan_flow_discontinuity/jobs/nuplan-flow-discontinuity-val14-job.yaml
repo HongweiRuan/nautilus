@@ -1,0 +1,182 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nuplan-flow-discontinuity-val14
+  namespace: cogrob
+  labels:
+    k8s-app: nuplan-flow-discontinuity-val14
+spec:
+  completionMode: Indexed
+  completions: 40
+  parallelism: 4
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: nuplan-flow-discontinuity-val14
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: nuplan-flow-discontinuity
+          imagePullPolicy: Always
+          command:
+            - "bash"
+            - "-lc"
+          args:
+            - |
+              set -euo pipefail
+
+              echo "=== Preparing Flow Planner / nuPlan repos ==="
+              cd /hugsim-storage
+              if [ ! -d /hugsim-storage/nuplan-devkit/.git ]; then
+                git clone https://github.com/motional/nuplan-devkit.git /hugsim-storage/nuplan-devkit
+              fi
+              if [ ! -d /hugsim-storage/Flow-Planner/.git ]; then
+                git clone https://github.com/DiffusionAD/Flow-Planner.git /hugsim-storage/Flow-Planner
+              fi
+
+              echo "=== Preparing flow_planner conda env ==="
+              source /opt/conda/etc/profile.d/conda.sh
+              ENV_READY=0
+              if conda env list | awk '{print $1}' | grep -qx flow_planner; then
+                if conda run -n flow_planner python -c "import torch, nuplan, flow_matching, timm, flow_planner; assert torch.cuda.is_available()" >/dev/null 2>&1; then
+                  ENV_READY=1
+                fi
+              fi
+
+              if [ "${ENV_READY}" -eq 0 ]; then
+                if ! conda env list | awk '{print $1}' | grep -qx flow_planner; then
+                  conda create -y -n flow_planner python=3.9
+                fi
+                conda activate flow_planner
+                python -m pip install --progress-bar off "pip<24.1"
+                cd /hugsim-storage/nuplan-devkit
+                python -m pip install --progress-bar off -e .
+                python -m pip install --progress-bar off -r requirements.txt
+                cd /hugsim-storage/Flow-Planner
+                python -m pip install --progress-bar off -e .
+                python -m pip install --progress-bar off -r requirements.txt
+                python -m pip install --progress-bar off "pytorch-lightning==2.0.1" "huggingface_hub==0.17.3" "fsspec==2023.3.0"
+                python -m pip check
+              else
+                conda activate flow_planner
+              fi
+
+              test -f /hugsim-storage/Flow-Planner/flow_planner/nuplan_simulation/planner/replan_rate_wrapper.py
+              test -f /hugsim-storage/Flow-Planner/flow_planner/nuplan_simulation/planner/replan_flow_planner.yaml
+              test -f /hugsim-storage/Flow-Planner/scripts/run_flow_nuplan_discontinuity_job.py
+
+              echo "=== Running indexed Flow Planner nuPlan discontinuity shard ==="
+              cd /hugsim-storage/Flow-Planner
+              python scripts/run_flow_nuplan_discontinuity_job.py
+          env:
+            - name: CONDA_DEFAULT_ENV
+              value: flow_planner
+            - name: PATH
+              value: /opt/conda/envs/flow_planner/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            - name: PYTHONPATH
+              value: /hugsim-storage/Flow-Planner:/hugsim-storage/nuplan-devkit
+            - name: HYDRA_FULL_ERROR
+              value: "1"
+            - name: NUPLAN_DEVKIT_ROOT
+              value: /hugsim-storage/nuplan-devkit
+            - name: NUPLAN_DATA_ROOT
+              value: /avl-west/nuplan
+            - name: NUPLAN_MAPS_ROOT
+              value: /avl-west/nuplan/maps
+            - name: NUPLAN_SENSOR_ROOT
+              value: /avl-west/nuplan/nuplan-v1.1/sensor_blobs
+            - name: NUPLAN_EXP_ROOT
+              value: /hugsim-storage/flow_planner_exp
+            - name: FLOW_PLANNER_ROOT
+              value: /hugsim-storage/Flow-Planner
+            - name: FLOW_PLANNER_CONFIG
+              value: /hugsim-storage/Flow-Planner/config/flow_planner_model_config_nuplan.yaml
+            - name: FLOW_PLANNER_CKPT
+              value: /closed-loop-e2e/weights/nuplan/flow-planner/model.pth
+            - name: NUPLAN_SPLIT
+              value: val
+            - name: SCENARIO_FILTER
+              value: val14
+            - name: NUPLAN_SIMULATION
+              value: closed_loop_nonreactive_agents
+            - name: NUM_DATA_SHARDS
+              value: "8"
+            - name: REPLAN_STEPS
+              value: "1,2,5,10,20"
+            - name: THREADS_PER_NODE
+              value: "32"
+            - name: CPUS_PER_SIM
+              value: "1"
+            - name: GPUS_PER_SIM
+              value: "0.25"
+            - name: SHARD_SCAN_WORKERS
+              value: "32"
+          resources:
+            requests:
+              cpu: "32"
+              memory: "192Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 300Gi
+            limits:
+              cpu: "32"
+              memory: "192Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 300Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: cogrob-avl-west-vol
+              mountPath: /cogrob-avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: cogrob-avl-west-vol
+          persistentVolumeClaim:
+            claimName: cogrob-avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - us-west
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-3090
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob

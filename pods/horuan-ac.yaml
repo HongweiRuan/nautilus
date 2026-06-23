@@ -1,59 +1,30 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: horuan-mdsn
+  name: horuan-bridgesim
   labels:
-    k8s-app: horuan-mdsn
+    k8s-app: horuan-bridgesim
 spec:
   containers:
     - image: robinwangucsd/metabench:latest
-      name: http-server
+      name: bridgesim-container
       command:
         - "sh"
         - "-c"
       args:
         - |
-          set -e &&
-          echo "=== Copying MetaBench Cleaned ===" &&
-          cp -r /hugsim-storage/MetaBench /root/MetaBench &&
-          echo "=== Creating conda env ===" &&
-          conda create -n mdsn python=3.9 pip -y &&
-          echo "=== Installing metadrive ===" &&
-          cd /root/MetaBench/metadrive &&
-          /opt/conda/envs/mdsn/bin/pip install -e .[cuda] &&
-          echo "=== Installing torch ===" &&
-          /opt/conda/envs/mdsn/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 &&
-          echo "=== Installing cupy & cuda-python ===" &&
-          /opt/conda/envs/mdsn/bin/pip install cupy-cuda11x &&
-          /opt/conda/envs/mdsn/bin/pip install cuda-python &&
-          mkdir -p /usr/lib/dri &&
-          ln -sf /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so /usr/lib/dri/swrast_dri.so &&
-          ln -sf /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30 /opt/conda/envs/mdsn/lib/libstdc++.so.6 &&
-          echo "=== Installing scenarionet ===" &&
-          cd /root/MetaBench/scenarionet &&
-          /opt/conda/envs/mdsn/bin/pip install -e . &&
-          echo "=== Configuring panda3d ===" &&
-          echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/pedestrian" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
-          echo "model-path /root/MetaBench/metadrive/metadrive/assets/models/traffic_cone" >> /opt/conda/envs/mdsn/lib/python3.9/site-packages/panda3d/etc/Config.prc &&
-          echo "=== Installing remaining packages ===" &&
-          /opt/conda/envs/mdsn/bin/pip install timm scienceplots scipy nuplan-devkit pyyaml pyogrio rasterio aioboto3 retry numpy==1.23.4 pyquaternion pytest h5py diffusers einops omegaconf hydra-core joblib wandb pytorch-lightning timm imageio &&
-          echo "=== Installing MetaBench (cleaned) ===" &&
-          cd /root/MetaBench &&
-          /opt/conda/envs/mdsn/bin/pip install -e . &&
-          echo "=== Copying checkpoints to /root ===" &&
-          # echo "=== Environment setup complete; keeping container alive ===" &&
           sleep infinity
       resources:
         requests:
-          cpu: "16"
+          cpu: "4"
           memory: "32Gi"
           nvidia.com/gpu: "1"
-          ephemeral-storage: 300Gi
+          ephemeral-storage: 100Gi
         limits:
-          cpu: "16"
+          cpu: "4"
           memory: "32Gi"
           nvidia.com/gpu: "1"
-          ephemeral-storage: 300Gi
+          ephemeral-storage: 100Gi
       volumeMounts:
         - name: dshm
           mountPath: /dev/shm
@@ -93,7 +64,7 @@ spec:
               - key: nvidia.com/gpu.product
                 operator: In
                 values:
-                  - NVIDIA-GeForce-RTX-4090
+                  # - NVIDIA-GeForce-RTX-4090
                   - NVIDIA-GeForce-RTX-3090
                   # - NVIDIA-RTX-A4000
                   # - NVIDIA-RTX-A5000
@@ -117,10 +88,10 @@ spec:
                   # - ry-gpu-08.sdsc.optiputer.net
                   # - ry-gpu-09.sdsc.optiputer.net
                   # - ry-gpu-10.sdsc.optiputer.net
-                  # - ry-gpu-11.sdsc.optiputer.net
-                  # - ry-gpu-12.sdsc.optiputer.net
-                  # - ry-gpu-13.sdsc.optiputer.net
-                  # - ry-gpu-14.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net
+                  - ry-gpu-13.sdsc.optiputer.net
+                  - ry-gpu-14.sdsc.optiputer.net
 
   tolerations:
     - effect: NoSchedule
