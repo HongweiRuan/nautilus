@@ -1,0 +1,52 @@
+# Render a trained navhard recon along its rig trajectory (sanity-check quality).
+# Self-contained: reads usd-out/last.usdz (checkpoint + tracks + config bundled),
+# no NCore dataset mount needed. Writes PNGs + MP4 per camera to output_3dgutdyn/
+# <SCENE>/render/. b971052f62165a1d10hz = navsim scene_token.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navhard-render-b971052f62165a1d10hz, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-render
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -ex
+              RD=/avl-west/r2s_work/b971052f62165a1d10hz/output_3dgutdyn/b971052f62165a1d10hz
+              /app/run render \
+                --artifact-path $RD/usd-out/last.usdz \
+                --output-dir $RD/render \
+                --image-scale 1.0 --frame-step 1 \
+                --camera-id camera_pcam_f0 --camera-id camera_pcam_l0 \
+                --camera-id camera_pcam_r0 --camera-id camera_pcam_b0 \
+                --export-video
+              echo "=== render outputs ==="; find $RD/render -type f | head -40
+              echo RENDER_DONE
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

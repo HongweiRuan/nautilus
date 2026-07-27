@@ -1,0 +1,28 @@
+# RBAC for the in-cluster orchestrator Deployment. Grants the navsafe-controller
+# ServiceAccount permission to manage the batch Jobs it submits.
+# NOTE: creating Role/RoleBinding requires namespace-admin — this user cannot
+# (kubectl auth can-i create roles -n cogrob => no). Have a cogrob admin apply this:
+#   kubectl apply -f controller-rbac.yaml
+# If no admin is available, run the controller from a trusted host with a
+# kubeconfig instead (see controller-deploy.yaml, kubeconfig-secret variant).
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: navsafe-controller, namespace: cogrob }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: navsafe-controller, namespace: cogrob }
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: navsafe-controller, namespace: cogrob }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: navsafe-controller }
+subjects:
+  - { kind: ServiceAccount, name: navsafe-controller, namespace: cogrob }

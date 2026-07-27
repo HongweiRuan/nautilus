@@ -1,0 +1,44 @@
+# Convert a WOD perception split -> py123d Arrow logs (with map.arrow) using
+# py123d's own converter. One split converts every clip in it; the eval later
+# points --py123d-data-root at a lean single-clip root symlinked out of this.
+#
+# Adjust dataset.parser.splits (val/train/test) as needed. Output lands under
+# /avl-west/py123d_arrow_wod/logs/<split>/<clip>/.
+#
+#   kubectl apply -f convert-wod-arrow.yaml
+apiVersion: batch/v1
+kind: Job
+metadata: { name: convert-wod-arrow, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 5400
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: convert
+          image: python:3.12-slim
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              apt-get update -qq && apt-get install -y -qq libgl1 libglib2.0-0 >/dev/null 2>&1
+              # py123d pinned to the version the eval reads; tensorflow-cpu reads WOD tfrecords
+              pip install --quiet "py123d==0.5.1" tensorflow-cpu
+              python -c "import cv2, tensorflow; print('deps OK')"
+              export PY123D_DATA_ROOT=/avl-west/py123d_arrow_wod
+              py123d-conversion dataset=wod-perception \
+                dataset.parser.wod_perception_data_root=/avl-west/WOMD_perception \
+                dataset.parser.splits="[wod-perception_val]"
+              echo "=== map.arrow present? ==="; find /avl-west/py123d_arrow_wod -name map.arrow | head
+              echo "=== CONVERT WOD DONE ==="
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", ephemeral-storage: 40Gi }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

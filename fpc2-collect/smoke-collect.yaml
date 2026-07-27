@@ -1,0 +1,64 @@
+# Smoke test for Flow-Planner-critic2 balanced collection on Nautilus.
+# Verifies end-to-end on ONE GPU: nuplan-critic-rl env + PYTHONPATH, hydra compose
+# of the simulation config, flow-planner ckpt load, scenario_builder discovering the
+# 759 symlink-farm train dbs + resolving the critic_train_balanced_1008 token filter,
+# sim rollout (exec=1), reward compute, and zarr write. Target mode, ~300 tx (a few
+# scenarios) -> writes /tmp/smoke/replay_h1.zarr (node-local, not persisted).
+# Watch: kubectl logs -n cogrob -f job/horuan-fpc2-smoke
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-fpc2-smoke
+  labels: {k8s-app: horuan-fpc2-smoke}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: {k8s-app: horuan-fpc2-smoke}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc2-smoke
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              echo "=== building nuplan-critic-rl env (idempotent) ==="
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/Flow-Planner-critic2
+              export PYTHONPATH=/hugsim-storage/Flow-Planner-critic2
+              export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 RAY_DEDUP_LOGS=1
+              nvidia-smi -L || true
+              echo "=== smoke collect: exec=1 target=300 workers=2 ==="
+              python -u collect.py --config config/collect_aqc_1008_nautilus.yaml \
+                --execution-horizon 1 --target 300 --workers 2 --out /tmp/smoke/replay.zarr
+              python -u -c "from flow_planner.critic_rl.replay import ZarrReplayReader as R; print('SMOKE_OK transitions:', len(R('/tmp/smoke/replay_h1.zarr')))"
+          resources:
+            requests: {cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 20Gi}
+            limits:   {cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 20Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 16Gi}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: closed-loop-e2e
+          persistentVolumeClaim: {claimName: closed-loop-e2e}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

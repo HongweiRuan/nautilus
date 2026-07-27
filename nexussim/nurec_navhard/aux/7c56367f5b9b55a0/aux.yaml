@@ -1,0 +1,46 @@
+# NuRec aux-data for a navhard/navsim clip (nre-tools ncore-aux-data).
+# Writes *.aux.*.zarr.itar (sseg + ego-mask + lidar-camvis) beside the NCore shards.
+# 7c56367f5b9b55a0 = navsim scene_token (hex, no underscores), e.g. b971052f62165a1d.
+# Prereq: NCore dataset at /avl-west/r2s_work/7c56367f5b9b55a0/clips/7c56367f5b9b55a0/ built by
+# nurec_navhard/convert_navsim.py in the horuan-nexussim pod.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navhard-aux-7c56367f5b9b55a0, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-aux
+          image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+          args:
+            - ncore-aux-data
+            - --dataset-path=/avl-west/r2s_work/7c56367f5b9b55a0/clips/7c56367f5b9b55a0/pai_7c56367f5b9b55a0.json
+            - --output-dir=/avl-west/r2s_work/7c56367f5b9b55a0/clips/7c56367f5b9b55a0
+            - --segmentation-backend=mask2former
+            - --zarr-store-type=itar
+            - --store-meta
+            - --lidar-seg-camvis
+            - --ego-mask
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 4Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - { matchExpressions: [{ key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

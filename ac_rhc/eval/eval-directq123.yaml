@@ -1,0 +1,91 @@
+# val14 eval - direct-Q baselines: q{1,2,3} (vanilla Q-learning) + dq{1,2,3} (clipped
+# double-Q), 6 runs SEQUENTIAL in one job (CephFS rule: one val14 eval job at a time;
+# data is staged to node-local disk once, then all runs reuse it).
+# Each run deploys its critic at its own horizon: replan=k, visible-horizon=k, N=16.
+# A failing run is logged and skipped; the job exits nonzero if any run failed.
+# Requires the fault-tolerant evaluate() in cli.py (worker respawn on CUDA faults).
+# Submit:  kubectl apply -f eval-directq123.yaml
+# Watch :  kubectl logs -f job/horuan-eval-directq123
+# Output:  /closed-loop-e2e/critic_experiments/directq_div50_val14/{q1,dq1,q2,dq2,q3,dq3}/
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-eval-directq123
+  labels: {k8s-app: horuan-eval-directq123}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400     # 24h; ~2.3h first run (env+staging) + ~1.7h each after
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-eval-directq123}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-eval
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              # stage val14 data (dbs+maps) to node-local disk so the runs never touch /avl-west mid-eval
+              bash environment/stage_val14_local.sh
+              BASE=/closed-loop-e2e/critic_experiments/directq_div50_val14
+              FAIL=0
+              for spec in "q1 1" "dq1 1" "q2 2" "dq2 2" "q3 3" "dq3 3"; do
+                set -- $spec; name=$1; k=$2
+                OUT="$BASE/$name"; mkdir -p "$OUT"
+                echo "=== EVAL $name (execution-horizon=$k) ==="
+                if python -u -m flow_planner.critic_rl.cli evaluate \
+                    --config config/critic_rl/aqc_diversity50_eval_local.yaml \
+                    --execution-horizon "$k" \
+                    --visible-horizon "$k" \
+                    --checkpoint "outputs/directq_div50/checkpoints/${name}.pt" \
+                    --scorer critic \
+                    --workers 28 \
+                    --output-dir "$OUT"; then
+                  echo "EVAL_${name}_DONE_OK"
+                else
+                  echo "EVAL_${name}_FAILED"
+                  FAIL=1
+                fi
+              done
+              [ "$FAIL" = "0" ] && echo ALL_EVALS_DONE_OK
+              exit "$FAIL"
+          resources:
+            requests: {cpu: "16", memory: "120Gi", nvidia.com/gpu: "7", ephemeral-storage: 250Gi}
+            limits:   {cpu: "16", memory: "120Gi", nvidia.com/gpu: "7", ephemeral-storage: 250Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: localdata, mountPath: /local}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: localdata, emptyDir: {sizeLimit: 180Gi}}   # node-local disk for staged val14 data
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: closed-loop-e2e, persistentVolumeClaim: {claimName: closed-loop-e2e}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  # current cogrob-reserved set (2026-07-21); excluded: ry-gpu-12 (dead GPU4),
+                  # ry-gpu-04 (GPU1 fell off the bus 2026-07-21, killed the first eval attempt)
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

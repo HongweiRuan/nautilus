@@ -1,0 +1,89 @@
+# NuRec 3DGS training — 8-GPU, HALF-RESOLUTION (subsample=2)
+# ---------------------------------------------------------------------------
+# Same quality/settings as train-1gpu-halfres.yaml (blurry-edge half-res recon,
+# 2.5M gaussian cap) but spread over 8x RTX 3090 with DDP for wall-time speedup.
+#   * camera_pixel_sampler.subsample = 2  -> 1/4 of the pixels (half w x half h).
+#   * n_*_image_subsample = 2             -> every other frame (three subsample
+#     params must stay equal).
+#   * gaussian cap = 2.5M (config default; NOT raised).
+#   * 8x RTX 3090, DDP (device_count=world_size=8). The car2sim relative
+#     schedule auto-scales steps by device count, so the 8-GPU run does ~1/8
+#     the steps with 8x effective batch -> same total samples, less wall time.
+#
+# This is the ONLY difference vs train-1gpu-halfres.yaml: device_count 1 -> 8
+# (+ the matching cpu/mem/gpu resource bump and the 8-free-GPU node pin). Use it
+# to get the cheap half-res recon faster when a full 8-GPU node is available.
+# For the sharp recon use train-8gpu-fullres.yaml (subsample=1, 6M cap) instead.
+#
+# USAGE: replace __CLIP__ (underscore) and __CLIPNAME__ (dashes), then apply.
+# Needs ONE node with 8 free 3090s (pinned to ry-gpu-04..07,11-14 below).
+# Prereqs: NGC secrets `ngc-pull` + `ngc-api-key`, and the clip's py123d bundle
+# at /avl-west/r2s_work/__CLIP__/clips/__CLIP__/pai_*.json with aux linked.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nre-train-8gpu-halfres-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 259200
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-train
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          args:
+            - --config-name=configs/apps/prod/Hyperion-8.1/car2sim_6cam.yaml
+            - mode=train
+            - dataset.path=/avl-west/r2s_work/__CLIP__/clips/__CLIP__/pai___CLIP__.json
+            - out_dir=/avl-west/r2s_work/__CLIP__/output
+            - logger.run_id='__CLIP__'
+            - dataset.aux_data=True
+            - dataset.lidar_ids=[lidar_top_360fov]
+            - dataset.train_lidar_ids=[lidar_top_360fov]
+            - dataset.val_lidar_ids=[lidar_top_360fov]
+            - dataset.n_train_sample_lidar_rays=0
+            - dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION]
+            # --- HALF RES: subsample=2 (three subsample params must stay equal) ---
+            - dataset.samplers.batch_sampler.camera_pixel_sampler.subsample=2
+            - dataset.n_val_image_subsample=2
+            - dataset.n_train_sequential_image_subsample=2
+            # --- 8-GPU DDP (the only change vs the 1-GPU half-res job) ---
+            - ++trainer.device_count=8
+            - ++trainer.world_size=8
+            - dataset.camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - dataset.train_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - dataset.val_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - model.layers.road.initialization.name=lidar-rig-trajectory
+            - model.layers.road.initialization.default_scale=0.1
+            - +model.layers.road.initialization.num_near_points=100000
+            - +model.layers.road.initialization.num_far_points=100000
+            - +model.layers.road.initialization.far_radius_factor=20
+            - +model.layers.road.initialization.observation_scale_factor=0.01
+            - +model.layers.road.initialization.lidar_ids=null
+            - +model.layers.road.initialization.camera_ids=null
+            - +model.layers.road.initialization.non_dynamic_points_only=true
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "24", memory: "160Gi", nvidia.com/gpu: "8", ephemeral-storage: 100Gi }
+            limits:   { cpu: "24", memory: "160Gi", nvidia.com/gpu: "8", ephemeral-storage: 100Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 64Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: ["ry-gpu-04.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

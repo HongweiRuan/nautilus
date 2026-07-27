@@ -1,0 +1,132 @@
+# SINGLE-POD / SINGLE-GPU test: NuRec gRPC render + DrivoR rollout in ONE container
+# on ONE 3090. Goal: find out whether a 24GB 3090 can hold BOTH the NRE serve-grpc
+# renderer and the IsaacSim rollout at once (VRAM is the thing being tested).
+#
+# Approach (no image build yet): base = the official NRE container (so /app/run
+# serve-grpc is baked in), then runtime `uv sync` the rollout venv on top exactly
+# like eval-py123d-grpc.yaml does. serve-grpc runs in the background bound to
+# localhost:8080; the eval runs in the foreground with NUREC_GRPC_HOST=localhost.
+# If this OOMs, switch to 2 GPUs in this SAME container (see the CUDA_VISIBLE_DEVICES
+# notes below) — still one image, one pod.
+#
+# Prereqs (same as the split setup): the clip's reconstruction usd-out exists under
+# the --artifact-glob path, and the clip's Arrow is converted (convert-wod-arrow.yaml).
+#
+# USAGE: replace __CLIP__ / __CLIPNAME__, and __HIDE__ = 1 for background-only render
+# (all objects removed) or empty for a full render:
+#   sed -e 's/__CLIP__/10247954040621004675_2180_000_2200_000/g' \
+#       -e 's/__CLIPNAME__/10247954040621004675-2180-000-2200-000/g' \
+#       -e 's/__HIDE__/1/g' \
+#       eval-merged-1gpu.yaml | kubectl apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata: { name: eval-merged-1gpu-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: merged
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -e
+              # ---- readable failure: dump serve log if we exit before eval completes ----
+              trap 'echo "=== serve-grpc log tail ==="; tail -50 /tmp/serve.log 2>/dev/null || true' EXIT
+
+              # ===== 0) nre-ga is a minimal runtime: add git/curl AND the X11/GL libs =====
+              # IsaacSim's RTX/MDL(iray) stack needs libGLU/libXt/... which nre-ga lacks
+              # (without them Kit segfaults in the rtx scenerenderer on boot).
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq git curl \
+                libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 \
+                libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 \
+                libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1
+
+              # ===== 1) build the rollout venv on top of the NRE image (like eval) =====
+              export PATH=$HOME/.local/bin:$PATH UV_CACHE_DIR=/root/.cache/uv \
+                     UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PYTHONPATH=/avl-west/nre_stubs:$PYTHONPATH
+              python -m pip install --quiet --user uv 2>/dev/null \
+                || pip install --quiet --user uv 2>/dev/null \
+                || curl -LsSf https://astral.sh/uv/install.sh | sh
+              rm -rf /root/ns
+              git clone --quiet --no-hardlinks /hugsim-storage/NexusSim /root/ns
+              cd /root/ns && echo "on: $(git log --oneline -1)"
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+
+              # ===== 2) start NRE serve-grpc in the BACKGROUND on GPU 0 =====
+              # (default renderer, editing-actors enabled so background-only eval can remove actors)
+              CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
+                --artifact-glob '/avl-west/r2s_work/*/output_static/*/usd-out/*.usdz' \
+                > /tmp/serve.log 2>&1 &
+              SERVE_PID=$!
+
+              # wait for serve-grpc to accept connections on :8080 (or bail if it died)
+              echo "waiting for serve-grpc on localhost:8080 ..."
+              for i in $(seq 1 120); do
+                if ! kill -0 $SERVE_PID 2>/dev/null; then echo "serve-grpc exited early"; tail -50 /tmp/serve.log; exit 1; fi
+                if (exec 3<>/dev/tcp/localhost/8080) 2>/dev/null; then echo "serve-grpc is up (after ${i}0s)"; break; fi
+                sleep 10
+              done
+
+              # ===== 3) run the rollout in the FOREGROUND, pointing at localhost =====
+              C=__CLIP__
+              DR=/avl-west/py123d_arrow_wod_$C
+              rm -rf $DR; mkdir -p $DR/logs/wod-perception_val
+              ln -s /avl-west/py123d_arrow_wod/logs/wod-perception_val/$C $DR/logs/wod-perception_val/$C
+              mkdir -p /avl-west/eval_grpc/$C
+              LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+                NUREC_GRPC_HOST=localhost NUREC_GRPC_HIDE_ACTORS=__HIDE__ \
+                /root/ns-venv/bin/python scripts/tools/eval_py123d.py \
+                  --scenario-source py123d --py123d-data-root $DR --py123d-scene-index 0 \
+                  --render-backend nurec_grpc --model-type drivor \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth \
+                  --traffic-mode log_replay --controller pure_pursuit \
+                  --eval-frames 40 --ego-replay-frames 8 --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --output-dir /avl-west/eval_grpc/$C/out
+              echo "=== EVAL DONE ==="; find /avl-west/eval_grpc/$C/out -name "*.gif" | head
+              kill $SERVE_PID 2>/dev/null || true
+
+              # ---- If this OOMs on 24GB, use 2 GPUs in THIS SAME container instead: ----
+              #   * request nvidia.com/gpu: 2 below
+              #   * serve-grpc:  CUDA_VISIBLE_DEVICES=1
+              #   * eval:        CUDA_VISIBLE_DEVICES=0
+              # Still one image, one pod — just two cards.
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+            - { name: ACCEPT_EULA, value: "Y" }
+          resources:
+            # bumped: eval(32Gi) + serve(48Gi) run at the same time now
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

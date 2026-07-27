@@ -14,14 +14,14 @@ spec:
       args:
         - |
           set -e &&
-          echo "=== Copying checkpoints to /root ===" &&
-          cp /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt /root/transfuser_seed_0.ckpt &&
-          cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
-          cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
-          cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
-          cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
-          cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
-          echo "=== Checkpoint copy complete; keeping container alive ===" &&
+          # echo "=== Copying checkpoints to /root ===" &&
+          # cp /closed-loop-e2e/weights/navsimv2/transfuser/transfuser_seed_0.ckpt /root/transfuser_seed_0.ckpt &&
+          # cp /closed-loop-e2e/weights/navsimv2/DiffusionDrive/diffusiondrive_navsim_88p1_PDMS /root/diffusiondrive_navsim_88p1_PDMS &&
+          # cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/kmeans_navsim_traj_20.npy /root/kmeans_navsim_traj_20.npy &&
+          # cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrive-bevflow-DiT-XL/2-navsim_no_lidar/epoch=400-step=5213.ckpt /root/epoch=400-step=5213.ckpt &&
+          # cp /closed-loop-e2e/weights/navsimv2/DiffusionDriveV2/diffusiondrivev2_sel.ckpt /root/diffusiondrivev2_sel.ckpt &&
+          # cp /closed-loop-e2e/weights/navsim_bev_flow_1/diffusiondrivev2-bevflow-DiT-XL/2-navsim_no_lidar/epoch=300-step=3913.ckpt /root/epoch=300-step=3913.ckpt &&
+          # echo "=== Checkpoint copy complete; keeping container alive ===" &&
           sleep infinity
       resources:
         requests:

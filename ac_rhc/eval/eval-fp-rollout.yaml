@@ -1,0 +1,101 @@
+# Baseline: ORIGINAL flow-planner nuPlan eval (nuplan-devkit run_simulation.py), 50-epoch diversity ckpt.
+# PURE ROLLOUT — planner=flow_planner's compute_planner_trajectory uses num_candidates=1 (single
+# Flow-Planner sample), i.e. NO test-time scaling, NO candidate selection, no critic. val14, closed-loop.
+# This is the reference number for the Q-critic runs, produced by the official pipeline (not our cli).
+#
+# Reuses the node-local staging so the run never depends on /avl-west mid-eval (dbs+maps -> /local).
+# 8x RTX-3090 (whole node), ry-gpu-12 excluded. Submit: kubectl apply -f eval-fp-rollout.yaml
+# Watch:  kubectl logs -f job/horuan-fp-rollout       (nuPlan progress bar)
+# Score:  nuPlan writes aggregated metrics under NUPLAN_EXP_ROOT below (aggregator_metric/*.parquet).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-fp-rollout
+  labels: {k8s-app: horuan-fp-rollout}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-fp-rollout}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fp-rollout
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              # stage val14 (dbs+maps) to node-local disk so the run never touches /avl-west mid-eval
+              bash environment/stage_val14_local.sh
+
+              export NUPLAN_DEVKIT_ROOT=/hugsim-storage/nuplan-devkit
+              export NUPLAN_DATA_ROOT=/local/nuplan
+              export NUPLAN_MAPS_ROOT=/local/nuplan/maps
+              export NUPLAN_EXP_ROOT=/closed-loop-e2e/critic_experiments/fp_rollout_val14/exp
+              mkdir -p "$NUPLAN_EXP_ROOT"
+              export HYDRA_FULL_ERROR=1
+
+              CONFIG_FILE=/closed-loop-e2e/weights/nuplan/flow-planner/model_config.yaml
+              CKPT_FILE=/closed-loop-e2e/weights/nuplan/flow-planner-diversity/model_epoch_50_trainloss_0.0160.pth
+
+              python -u $NUPLAN_DEVKIT_ROOT/nuplan/planning/script/run_simulation.py \
+                +simulation=closed_loop_nonreactive_agents \
+                planner=flow_planner \
+                planner.flow_planner.config_path=$CONFIG_FILE \
+                planner.flow_planner.ckpt_path=$CKPT_FILE \
+                scenario_builder=nuplan \
+                scenario_builder.data_root=/local/nuplan/nuplan-v1.1/splits/val \
+                scenario_builder.sensor_root=/avl-west/nuplan/nuplan-v1.1/sensor_blobs \
+                scenario_filter=val14 \
+                experiment_uid=flow_planner/val14/rollout/epoch50 \
+                verbose=true \
+                worker=ray_distributed \
+                worker.threads_per_node=28 \
+                distributed_mode=SINGLE_NODE \
+                number_of_gpus_allocated_per_simulation=0.25 \
+                enable_simulation_progress_bar=true \
+                'hydra.searchpath=[pkg://flow_planner.nuplan_simulation.scenario_filter, pkg://flow_planner.nuplan_simulation, pkg://nuplan.planning.script.config.common, pkg://nuplan.planning.script.experiments]'
+              echo FP_ROLLOUT_DONE_OK
+          resources:
+            requests: {cpu: "16", memory: "150Gi", nvidia.com/gpu: "7", ephemeral-storage: 250Gi}
+            limits:   {cpu: "16", memory: "150Gi", nvidia.com/gpu: "7", ephemeral-storage: 250Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: localdata, mountPath: /local}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: localdata, emptyDir: {sizeLimit: 180Gi}}   # node-local disk for staged val14 data
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: closed-loop-e2e, persistentVolumeClaim: {claimName: closed-loop-e2e}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  - key: kubernetes.io/hostname      # ry-gpu-12 excluded (dead GPU4 + NodeNotReady)
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

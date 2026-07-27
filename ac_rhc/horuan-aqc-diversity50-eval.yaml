@@ -1,0 +1,73 @@
+# Official val14 closed-loop eval of the diversity-50 AQC critics (planner = epoch-50 ckpt).
+# Builds env, then runs jobs/eval_aqc_diversity.py: B0 baseline + Q^1/Q^5/Q^10/Q^15,
+# each deployed as the closed-loop scorer at its horizon over 1118 val14 scenarios.
+# Results -> /hugsim-storage/flowplanner-critic/outputs/aqc_div50/eval/{results.json,run.log}
+#
+# Watch:  kubectl logs -n cogrob -f job/horuan-aqc-diversity50-eval
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-aqc-diversity50-eval
+  labels: {k8s-app: horuan-aqc-diversity50-eval}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 36000
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-aqc-diversity50-eval}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-eval
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              mkdir -p outputs/aqc_div50/eval
+              echo "=== running val14 eval ==="
+              python jobs/eval_aqc_diversity.py 2>&1 | tee outputs/aqc_div50/eval/run.log
+          resources:
+            requests: {cpu: "24", memory: "460Gi", nvidia.com/gpu: "8", ephemeral-storage: 100Gi}
+            limits:   {cpu: "24", memory: "460Gi", nvidia.com/gpu: "8", ephemeral-storage: 100Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 96Gi}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: closed-loop-e2e
+          persistentVolumeClaim: {claimName: closed-loop-e2e}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

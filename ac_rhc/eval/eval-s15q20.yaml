@@ -1,0 +1,75 @@
+# Full val14 eval of base-400 + sample_steps=15 critic q20.pt, exec=1/visible=20.
+# Planner = base 400ep model.pth + s15 model config (matches training).
+# Output: /closed-loop-e2e/critic_experiments/base400_s15_val14/q20/
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-eval-s15q20
+  labels: {k8s-app: horuan-eval-s15q20}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400     # 24h; ~2.3h first run (env+staging) + ~1.7h each after
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-eval-s15q20}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-eval
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              # stage val14 data (dbs+maps) to node-local disk so the runs never touch /avl-west mid-eval
+              bash environment/stage_val14_local.sh
+              # High-k critics DEPLOYED at execution_horizon=1 (commit 1 step, replan) with
+              # visible_horizon=k (critic looks k steps into each candidate). Candidates only
+              # diverge ~10 steps out, so a long lookahead is what lets selection matter.
+              BASE=/closed-loop-e2e/critic_experiments/base400_s15_val14
+              OUT="$BASE/q20"; mkdir -p "$OUT"
+              echo "=== EVAL s15 q20 (execution-horizon=1 visible-horizon=20) base400+sample_steps=15 ==="
+              python -u -m flow_planner.critic_rl.cli evaluate \
+                --config config/critic_rl/directq_base400_s15_eval_local.yaml \
+                --execution-horizon 1 --visible-horizon 20 \
+                --checkpoint outputs/directq_base400_s15/checkpoints/q20.pt \
+                --scorer critic --workers 16 --output-dir "$OUT"
+              echo EVAL_s15q20_DONE_OK
+          resources:
+            requests: {cpu: "12", memory: "90Gi", nvidia.com/gpu: "4", ephemeral-storage: 250Gi}
+            limits:   {cpu: "12", memory: "90Gi", nvidia.com/gpu: "4", ephemeral-storage: 250Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: localdata, mountPath: /local}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: localdata, emptyDir: {sizeLimit: 180Gi}}   # node-local disk for staged val14 data
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: closed-loop-e2e, persistentVolumeClaim: {claimName: closed-loop-e2e}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  # current cogrob-reserved set (2026-07-21); excluded: ry-gpu-12 (dead GPU4),
+                  # ry-gpu-04 (GPU1 fell off the bus 2026-07-21, killed the first eval attempt)
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

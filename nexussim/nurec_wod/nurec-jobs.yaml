@@ -1,0 +1,182 @@
+# NuRec GPU stages as Nautilus K8s Jobs (there is no Docker in the pod, so the
+# NRE containers run as Jobs). Three stages, run IN ORDER:
+#
+#   1. nurec-aux    (nre-tools-ga)  ~30 min  -> writes *.aux.*.zarr.itar
+#   2. [in the WOD pod] link aux symlinks  (REQUIRED between aux and train):
+#        /root/.venv-wod/bin/python -c "import os;from pathlib import Path; \
+#          from nexussim.gs3d_converter.nurec_runner import _link_aux_to_manifest_base as L,_ncore_manifest as M; \
+#          cd=Path('/avl-west/r2s_work/<CLIP>/clips/<CLIP>'); L(cd,M(cd))"
+#   3. nurec-train  (nre-ga, GPU)   ~35 min + slow ckpt save  -> checkpoints/last.ckpt
+#   4. nurec-export (nre-ga, GPU)   -> usd-asset/pai_*.usdz  (the Gaussian volume the eval renders)
+#
+# PREREQ (do once): NCore dataset at /avl-west/r2s_work/<CLIP>/clips/<CLIP>/ (built
+# in the WOD pod, stages 1-2), plus the NGC secrets in cogrob:
+#   kubectl create secret docker-registry ngc-pull -n cogrob \
+#     --docker-server=nvcr.io --docker-username='$oauthtoken' --docker-password='<NGC_KEY>'
+#   kubectl create secret generic ngc-api-key -n cogrob --from-literal=NGC_API_KEY='<NGC_KEY>'
+#
+# TO USE — two placeholders (K8s names need dashes, paths need underscores):
+#   CLIP=10203656353524179475_7625_000_7645_000                 # your WOD Perception segment id
+#   sed -e "s/CLIP_ID/$CLIP/g" -e "s/CLIP-NAME/${CLIP//_/-}/g" nurec-jobs.yaml > /tmp/nj.yaml
+#   kubectl apply -f /tmp/nj.yaml            # (or split & apply one stage at a time, waiting for each)
+#
+# ⚠️ Do NOT delete the train Job while its GPU looks idle — the checkpoint save to
+#    CephFS is slow (~3 GB @ ~0.5 MB/s); deleting mid-write truncates last.ckpt.
+#    Wait for the Job to report Complete, then verify zipfile.ZipFile(last.ckpt).
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nurec-aux-CLIP-NAME
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-aux
+          image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+          # image entrypoint is the nre-tools launcher; "ncore-aux-data" is its subcommand.
+          args:
+            - ncore-aux-data
+            - --dataset-path=/avl-west/r2s_work/CLIP_ID/clips/CLIP_ID/pai_CLIP_ID.json
+            - --output-dir=/avl-west/r2s_work/CLIP_ID/clips/CLIP_ID
+            - --segmentation-backend=mask2former
+            - --zarr-store-type=itar
+            - --store-meta
+            - --lidar-seg-camvis
+            - --ego-mask
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 4Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - { matchExpressions: [{ key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nurec-train-CLIP-NAME
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-train
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          # image entrypoint is `/bin/bash /app/run`; args are Hydra overrides.
+          # 5 cameras + lidar_top_360fov + WOD-specific overrides (validated).
+          args:
+            - --config-name=configs/apps/prod/Hyperion-8.1/car2sim_6cam.yaml
+            - mode=train
+            - dataset.path=/avl-west/r2s_work/CLIP_ID/clips/CLIP_ID/pai_CLIP_ID.json
+            - out_dir=/avl-west/r2s_work/CLIP_ID/output
+            - logger.run_id='CLIP_ID'
+            - dataset.aux_data=True
+            - dataset.lidar_ids=[lidar_top_360fov]
+            - dataset.train_lidar_ids=[lidar_top_360fov]
+            - dataset.val_lidar_ids=[lidar_top_360fov]
+            - dataset.n_train_sample_lidar_rays=0
+            - dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION]
+            - dataset.samplers.batch_sampler.camera_pixel_sampler.subsample=2
+            - dataset.n_val_image_subsample=2
+            - dataset.n_train_sequential_image_subsample=2
+            - dataset.camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - dataset.train_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - dataset.val_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1]
+            - model.layers.road.initialization.name=lidar-rig-trajectory
+            - model.layers.road.initialization.default_scale=0.1
+            - +model.layers.road.initialization.num_near_points=100000
+            - +model.layers.road.initialization.num_far_points=100000
+            - +model.layers.road.initialization.far_radius_factor=20
+            - +model.layers.road.initialization.observation_scale_factor=0.01
+            - +model.layers.road.initialization.lidar_ids=null
+            - +model.layers.road.initialization.camera_ids=null
+            - +model.layers.road.initialization.non_dynamic_points_only=true
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - { matchExpressions: [{ key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nurec-export-CLIP-NAME
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-export
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          # three /app/run sub-commands; the LAST one (export-gaussian-usd-asset,
+          # --usd-schema lightfield) produces the renderable Gaussian volume.
+          # export-usdz-artifact is intentionally OMITTED — it is a render-only
+          # bundle with NO gaussians and makes the render come out black.
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -ex
+              RD=/avl-west/r2s_work/CLIP_ID/output/CLIP_ID
+              /app/run export-gaussian-plys      --config-name $RD/config/parsed.yaml --checkpoint-name last.ckpt --output-dir $RD/plys --format _3DGS
+              /app/run export-sequence-tracks    --config-name $RD/config/parsed.yaml --checkpoint-path $RD/checkpoints/last.ckpt --output-dir $RD --world-frame --format json
+              /app/run export-gaussian-usd-asset --config-name $RD/config/parsed.yaml --output-dir $RD/usd-asset --usd-schema lightfield --export-summary
+              echo EXPORT_ALL_DONE
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - { matchExpressions: [{ key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

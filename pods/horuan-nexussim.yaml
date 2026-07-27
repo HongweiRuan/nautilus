@@ -18,60 +18,52 @@ spec:
         - |
           set -e
 
+          # NexusSim (latest main) installs its ENTIRE stack — NexusSim, all
+          # extras, IsaacSim 6.0.0, and cu128 PyTorch — via a single `uv sync`
+          # (pinned in uv.lock). IsaacLab 3.0 is source-installed separately
+          # (it is NOT in uv.lock). This replaces the old conda/isaacsim-5.1
+          # flow. The venv lives on ephemeral /root, so it rebuilds on pod
+          # (re)start (~15 min). Verified working: torch 2.10.0+cu128 (cuda
+          # True), numpy 2.3.1, isaaclab 4.5.22, isaacsim 6.0.0.
+
+          export PATH=$HOME/.local/bin:$PATH
+          export UV_CACHE_DIR=/root/.cache/uv
+          export UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
           cd /hugsim-storage/NexusSim
 
-          echo "=== Creating NexusSim conda env if needed ==="
-          if ! conda env list | awk '{print $1}' | grep -qx nexussim; then
-            conda create -n nexussim python=3.11 -y
+          echo "=== Installing uv ==="
+          python -m pip install --quiet --user uv || pip install --quiet --user uv
+
+          if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+            echo "=== uv sync: NexusSim + IsaacSim 6.0.0 + cu128 torch (from uv.lock) ==="
+            uv sync --all-extras --python 3.12
+
+            echo "=== Installing IsaacLab 3.0 from source (not in uv.lock) ==="
+            [ -d /root/IsaacLab/.git ] || \
+              git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+            for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+              d=/root/IsaacLab/source/$ext
+              [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d"
+            done
+            # light deps isaaclab.app import needs but that source install skips
+            uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops
+          else
+            echo "=== nexussim-venv already built; skipping ==="
           fi
 
-          echo "=== Installing NexusSim runtime dependencies ==="
-          conda run -n nexussim python -m pip install --progress-bar off \
-            "isaacsim[all,extscache]==5.1.0" \
-            --extra-index-url https://pypi.nvidia.com
-
-          conda run -n nexussim python -m pip install --progress-bar off \
-            isaaclab==2.3.2.post1
-
-          echo "=== Installing NexusSim editable package ==="
-          conda run -n nexussim python -m pip install --progress-bar off \
-            -e ".[modelzoo]"
-
-          echo "=== Installing py123d nuPlan runtime ==="
-          conda run -n nexussim python -m pip install --progress-bar off \
-            -e "/hugsim-storage/py123d[nuplan]" msgpack
-
-          echo "=== Restoring IsaacSim-compatible shared dependency pins ==="
-          conda run -n nexussim python -m pip install --progress-bar off --no-deps \
-            aiohappyeyeballs==2.4.4 aiohttp==3.11.11 aiosignal==1.3.2 \
-            psutil==5.9.8 typing_extensions==4.12.2 websockets==12.0 \
-            filelock==3.13.1 packaging==23.0 chardet==5.2.0
-
-          conda run -n nexussim python -m pip install --progress-bar off \
-            "click==8.1.7" pandas hydra-core omegaconf
-
-          echo "=== Writing default NexusSim shell environment ==="
-          cat >/etc/profile.d/nexussim.sh <<'EOF'
-          export CONDA_DEFAULT_ENV=nexussim
-          export PATH=/opt/conda/envs/nexussim/bin:/opt/conda/bin:$PATH
-          export PYTHONPATH=/hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:${PYTHONPATH:-}
-          export OMNI_KIT_ACCEPT_EULA=Y
-          export ACCEPT_EULA=Y
-          EOF
-          source /etc/profile.d/nexussim.sh
-
           echo "=== NexusSim env smoke check ==="
-          echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}"
-          conda run -n nexussim env OMNI_KIT_ACCEPT_EULA=Y ACCEPT_EULA=Y \
-            python -c "import sys, torch, numpy, gymnasium, hydra, omegaconf, shapely, py123d, isaacsim, isaaclab; from py123d.api import SceneFilter, get_filtered_scenes; print(sys.executable); print('torch', torch.__version__); print('cuda_available', torch.cuda.is_available()); print('py123d', py123d.__version__)"
+          /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"
+
+          # NOTE: IsaacSim commands need the system libstdc++ ahead of conda's
+          # (GLIBCXX_3.4.30) — prepend per invocation, e.g.:
+          #   LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 ACCEPT_EULA=Y \
+          #   OMNI_KIT_ACCEPT_EULA=YES /root/nexussim-venv/bin/python <script>
 
           echo "=== NexusSim pod ready; keeping container alive ==="
           sleep infinity
       env:
-        - name: CONDA_DEFAULT_ENV
-          value: nexussim
         - name: PATH
-          value: /opt/conda/envs/nexussim/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          value: /root/nexussim-venv/bin:/root/.local/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         - name: PYTHONPATH
           value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim
         - name: OMNI_KIT_ACCEPT_EULA
@@ -142,20 +134,20 @@ spec:
               - key: kubernetes.io/hostname
                 operator: In
                 values:
-                  # - ry-gpu-01.sdsc.optiputer.net
-                  # - ry-gpu-02.sdsc.optiputer.net
-                  # - ry-gpu-03.sdsc.optiputer.net
+                  - ry-gpu-01.sdsc.optiputer.net
+                  - ry-gpu-02.sdsc.optiputer.net
+                  - ry-gpu-03.sdsc.optiputer.net
                   - ry-gpu-04.sdsc.optiputer.net
                   - ry-gpu-05.sdsc.optiputer.net
                   - ry-gpu-06.sdsc.optiputer.net
                   - ry-gpu-07.sdsc.optiputer.net
-                  # - ry-gpu-08.sdsc.optiputer.net
-                  # - ry-gpu-09.sdsc.optiputer.net
-                  # - ry-gpu-10.sdsc.optiputer.net
-                  # - ry-gpu-11.sdsc.optiputer.net
-                  # - ry-gpu-12.sdsc.optiputer.net
-                  # - ry-gpu-13.sdsc.optiputer.net
-                  # - ry-gpu-14.sdsc.optiputer.net
+                  - ry-gpu-08.sdsc.optiputer.net
+                  - ry-gpu-09.sdsc.optiputer.net
+                  - ry-gpu-10.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net
+                  - ry-gpu-13.sdsc.optiputer.net
+                  - ry-gpu-14.sdsc.optiputer.net
 
   tolerations:
     - effect: NoSchedule

@@ -1,0 +1,16 @@
+# Build-context excludes for `docker build -f docker/Dockerfile .` (BuildKit reads
+# this <Dockerfile>.dockerignore automatically; patterns are relative to the repo root).
+# Keeps `COPY . /opt/nexussim` from dragging in git history, caches, and build junk.
+.git
+.github
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+.venv/
+dist/
+build/
+img/
+docs/
+*.gif
+*.usdz
+*.ckpt

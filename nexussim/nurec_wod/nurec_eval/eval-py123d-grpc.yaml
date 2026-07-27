@@ -1,0 +1,83 @@
+# Closed-loop DrivoR eval on a NuRec reconstruction via the nurec_grpc backend.
+# Scenario = py123d Arrow (with HD map); the gRPC render anchor is derived from
+# the Arrow at load time (no sidecar). Talks to the serve-grpc.yaml Service.
+#
+# Prereqs: reconstruction usd-out served (train-1gpu-static.yaml + export-static.yaml
+# + serve-grpc.yaml, restarted after the new clip), and the clip's Arrow converted
+# (convert-wod-arrow.yaml).
+#
+# USAGE: replace __CLIP__ / __CLIPNAME__, and __REMOVE__ = "--remove-agents" for a
+# background-only scene (all objects dropped from BOTH the render and the sim
+# state — BEV / collision / observation stay consistent) or empty for a full scene:
+#   sed -e 's/__CLIP__/10247954040621004675_2180_000_2200_000/g' \
+#       -e 's/__CLIPNAME__/10247954040621004675-2180-000-2200-000/g' \
+#       -e 's/__REMOVE__/--remove-agents/g' \
+#       eval-py123d-grpc.yaml | kubectl apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata: { name: eval-py123d-grpc-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: eval
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              export PATH=$HOME/.local/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PYTHONPATH=/avl-west/nre_stubs:$PYTHONPATH NUREC_GRPC_HOST=nurec-grpc
+              python -m pip install --quiet --user uv || pip install --quiet --user uv
+              rm -rf /root/ns
+              git clone --quiet --no-hardlinks /hugsim-storage/NexusSim /root/ns
+              cd /root/ns && echo "on: $(git log --oneline -1)"
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+              C=__CLIP__
+              # lean single-clip data root (so --py123d-scene-index 0 is unambiguous)
+              DR=/avl-west/py123d_arrow_wod_$C
+              rm -rf $DR; mkdir -p $DR/logs/wod-perception_val
+              ln -s /avl-west/py123d_arrow_wod/logs/wod-perception_val/$C $DR/logs/wod-perception_val/$C
+              mkdir -p /avl-west/eval_grpc/$C
+              LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+                /root/ns-venv/bin/python scripts/tools/eval_py123d.py \
+                  --scenario-source py123d --py123d-data-root $DR --py123d-scene-index 0 __REMOVE__ \
+                  --render-backend nurec_grpc --model-type drivor \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth \
+                  --traffic-mode log_replay --controller pure_pursuit \
+                  --eval-frames 40 --ego-replay-frames 8 --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --output-dir /avl-west/eval_grpc/$C/out
+              echo "=== EVAL DONE ==="; find /avl-west/eval_grpc/$C/out -name "*.gif" | head
+          env:
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+            - { name: ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+            limits:   { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

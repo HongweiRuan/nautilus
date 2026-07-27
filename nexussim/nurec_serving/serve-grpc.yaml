@@ -1,0 +1,66 @@
+# NuRec gRPC render server — serves every trained reconstruction's usd-out over
+# the sensorsim gRPC API, with --enable-editing-actors so the nurec_grpc render
+# backend can move/remove actors (needed for background-only eval).
+#
+# Must be a Deployment (not a bare Pod): Nautilus caps controller-less pods at
+# 16 cores / 32 GB, and serve-grpc needs 48 GB. The eval reaches it via
+# NUREC_GRPC_HOST=nurec-grpc (the Service below), which stays stable across pod
+# restarts.
+#
+# Cluster caps a single GPU pod's lifetime, so cycle the pod manually every ~6 h
+# (a fresh pod = new GPU lease; the Service is unchanged, evals need no edit):
+#     kubectl rollout restart deploy/nurec-grpc-server -n cogrob
+# Same command also picks up a NEWLY trained clip (serve-grpc scans --artifact-glob
+# only at start-up).
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: nurec-grpc-server, namespace: cogrob }
+spec:
+  replicas: 1
+  # Single GPU: kill the old pod before starting the new one (RollingUpdate
+  # would need a 2nd GPU to surge and would stall). ~1-2 min downtime per restart.
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: nurec-grpc-server } }
+  template:
+    metadata: { labels: { app: nurec-grpc-server } }
+    spec:
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -x
+              /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
+                --artifact-glob '/avl-west/r2s_work/*/output_static/*/usd-out/*.usdz'
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nurec-grpc, namespace: cogrob }
+spec:
+  type: ClusterIP
+  selector: { app: nurec-grpc-server }
+  ports:
+    - { port: 8080, targetPort: 8080 }

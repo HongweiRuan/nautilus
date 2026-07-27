@@ -1,0 +1,66 @@
+# k=10 per-step best-of-N ORACLE ceiling on a 48-scenario val14 subset (jobs/eval_oracle.py).
+# Run as a JOB (interactive dev pods die at 6h). Submit AFTER the collection jobs finish so
+# it isn't starved on /avl-west I/O. Output: outputs/directq_div50/oracle/oracle_k10.json
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-oracle-k10
+  labels: {k8s-app: horuan-oracle-k10}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400     # 24h; ~2.3h first run (env+staging) + ~1.7h each after
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-oracle-k10}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-eval
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+              export EVAL_CFG=config/critic_rl/aqc_diversity50_eval.yaml K=10 N=16 EVAL_LIMIT=48 WORKERS=16 GPW=0.125 CPW=0.5
+              export OUT_DIR=/hugsim-storage/flowplanner-critic/outputs/directq_div50/oracle
+              python -u jobs/eval_oracle.py
+              echo ORACLE_JOB_DONE_OK
+          resources:
+            requests: {cpu: "12", memory: "120Gi", nvidia.com/gpu: "2", ephemeral-storage: 60Gi}
+            limits:   {cpu: "12", memory: "120Gi", nvidia.com/gpu: "2", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: localdata, mountPath: /local}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: localdata, emptyDir: {sizeLimit: 180Gi}}   # node-local disk for staged val14 data
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: closed-loop-e2e, persistentVolumeClaim: {claimName: closed-loop-e2e}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  # current cogrob-reserved set (2026-07-21); excluded: ry-gpu-12 (dead GPU4),
+                  # ry-gpu-04 (GPU1 fell off the bus 2026-07-21, killed the first eval attempt)
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

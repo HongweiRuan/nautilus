@@ -1,0 +1,97 @@
+# Batch Job: full AQC pipeline on the 50-epoch diversity flow-planner checkpoint.
+# 8x RTX-3090 / 24 CPU reserved node (cogrob). Builds the env, then runs
+# jobs/run_aqc_diversity.py:
+#   verify ckpt -> collect V^H(h80) to 100k tx -> train V^H
+#   -> for k in {1,5,10,15}: collect Q^k(hk) to 100k tx -> train Q^k vs frozen V^H
+# Each horizon's ~45 GB replay is deleted right after training (only one on /tmp at a time).
+# Checkpoints + summary land at /hugsim-storage/flowplanner-critic/outputs/aqc_div50/.
+#
+# Watch:  kubectl logs -n cogrob -f job/horuan-aqc-diversity50
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-aqc-diversity50
+  labels:
+    k8s-app: horuan-aqc-diversity50
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 72000      # 20h hard cap (N=16 full-episode collection is heavy)
+  ttlSecondsAfterFinished: 172800  # clean 2 days after finish
+  template:
+    metadata:
+      labels:
+        k8s-app: horuan-aqc-diversity50
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-aqc
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              SETUP=/hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              echo "=== [1/2] building nuplan-critic-rl env ==="
+              bash "$SETUP"
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              mkdir -p outputs/aqc_div50
+              echo "=== [2/2] running AQC diversity-50 pipeline ==="
+              python jobs/run_aqc_diversity.py 2>&1 | tee outputs/aqc_div50/run.log
+          env:
+            - {name: TARGET, value: "100000"}
+            # Per-horizon targets: k=1 gets the headline 100k; V^H(h80) and high-k are
+            # cost-scaled (an h80 tx costs 80 sim-steps vs 1 for k=1, ~1.4 tx/s measured).
+            - {name: TARGETS, value: "80:12000,1:100000,5:40000,10:25000,15:18000"}
+            - {name: COLLECT_WORKERS, value: "64"}
+            - {name: COLLECT_GPW, value: "0.125"}
+            - {name: COLLECT_CPW, value: "0.3"}
+            - {name: KS, value: "1,5,10,15"}
+          resources:
+            requests:
+              cpu: "24"
+              memory: "460Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 150Gi
+            limits:
+              cpu: "24"
+              memory: "460Gi"
+              nvidia.com/gpu: "8"
+              ephemeral-storage: 150Gi
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 96Gi}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: closed-loop-e2e
+          persistentVolumeClaim: {claimName: closed-loop-e2e}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

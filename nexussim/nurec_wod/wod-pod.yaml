@@ -1,0 +1,92 @@
+# WOD data-prep pod (CPU-only) for NexusSim NuRec pipeline.
+#
+# Builds the `.venv-wod` env and runs the NON-GPU, non-Docker stages:
+#   - stage 1-2:  WOD Perception tfrecord -> py123d -> NCore V4  (WODLogReader + NCoreBridge)
+#   - post-aux:   _link_aux_to_manifest_base  (symlink aux stores to the manifest base name)
+#   - stage 6:    assemble ScenarioDescription  (run_real2sim --skip-nurec)
+#   - WOD Perception download (needs the GCP creds below)
+#
+# WHY a separate env: py123d[waymo] drags in TensorFlow + numpy<2, which
+# CONFLICTS with the IsaacSim env (numpy==2.3.1). So data conversion lives here,
+# IsaacSim/eval lives in horuan-nexussim's nexussim-venv.
+#
+# The GPU NuRec stages (aux / train / export) are NOT here — they run as K8s
+# Jobs from nurec-jobs.yaml (nvcr.io NRE containers).
+#
+# Prereq: /hugsim-storage/gcp-waymo.json = GCP ADC for a Google account that
+# accepted the Waymo Open Dataset *Perception* license (for downloads).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-wod
+  namespace: cogrob
+  labels:
+    k8s-app: horuan-wod
+spec:
+  restartPolicy: Never
+  containers:
+    - image: robinwangucsd/metabench:latest
+      name: wod-container
+      imagePullPolicy: Always
+      command: ["bash", "-lc"]
+      args:
+        - |
+          set -e
+          export PATH=$HOME/.local/bin:$PATH
+          export UV_CACHE_DIR=/root/.cache/uv
+
+          echo "=== Installing uv ==="
+          python -m pip install --quiet --user uv || pip install --quiet --user uv
+
+          if ! /root/.venv-wod/bin/python -c "import py123d, nexussim.gs3d_converter.run_real2sim" 2>/dev/null; then
+            echo "=== Building .venv-wod (py123d[waymo] + nvidia-ncore + nexussim) ==="
+            uv venv --python 3.12 /root/.venv-wod
+            # py123d[waymo] pulls TensorFlow + waymo-open-dataset (numpy<2)
+            uv pip install --python /root/.venv-wod/bin/python "py123d[waymo]" nvidia-ncore
+            # nexussim editable, no-deps (we only need gs3d_converter + loaders here)
+            uv pip install --python /root/.venv-wod/bin/python --no-deps -e /hugsim-storage/NexusSim
+          else
+            echo "=== .venv-wod already built; skipping ==="
+          fi
+
+          echo "=== smoke check ==="
+          /root/.venv-wod/bin/python -c "import py123d, tensorflow as tf; from nexussim.gs3d_converter import run_real2sim; print('py123d', py123d.__version__, '| tf', tf.__version__, '| ok')"
+
+          echo "=== WOD pod ready; keeping container alive ==="
+          echo "Use: /root/.venv-wod/bin/python  (PYTHONPATH + GCP creds already set)"
+          sleep infinity
+      env:
+        - name: PYTHONPATH
+          value: /hugsim-storage/NexusSim
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /hugsim-storage/gcp-waymo.json
+      resources:
+        requests:
+          cpu: "8"
+          memory: "32Gi"
+          ephemeral-storage: 60Gi
+        limits:
+          cpu: "8"
+          memory: "32Gi"
+          ephemeral-storage: 60Gi
+      volumeMounts:
+        - { name: dshm, mountPath: /dev/shm }
+        - { name: avl-west-vol, mountPath: /avl-west }
+        - { name: cogrob-avl-west-vol, mountPath: /cogrob-avl-west }
+        - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+        - { name: hugsim-storage, mountPath: /hugsim-storage }
+  volumes:
+    - { name: dshm, emptyDir: { medium: Memory } }
+    - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+    - { name: cogrob-avl-west-vol, persistentVolumeClaim: { claimName: cogrob-avl-west-vol } }
+    - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+    - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              # avl-west PVC is us-west CephFS — keep the pod in-region.
+              - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+  tolerations:
+    - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

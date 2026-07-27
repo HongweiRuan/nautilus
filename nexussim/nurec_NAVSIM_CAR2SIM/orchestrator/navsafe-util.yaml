@@ -1,0 +1,34 @@
+# Utility "eyes and hands" for the Mac-driven orchestrator loop: mounts the PVCs so
+# the loop can probe /avl-west/navsafe artifact state via `kubectl exec deploy/navsafe-util`.
+# A Deployment (NOT a bare Pod) because cogrob injects activeDeadlineSeconds=21600 (6h)
+# on every pod — a bare util pod dies at 6h and stalls the loop's probes until manually
+# recreated. The Deployment recreates it automatically; the loop retries across the
+# few-second recreation gap.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: navsafe-util, namespace: cogrob, labels: { app: navsafe-util } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: navsafe-util } }
+  template:
+    metadata: { labels: { app: navsafe-util } }
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: util
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c", "sleep infinity"]
+          resources:
+            requests: { cpu: "2", memory: "8Gi", ephemeral-storage: 8Gi }
+            limits:   { cpu: "2", memory: "8Gi", ephemeral-storage: 8Gi }
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

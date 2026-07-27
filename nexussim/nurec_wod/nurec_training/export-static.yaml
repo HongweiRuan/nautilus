@@ -1,0 +1,57 @@
+# Export a trained static-separation reconstruction to usd-out (the gRPC-servable
+# USDZ) + PLYs + sequence tracks. Run AFTER train-1gpu-static.yaml completes.
+#
+# USAGE: replace __CLIP__ (underscore id) and __CLIPNAME__ (dashed k8s name):
+#   sed -e 's/__CLIP__/10247954040621004675_2180_000_2200_000/g' \
+#       -e 's/__CLIPNAME__/10247954040621004675-2180-000-2200-000/g' \
+#       export-static.yaml | kubectl apply -f -
+#
+# After this succeeds, restart the gRPC server so it picks up the new usd-out:
+#   kubectl rollout restart deploy/nurec-grpc-server -n cogrob
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nre-export-static-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-export
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -ex
+              C=__CLIP__
+              RD=/avl-west/r2s_work/$C/output_static/$C
+              /app/run export-gaussian-plys      --config-name $RD/config/parsed.yaml --checkpoint-name last.ckpt --output-dir $RD/plys --format _3DGS
+              /app/run export-sequence-tracks    --config-name $RD/config/parsed.yaml --checkpoint-path $RD/checkpoints/last.ckpt --output-dir $RD --world-frame --format json
+              /app/run export-gaussian-usd-asset --config-name $RD/config/parsed.yaml --output-dir $RD/usd-asset --usd-schema lightfield --export-summary
+              /app/run export-usdz-artifact      --config-name $RD/config/parsed.yaml --checkpoint-name last.ckpt --output-dir $RD/usd-out
+              echo "=== EXPORT SUMMARY ==="; cat $RD/usd-asset/export_summary.txt
+              echo "=== usd-out (serve-grpc bundle) ==="; ls -la $RD/usd-out
+              echo EXPORT_STATIC_DONE
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

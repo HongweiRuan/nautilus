@@ -1,0 +1,80 @@
+# val14 eval - Q15 critic.  replan=1 (execution-horizon=1), critic visible-horizon=15, N=16 candidates.
+# Whole 8x RTX-3090 node, 32 workers (4/GPU).  ry-gpu-12 excluded (dead GPU4 + NodeNotReady history).
+# Submit:  kubectl apply -f eval-q15.yaml
+# Watch :  kubectl logs -f job/horuan-eval-q15     # prints one line per finished episode
+# Output:  /closed-loop-e2e/critic_experiments/aqc_div50_val14/q15/{metrics_per_scenario.csv,.json,summary.json}
+# To use 4 GPU (schedules without waiting for a whole node): set nvidia.com/gpu 4, --workers 16, cpu 12.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-eval-q15
+  labels: {k8s-app: horuan-eval-q15}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {k8s-app: horuan-eval-q15}
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-eval
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              bash /hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              # stage val14 data (dbs+maps) to node-local disk so the run never touches /avl-west mid-eval
+              bash environment/stage_val14_local.sh
+              OUT=/closed-loop-e2e/critic_experiments/aqc_div50_val14/q15
+              mkdir -p "$OUT"
+              python -u -m flow_planner.critic_rl.cli evaluate \
+                --config config/critic_rl/aqc_diversity50_eval_local.yaml \
+                --execution-horizon 1 \
+                --visible-horizon 15 \
+                --checkpoint outputs/aqc_div50/checkpoints/c15.pt \
+                --scorer critic \
+                --workers 32 \
+                --output-dir "$OUT"
+              echo EVAL_Q15_DONE_OK
+          resources:
+            requests: {cpu: "24", memory: "120Gi", nvidia.com/gpu: "8", ephemeral-storage: 250Gi}
+            limits:   {cpu: "24", memory: "120Gi", nvidia.com/gpu: "8", ephemeral-storage: 250Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: localdata, mountPath: /local}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: localdata, emptyDir: {sizeLimit: 180Gi}}   # node-local disk (~1.9TB free) for staged val14 data
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: closed-loop-e2e, persistentVolumeClaim: {claimName: closed-loop-e2e}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  - key: kubernetes.io/hostname      # ry-gpu-12 excluded (dead GPU4 + NodeNotReady)
+                    operator: In
+                    values:
+                      - ry-gpu-01.sdsc.optiputer.net
+                      - ry-gpu-02.sdsc.optiputer.net
+                      - ry-gpu-03.sdsc.optiputer.net
+                      - ry-gpu-04.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-09.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

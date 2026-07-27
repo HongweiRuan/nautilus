@@ -1,0 +1,110 @@
+# NuRec 3DGS training — 3dgut_dynamic + a STATIC_RIGIDS layer.
+# ---------------------------------------------------------------------------
+# Same as train-1gpu-3dgutdyn.yaml, but adds a `static_rigids` node so that
+# STATIC tracked objects (parked cars, signs) get their OWN Gaussian node
+# instead of baking into `background`. Result: ALL boxed objects (moving via
+# dynamic_rigids/deformables, static via static_rigids) are separable/editable
+# via the grpc dynamic_objects / edit_assets API — nothing boxed lands in
+# background. Moving-vs-static split is by pose speed (dataset.cuboid_tracks_
+# params.track_min_speed_ms, default 0.1 m/s).
+#
+# HOW: NRE's stock 3dgut_dynamic composite has no static_rigids layer. The
+# overlay recipe (master copy: NexusSim repo,
+# nexussim/gs3d_converter/configs/3dgut_dynamic_static.yaml; synced PVC copy:
+# /avl-west/nre_overlays/3dgut_dynamic_static.yaml) `defaults`-mounts
+# static_rigids (rigid_gaussians + static tracks_calib + camera_dynamic_tracks
+# init), mirroring the shipped reference recipe
+# configs/apps/prod/Hyperion-8.1/car2sim_lidarfree.yaml:20-23,74-83. The job
+# copies it into the container's (writable) bundled config dir at start-up
+# (--config-dir is rejected by the click entrypoint and CLI `+defaults` appends
+# resolve relative to the recipe dir, so the overlay must live inside the
+# bundled config search path). The static_rigids *values* (label_classes,
+# is_dynamic=false, init) are set via ++ overrides because
+# camera_dynamic_tracks already defines those keys.
+#
+# Success check: early log shows `GaussiansComposite/maybe_initialize_gaussians:
+# node=static_rigids`; export per-prim breakdown lists `static_rigids_<track>`
+# prims; get_dynamic_objects / a clean background after removing them.
+#
+# USAGE: replace __CLIP__ (underscore id) and __CLIPNAME__ (dashed k8s name):
+#   sed -e 's/__CLIP__/10203656353524179475_7625_000_7645_000/g' \
+#       -e 's/__CLIPNAME__/10203656353524179475-7625-000-7645-000/g' \
+#       train-1gpu-static.yaml | kubectl apply -f -
+#
+# Prereqs: NGC secrets `ngc-pull` + `ngc-api-key`; the clip's NCore bundle +
+# aux at /avl-west/r2s_work/__CLIP__/clips/__CLIP__/pai_*.json.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nre-train-static-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-train
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -ex
+              CFGDIR=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main/configs/apps/AV/Waymo
+              # Overlay recipe: the master copy is versioned in the NexusSim repo at
+              # nexussim/gs3d_converter/configs/3dgut_dynamic_static.yaml (local docker
+              # runs get it auto-mounted via run_train(static_separation=True)). This
+              # job has no repo mount, so it copies the synced PVC copy instead.
+              cp /avl-west/nre_overlays/3dgut_dynamic_static.yaml "$CFGDIR/"
+              head -3 "$CFGDIR/3dgut_dynamic_static.yaml"
+              CLIP=__CLIP__
+              /app/run --config-name=configs/apps/AV/Waymo/3dgut_dynamic_static.yaml \
+                mode=train logger=dummy \
+                dataset.path=/avl-west/r2s_work/$CLIP/clips/$CLIP/pai_$CLIP.json \
+                out_dir=/avl-west/r2s_work/$CLIP/output_static \
+                logger.run_id="'$CLIP'" \
+                dataset.aux_data=True \
+                dataset.camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_l1,camera_pcam_r0,camera_pcam_r1] \
+                dataset.lidar_ids=[lidar_top_360fov] \
+                dataset.n_train_sample_lidar_rays=0 \
+                dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION] \
+                dataset.samplers.batch_sampler.camera_pixel_sampler.subsample=2 \
+                dataset.n_val_image_subsample=2 \
+                dataset.n_train_sequential_image_subsample=2 \
+                model.layers.dynamic_rigids.tracks.label_classes=[WODPerceptionBoxDetectionLabel.TYPE_VEHICLE] \
+                model.layers.dynamic_deformables.tracks.label_classes=[WODPerceptionBoxDetectionLabel.TYPE_PEDESTRIAN] \
+                model.layers.dynamic_rigids.initialization.name=camera-dynamic-tracks \
+                +model.layers.dynamic_rigids.initialization.camera_ids=null \
+                +model.layers.dynamic_rigids.initialization.step_frame=1 \
+                +model.layers.dynamic_rigids.initialization.fill_with_random_points=true \
+                model.layers.dynamic_deformables.initialization.name=camera-dynamic-tracks \
+                +model.layers.dynamic_deformables.initialization.camera_ids=null \
+                +model.layers.dynamic_deformables.initialization.step_frame=1 \
+                +model.layers.dynamic_deformables.initialization.fill_with_random_points=true \
+                ++model.layers.static_rigids.tracks.is_dynamic=false \
+                ++model.layers.static_rigids.tracks.label_classes=[WODPerceptionBoxDetectionLabel.TYPE_VEHICLE,WODPerceptionBoxDetectionLabel.TYPE_SIGN] \
+                ++model.layers.static_rigids.initialization.symmetric_axis=Y \
+                ++model.layers.static_rigids.initialization.camera_ids=null \
+                ++model.layers.static_rigids.initialization.step_frame=1 \
+                ++model.layers.static_rigids.initialization.fill_with_random_points=true
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

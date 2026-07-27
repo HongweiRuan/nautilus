@@ -1,0 +1,76 @@
+# 3dgut_dynamic recon for a navhard/navsim clip (all 8 nuPlan cameras).
+# Background/road seed from the (real, ego-frame) merged lidar via the recipe
+# default lidar-rig-trajectory; moving actors via camera-dynamic-tracks. NavSim
+# box labels are emitted as native NuPlanBoxDetectionLabel enums by NavsimParser
+# (navsim IS nuPlan data), so route rigid<-{VEHICLE,BICYCLE}, deformable<-PEDESTRIAN.
+# out_dir=output_3dgutdyn. Success: log shows Dynamic Rigids/Deformables > 0.
+# 477045d84aa75534 = navsim scene_token (e.g. b971052f62165a1d).
+#
+# NOTE: the recipe file is Waymo's 3dgut_dynamic.yaml, but that is only the
+# reconstruction pipeline — NCoreBridge always emits NCore/PAI shards regardless
+# of source, and the label_classes overrides below carry the (nuPlan) semantics.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navhard-train5cam-477045d84aa75534, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-train
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          args:
+            - --config-name=configs/apps/AV/Waymo/3dgut_dynamic.yaml
+            - mode=train
+            - logger=dummy
+            - dataset.path=/avl-west/r2s_work/477045d84aa75534/clips/477045d84aa75534/pai_477045d84aa75534.json
+            - out_dir=/avl-west/r2s_work/477045d84aa75534/output_5cam
+            - logger.run_id='477045d84aa75534'
+            - dataset.aux_data=True
+            # --- all 8 NavSim/nuPlan cameras ---
+            - dataset.camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1,camera_pcam_r1]
+            - dataset.train_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1,camera_pcam_r1]
+            - dataset.val_camera_ids=[camera_pcam_f0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1,camera_pcam_r1]
+            - dataset.lidar_ids=[lidar_top_360fov]
+            - dataset.n_train_sample_lidar_rays=0
+            - dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION]
+            # --- half-res (three subsample knobs equal) ---
+            - dataset.samplers.batch_sampler.camera_pixel_sampler.subsample=2
+            - dataset.n_val_image_subsample=2
+            - dataset.n_train_sequential_image_subsample=2
+            # --- CLASS ROUTING: native NuPlan labels -> rigid/deformable ---
+            - model.layers.dynamic_rigids.tracks.label_classes=[NuPlanBoxDetectionLabel.VEHICLE,NuPlanBoxDetectionLabel.BICYCLE]
+            - model.layers.dynamic_deformables.tracks.label_classes=[NuPlanBoxDetectionLabel.PEDESTRIAN]
+            # --- dynamic seeding from cameras (lidar is flattened/unstructured) ---
+            - model.layers.dynamic_rigids.initialization.name=camera-dynamic-tracks
+            - +model.layers.dynamic_rigids.initialization.camera_ids=null
+            - +model.layers.dynamic_rigids.initialization.step_frame=1
+            - +model.layers.dynamic_rigids.initialization.fill_with_random_points=true
+            - model.layers.dynamic_deformables.initialization.name=camera-dynamic-tracks
+            - +model.layers.dynamic_deformables.initialization.camera_ids=null
+            - +model.layers.dynamic_deformables.initialization.step_frame=1
+            - +model.layers.dynamic_deformables.initialization.fill_with_random_points=true
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

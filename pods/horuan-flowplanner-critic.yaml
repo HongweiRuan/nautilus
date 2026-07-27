@@ -1,27 +1,56 @@
+# Interactive dev pod for flowplanner-critic (closed-loop critic-RL / AQC pipeline).
+#
+# On boot it builds the `nuplan-critic-rl` conda env in the container overlay
+# (idempotent — skips if already built) by running the versioned setup script
+# environment/setup_nautilus_env.sh in the repo, then stays alive with `sleep infinity`.
+# The build runs in the background so the shell is usable immediately; watch it with:
+#   kubectl exec -n cogrob horuan-flowplanner-critic -c fpc-container -- tail -f /root/env_setup.log
+#
+# Mounts needed by the pipeline:
+#   /hugsim-storage  -> repo (flowplanner-critic), nuplan-devkit         [horuan-hugsim-vol, CephFS]
+#   /avl-west        -> nuPlan v1.1 dataset (use the `val` split)         [avl-west-vol]
+#   /closed-loop-e2e -> flow-planner checkpoint (model.pth/model_config)  [closed-loop-e2e]
+#
+# Enter the pod (env auto-activates in interactive bash via ~/.bashrc):
+#   kubectl exec -it -n cogrob horuan-flowplanner-critic -c fpc-container -- bash
+# Or run a one-off command with the env explicitly:
+#   kubectl exec -n cogrob horuan-flowplanner-critic -c fpc-container -- bash -lc \
+#     'source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl && \
+#      cd /hugsim-storage/flowplanner-critic && \
+#      python -m flow_planner.critic_rl.cli collect --config config/critic_rl/nautilus_dev.yaml --execution-horizon 80'
 apiVersion: v1
 kind: Pod
 metadata:
-  name: horuan-ac
+  name: horuan-flowplanner-critic
   labels:
-    k8s-app: horuan-ac
+    k8s-app: horuan-flowplanner-critic
 spec:
   containers:
     - image: robinwangucsd/metabench:latest
-      name: ac-container
+      name: fpc-container
       command:
         - "sh"
         - "-c"
       args:
         - |
+          set -e
+          SETUP=/hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+          if [ -f "$SETUP" ]; then
+            echo "=== building nuplan-critic-rl conda env (background) ===";
+            nohup bash "$SETUP" > /root/env_setup.log 2>&1 &
+          else
+            echo "WARNING: $SETUP not found; is /hugsim-storage mounted and the repo deployed?";
+          fi
+          echo "=== pod ready; env builds in background (tail -f /root/env_setup.log) ===";
           sleep infinity
       resources:
         requests:
-          cpu: "16"
+          cpu: "4"
           memory: "32Gi"
           nvidia.com/gpu: "1"
           ephemeral-storage: 100Gi
         limits:
-          cpu: "16"
+          cpu: "4"
           memory: "32Gi"
           nvidia.com/gpu: "1"
           ephemeral-storage: 100Gi
@@ -64,35 +93,21 @@ spec:
               - key: nvidia.com/gpu.product
                 operator: In
                 values:
-                  # - NVIDIA-GeForce-RTX-4090
                   - NVIDIA-GeForce-RTX-3090
-                  # - NVIDIA-RTX-A4000
+                  # - NVIDIA-GeForce-RTX-4090
                   # - NVIDIA-RTX-A5000
-                  # - Quadro-RTX-6000
-                  # - NVIDIA-TITAN-RTX
-                  # - NVIDIA-A10
-                  # - Tesla-V130-SXM2-32GB
-                  # - NVIDIA-A40
                   # - NVIDIA-RTX-A6000
-                  # - Quadro-RTX-8000
               - key: kubernetes.io/hostname
                 operator: In
                 values:
-                  # - ry-gpu-01.sdsc.optiputer.net
-                  # - ry-gpu-02.sdsc.optiputer.net
-                  # - ry-gpu-03.sdsc.optiputer.net
                   - ry-gpu-04.sdsc.optiputer.net
                   - ry-gpu-05.sdsc.optiputer.net
                   - ry-gpu-06.sdsc.optiputer.net
                   - ry-gpu-07.sdsc.optiputer.net
-                  # - ry-gpu-08.sdsc.optiputer.net
-                  # - ry-gpu-09.sdsc.optiputer.net
-                  # - ry-gpu-10.sdsc.optiputer.net
                   - ry-gpu-11.sdsc.optiputer.net
                   - ry-gpu-12.sdsc.optiputer.net
                   - ry-gpu-13.sdsc.optiputer.net
                   - ry-gpu-14.sdsc.optiputer.net
-
   tolerations:
     - effect: NoSchedule
       key: nautilus.io/reservation

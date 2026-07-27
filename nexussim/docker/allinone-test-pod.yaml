@@ -1,0 +1,38 @@
+# Interactive pod to VALIDATE the all-in-one env on Nautilus WITHOUT building the image:
+# base = nre-ga, then replicate the Dockerfile steps at runtime, drop in the `nexussim`
+# script, and run convert -> all (serve+rollout) on one 3090.
+apiVersion: v1
+kind: Pod
+metadata: { name: nexussim-allinone-test, namespace: cogrob }
+spec:
+  imagePullSecrets: [{ name: ngc-pull }]
+  restartPolicy: Never
+  containers:
+    - name: aio
+      image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+      command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c", "sleep infinity"]
+      env:
+        - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+        - { name: ACCEPT_EULA, value: "Y" }
+        - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+      resources:
+        requests: { cpu: "12", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+        limits:   { cpu: "12", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+      volumeMounts:
+        - { name: dshm, mountPath: /dev/shm }
+        - { name: avl-west-vol, mountPath: /avl-west }
+        - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+        - { name: hugsim-storage, mountPath: /hugsim-storage }
+  volumes:
+    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+    - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+    - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+    - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+  tolerations:
+    - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

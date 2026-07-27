@@ -1,0 +1,94 @@
+# Batch Job: direct-Q (train-q + train-dq) k=5 on the ORIGINAL 400-epoch base
+# flow-planner, flow-ODE sample_steps=15, collect 15k transitions. Pinned to ry-gpu-06
+# (step-length k=5 -> 18 CPU node).
+# 5x RTX-3090 / 14 CPU / 300Gi on a cogrob-reserved ry-gpu node. Sized 2026-07-20
+# by canary probes: no reserved node has 8 free GPUs, and free memory on ry-gpu-06
+# (the only node with 7 free GPUs) is contended by pods outside our RBAC view --
+# 5 GPU + 300Gi schedules reliably. Collect workers = 40 (x0.125 GPU = 5.0).
+# Builds the env, then runs
+# jobs/run_direct_q.py:
+#   verify ckpt -> for k in {1,2,3}: collect Q^k(hk) data to target tx
+#   -> train-q (q{k}.pt) -> train-dq (dq{k}.pt) on the SAME replay -> delete replay
+# No V^H stage: both learners bootstrap through their own target network.
+# Each ~45 GB replay lives alone on /tmp (150 Gi). Checkpoints + summary land at
+# /hugsim-storage/flowplanner-critic/outputs/directq_div50/.
+#
+# Watch:  kubectl logs -n cogrob -f job/horuan-dq-s15-k5
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-dq-s15-k5
+  labels:
+    k8s-app: horuan-dq-s15-k5
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 72000
+  ttlSecondsAfterFinished: 172800  # clean 2 days after finish
+  template:
+    metadata:
+      labels:
+        k8s-app: horuan-dq-s15-k5
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: fpc-directq
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              SETUP=/hugsim-storage/flowplanner-critic/environment/setup_nautilus_env.sh
+              echo "=== [1/2] building nuplan-critic-rl env ==="
+              bash "$SETUP"
+              source /opt/conda/etc/profile.d/conda.sh && conda activate nuplan-critic-rl
+              cd /hugsim-storage/flowplanner-critic
+              mkdir -p outputs/directq_base400_s15
+              echo "=== [2/2] direct-Q base400 sample_steps=15, k=5, 15k tx ==="
+              python jobs/run_direct_q.py 2>&1 | tee outputs/directq_base400_s15/run_k5.log
+          env:
+            - {name: CFG, value: "config/critic_rl/directq_base400_s15_rng.yaml"}
+            - {name: OUT_DIR, value: "/hugsim-storage/flowplanner-critic/outputs/directq_base400_s15"}
+            # Per-k transition targets: k=1 matches the AQC diversity-50 headline
+            # (100k); k=2/3 are cost-scaled with the same scheme as that run.
+            - {name: TARGETS, value: "5:15000"}
+            - {name: KS, value: "5"}
+            - {name: COLLECT_WORKERS, value: "48"}
+            - {name: COLLECT_GPW, value: "0.125"}
+            - {name: COLLECT_CPW, value: "0.35"}
+          resources:
+            requests:
+              cpu: "18"
+              memory: "240Gi"
+              nvidia.com/gpu: "6"
+              ephemeral-storage: 80Gi
+            limits:
+              cpu: "18"
+              memory: "240Gi"
+              nvidia.com/gpu: "6"
+              ephemeral-storage: 80Gi
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 96Gi}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: closed-loop-e2e
+          persistentVolumeClaim: {claimName: closed-loop-e2e}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

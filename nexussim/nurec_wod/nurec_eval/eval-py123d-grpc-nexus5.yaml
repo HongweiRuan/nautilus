@@ -1,0 +1,130 @@
+# Batch of 5 closed-loop DrivoR evals on ONE clip, each an 8 s (80-frame) eval,
+# to produce the "nexus 5 gifs" demo matrix of scenario editing:
+#   1 static  + original asset  : relocate a reconstructed car to block the lane
+#   2 static  + urbanverse asset: place a parked UrbanVerse sedan on the route
+#   3 dynamic + urbanverse asset: a UrbanVerse sedan driving in front of the ego
+#   4 dynamic + original asset  : relocate a reconstructed car, driving ahead
+#   5 cones + signs (random)    : scattered cones + relocated scene signs
+#
+# Runs SEQUENTIALLY in one pod (the shared nurec-grpc server can't take
+# concurrent per-scene edit_assets/restore). Overlays the pod repo's UNCOMMITTED
+# working-tree edits (relocate_agent + the baked-actor grounding fix live there).
+# The combined.gif of each lands in /avl-west/nexus5gifs/.
+#
+# USAGE (no tokens): kubectl apply -f eval-py123d-grpc-nexus5.yaml
+# Prereq: the LIDAR-supervised usd-out for the clip is the one served by
+# nurec-grpc, and the clip's Arrow is converted.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: eval-py123d-nexus5, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: eval
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              export PATH=$HOME/.local/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PYTHONPATH=/avl-west/nre_stubs:$PYTHONPATH NUREC_GRPC_HOST=nurec-grpc
+              python -m pip install --quiet --user uv || pip install --quiet --user uv
+              rm -rf /root/ns
+              git clone --quiet --no-hardlinks /hugsim-storage/NexusSim /root/ns
+              ( cd /hugsim-storage/NexusSim && git ls-files -mo --exclude-standard ) | \
+                while IFS= read -r f; do mkdir -p "/root/ns/$(dirname "$f")"; cp -a "/hugsim-storage/NexusSim/$f" "/root/ns/$f"; done
+              cd /root/ns && echo "on: $(git log --oneline -1) + $( ( cd /hugsim-storage/NexusSim && git ls-files -mo --exclude-standard | wc -l ) ) dirty files"
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+
+              C=10247954040621004675_2180_000_2200_000
+              DR=/avl-west/py123d_arrow_wod_$C
+              rm -rf $DR; mkdir -p $DR/logs/wod-perception_val
+              ln -s /avl-west/py123d_arrow_wod/logs/wod-perception_val/$C $DR/logs/wod-perception_val/$C
+              mkdir -p /avl-west/eval_grpc/$C /avl-west/nexus5gifs
+              PLY=/avl-west/nurec_assets/sedan_uv_3dgs.ply
+              CONE=/avl-west/nurec_assets/cone_uv_3dgs.ply
+              CONET=/avl-west/nurec_assets/cone_tall_3dgs.ply
+              CAR=wdPo1LwisGiYoUxDltocrg          # red Challenger, present all 198 frames
+              SRC=KKKcFh7jpwwBPMOrcwRMWg          # source car deleted for #3 (sedan drawn)
+              COMMON="--scenario-source py123d --py123d-data-root $DR --py123d-scene-index 0 \
+                --render-backend nurec_grpc --model-type drivor \
+                --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth \
+                --traffic-mode log_replay --controller pure_pursuit \
+                --cam-height navsim --obstacle-z-to-ground 0 \
+                --eval-frames 80 --ego-replay-frames 8 --replan-rate 5 --camera-resolution-scale 1.0"
+
+              run() { # $1=outdir  $2..=extra flags
+                local OUT=$1; shift
+                echo "=== RUN $OUT ==="
+                LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+                  /root/ns-venv/bin/python scripts/tools/eval_py123d.py $COMMON "$@" \
+                  --output-dir /avl-west/eval_grpc/$C/$OUT || echo "!!! $OUT FAILED"
+              }
+
+              set +e
+              run out1_static_original \
+                --relocate-agents "$CAR:mode=static,arc=18,yaw_offset_deg=90"
+              run out2_static_urbanverse \
+                --place-static-obstacles 1 --obstacle-types sedan_uv --obstacle-arc-positions 22 \
+                --obstacle-nurec-asset sedan_uv=$PLY
+              run out3_dynamic_urbanverse \
+                --relocate-agents "$SRC:mode=dynamic,arc=12,speed=3,archetype=sedan_uv" \
+                --obstacle-nurec-asset sedan_uv=$PLY
+              run out4_dynamic_original \
+                --relocate-agents "$CAR:mode=dynamic,arc=12,speed=3"
+              run out5_cones_signs \
+                --place-static-obstacles 4 --obstacle-types cone,cone_tall --obstacle-seed 7 \
+                --obstacle-nurec-asset cone=$CONE --obstacle-nurec-asset cone_tall=$CONET \
+                --relocate-agents "eUWAsatWbGqrvx16YdUtog:mode=static,arc=15,lateral=5" \
+                --relocate-agents "phkh2docIYdPG6y1uUbiMw:mode=static,arc=30,lateral=-5" \
+                --relocate-agents "4uff2_uHPo5WFv9pkWJVDQ:mode=static,arc=42,lateral=5"
+
+              echo "=== collecting combined.gif -> /avl-west/nexus5gifs/ ==="
+              declare -A NAMES=( [out1_static_original]=1_static_original \
+                [out2_static_urbanverse]=2_static_urbanverse \
+                [out3_dynamic_urbanverse]=3_dynamic_urbanverse \
+                [out4_dynamic_original]=4_dynamic_original \
+                [out5_cones_signs]=5_cones_signs )
+              for O in "${!NAMES[@]}"; do
+                G=$(find /avl-west/eval_grpc/$C/$O -name combined.gif 2>/dev/null | head -1)
+                [ -n "$G" ] && cp -f "$G" /avl-west/nexus5gifs/${NAMES[$O]}.gif && echo "copied ${NAMES[$O]}.gif" || echo "MISSING $O"
+              done
+              echo "=== NEXUS5 DONE ==="; ls -la /avl-west/nexus5gifs/
+          env:
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+            - { name: ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+            limits:   { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [ry-gpu-04.sdsc.optiputer.net, ry-gpu-05.sdsc.optiputer.net, ry-gpu-06.sdsc.optiputer.net, ry-gpu-07.sdsc.optiputer.net, ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

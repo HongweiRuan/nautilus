@@ -1,0 +1,51 @@
+# In-cluster orchestrator: runs orchestrate.py --loop, reconciling every scene
+# through the pipeline. Self-heals (Deployment restarts on node death); state is
+# the PVC filesystem so a restart resumes cleanly. Reads the controller code +
+# templates + scene TSV from the PVC (seeded under /avl-west/navsafe/tools).
+#
+# Requires controller-rbac.yaml applied (navsafe-controller SA + job RBAC).
+# kubectl is fetched at startup (metabench has python3 but not kubectl).
+#
+# Tune GPU_CAP/CPU_CAP + --max-scenes via the args below. Start the full run with
+# --max-scenes 421 (or drop the flag). Watch:  kubectl logs -f deploy/navsafe-controller -n cogrob
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: navsafe-controller, namespace: cogrob, labels: { app: navsafe-controller } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # never two controllers submitting at once
+  selector: { matchLabels: { app: navsafe-controller } }
+  template:
+    metadata: { labels: { app: navsafe-controller } }
+    spec:
+      serviceAccountName: navsafe-controller
+      restartPolicy: Always
+      containers:
+        - name: controller
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              # kubectl (in-cluster SA auth is automatic once kubectl is present)
+              if ! command -v kubectl >/dev/null; then
+                curl -sSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+                chmod +x /usr/local/bin/kubectl
+              fi
+              export TEMPLATE_DIR=/avl-west/navsafe/tools/templates GPU_CAP=${GPU_CAP:-28} CPU_CAP=${CPU_CAP:-10}
+              exec python3 /avl-west/navsafe/tools/orchestrate.py --loop --interval 60 \
+                --tsv /avl-west/navsafe/navhard_scenes.tsv --max-scenes ${MAX_SCENES:-421}
+          env:
+            - { name: GPU_CAP, value: "28" }
+            - { name: CPU_CAP, value: "10" }
+            - { name: MAX_SCENES, value: "2" }   # pilot; raise to 421 for the full run
+          resources:
+            requests: { cpu: "1", memory: "2Gi", ephemeral-storage: 4Gi }
+            limits:   { cpu: "2", memory: "4Gi", ephemeral-storage: 8Gi }
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

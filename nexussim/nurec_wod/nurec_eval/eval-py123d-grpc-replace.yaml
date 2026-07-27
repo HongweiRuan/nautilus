@@ -1,0 +1,109 @@
+# Closed-loop DrivoR eval that REPLACES an existing scenario agent with an
+# UrbanVerse asset: the original car is deleted from BOTH render and sim state,
+# and our asset is placed on its per-frame trajectory (nurec_grpc edit_assets).
+# Variant of eval-py123d-grpc.yaml with obstacle + camera-height knobs, used to
+# validate the ground-z fix on a lidar-supervised reconstruction.
+#
+# Differs from eval-py123d-grpc.yaml:
+#   * overlays the pod repo's UNCOMMITTED working-tree changes on top of the
+#     git clone (the obstacle/cam-height/registry features live there, not yet
+#     committed) — a plain `git clone` would miss them;
+#   * replaces a car: --replace-agent-ids __REPLACE__ (TRACK_ID=ARCHETYPE),
+#     with the archetype's asset via --obstacle-nurec-asset __OBSTYPE__=__ASSET__;
+#     find TRACK_ID with `python -m nexussim.tools.list_scene_agents <arrowdir>`;
+#   * --cam-height __CAMH__ (navsim|waymo);
+#   * --obstacle-z-to-ground __ZTG__ (pass 0 to TEST a lidar-supervised artifact
+#     where the recon road == the true ego-pose ground, i.e. no per-scene
+#     calibration needed; leave the token empty to fall back to the registry).
+#
+# USAGE:
+#   sed -e 's/__CLIP__/10247954040621004675_2180_000_2200_000/g' \
+#       -e 's/__CLIPNAME__/10247954040621004675-2180-000-2200-000/g' \
+#       -e 's/__OBSTYPE__/sedan_uv/g' \
+#       -e 's/__ASSET__/\/avl-west\/nurec_assets\/sedan_uv_3dgs.ply/g' \
+#       -e 's/__ARC__/25/g' -e 's/__CAMH__/waymo/g' -e 's/__ZTG__/0/g' \
+#       -e 's/__OUT__/out_sedan_lidar/g' \
+#       eval-py123d-grpc-replace.yaml | kubectl apply -f -
+#
+# Prereq: the LIDAR-supervised usd-out for __CLIP__ must be the one served by
+# nurec-grpc (swap it in + rollout restart), and the clip's Arrow converted.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: eval-py123d-replace-__CLIPNAME__, namespace: cogrob }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: eval
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              export PATH=$HOME/.local/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PYTHONPATH=/avl-west/nre_stubs:$PYTHONPATH NUREC_GRPC_HOST=nurec-grpc
+              python -m pip install --quiet --user uv || pip install --quiet --user uv
+              rm -rf /root/ns
+              git clone --quiet --no-hardlinks /hugsim-storage/NexusSim /root/ns
+              # Overlay UNCOMMITTED working-tree edits (modified + untracked,
+              # respecting .gitignore) — the obstacle / cam-height / ground-z
+              # registry code is not committed yet.
+              ( cd /hugsim-storage/NexusSim && git ls-files -mo --exclude-standard ) | \
+                while IFS= read -r f; do mkdir -p "/root/ns/$(dirname "$f")"; cp -a "/hugsim-storage/NexusSim/$f" "/root/ns/$f"; done
+              cd /root/ns && echo "on: $(git log --oneline -1) + $( ( cd /hugsim-storage/NexusSim && git ls-files -mo --exclude-standard | wc -l ) ) dirty files"
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+              C=__CLIP__
+              DR=/avl-west/py123d_arrow_wod_$C
+              rm -rf $DR; mkdir -p $DR/logs/wod-perception_val
+              ln -s /avl-west/py123d_arrow_wod/logs/wod-perception_val/$C $DR/logs/wod-perception_val/$C
+              mkdir -p /avl-west/eval_grpc/$C
+              ZTG_ARG=""; [ -n "__ZTG__" ] && ZTG_ARG="--obstacle-z-to-ground __ZTG__"
+              LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+                /root/ns-venv/bin/python scripts/tools/eval_py123d.py \
+                  --scenario-source py123d --py123d-data-root $DR --py123d-scene-index 0 \
+                  --render-backend nurec_grpc --model-type drivor \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth \
+                  --traffic-mode log_replay --controller pure_pursuit \
+                  --cam-height __CAMH__ $ZTG_ARG \
+                  --replace-agent-ids __REPLACE__ \
+                  --obstacle-nurec-asset __OBSTYPE__=__ASSET__ \
+                  --eval-frames 40 --ego-replay-frames 8 --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --output-dir /avl-west/eval_grpc/$C/__OUT__
+              echo "=== EVAL DONE ==="; find /avl-west/eval_grpc/$C/__OUT__ -name "*.gif" | head
+          env:
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+            - { name: ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+            limits:   { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: ["us-west"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [ry-gpu-04.sdsc.optiputer.net, ry-gpu-05.sdsc.optiputer.net, ry-gpu-06.sdsc.optiputer.net, ry-gpu-07.sdsc.optiputer.net, ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

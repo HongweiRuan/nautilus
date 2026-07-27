@@ -1,0 +1,19 @@
+# @package _global_
+# EXPERIMENT: take the noisy nuPlan lidar OUT of the road so the cameras
+# reconstruct it (test whether raised lane markers / studs return).
+# Base = _base_3dgut_dynamic → road lives in `background` (always FREE geometry,
+# camera-supervised, no separate frozen road layer, no ground-mesh machinery).
+# Background init swapped from lidar_rig_trajectory → random (2M pts), so NO
+# lidar is used to seed the road; densification + camera loss rebuild it.
+# Combined with the CLI overrides (dynamic layers camera-seeded, n_train_sample_
+# lidar_rays=0) this run uses lidar for NOTHING. subsample stays 2.
+defaults:
+  - /apps/AV/_base_3dgut_dynamic
+  - override /model/gaussians/initialization@model.layers.background.initialization: random
+  - _self_
+
+model:
+  layers:
+    background:
+      initialization:
+        num_points: 2_000_000
