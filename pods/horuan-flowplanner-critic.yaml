@@ -25,6 +25,7 @@ metadata:
   labels:
     k8s-app: horuan-flowplanner-critic
 spec:
+  activeDeadlineSeconds: 86400
   containers:
     - image: robinwangucsd/metabench:latest
       name: fpc-container

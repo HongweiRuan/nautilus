@@ -1,0 +1,92 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-dev-aux-46afa807d9425b8a
+  namespace: cogrob
+  labels:
+    app: navsafe-dev
+    k8s-app: navsafe-dev-aux-46afa807d9425b8a
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-dev-aux-46afa807d9425b8a
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      containers:
+      - name: gpu-container
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        args:
+        - ncore-aux-data
+        - --dataset-path=/avl-west/navsafe_dev/ncore/46afa807d9425b8a/clips/46afa807d9425b8a/pai_46afa807d9425b8a.json
+        - --output-dir=/avl-west/navsafe_dev/ncore/46afa807d9425b8a/clips/46afa807d9425b8a
+        - --segmentation-backend=mask2former
+        - --zarr-store-type=itar
+        - --store-meta
+        - --lidar-seg-camvis
+        - --ego-mask
+        env:
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        resources:
+          limits:
+            nvidia.com/gpu: '1'
+            cpu: '2'
+            memory: 12Gi
+            ephemeral-storage: 40Gi
+          requests:
+            nvidia.com/gpu: '1'
+            cpu: '2'
+            memory: 12Gi
+            ephemeral-storage: 40Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: closed-loop-e2e
+        persistentVolumeClaim:
+          claimName: closed-loop-e2e

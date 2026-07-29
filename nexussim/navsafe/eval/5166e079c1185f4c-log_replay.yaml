@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-dev-eval-5166e079c1185f4c-log-replay
+  namespace: cogrob
+  labels:
+    app: navsafe-dev
+    k8s-app: navsafe-dev-eval-5166e079c1185f4c-log-replay
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-dev-eval-5166e079c1185f4c-log-replay
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      containers:
+      - name: gpu-container
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        args:
+        - "set -eo pipefail\nC=5166e079c1185f4c\ntrap 'echo \"=== serve-grpc tail ===\"; tail -80 /tmp/serve.log 2>/dev/null || true' EXIT\n\n# Fail before the ~20 min of bootstrap + scene load if an input is missing.\ntest -s /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth || { echo \"FATAL: checkpoint not found: /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth\"; exit 1; }\ntest -s /avl-west/navsafe_dev/export/5166e079c1185f4c/usd-out/$C.usdz || { echo \"FATAL: no usdz for $C\"; exit 1; }\n\nexport DEBIAN_FRONTEND=noninteractive\napt-get update -qq && apt-get install -y -qq git curl python3-venv   libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0   libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1   libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null\n\nexport PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH\n# Wheel cache on the PVC: the first eval job downloads the stack, the rest\n# reuse it. Without this every job re-fetches torch and IsaacSim.\nexport UV_CACHE_DIR=/avl-west/navsafe_dev/.uv-cache\nexport UV_PROJECT_ENVIRONMENT=/root/ns-venv\nexport VIRTUAL_ENV=/root/ns-venv\nfor i in 1 2 3 4; do\n  command -v uv >/dev/null && break\n  python -m pip install --quiet --user uv 2>/dev/null ||     pip install --quiet --user uv 2>/dev/null ||     curl -LsSf https://astral.sh/uv/install.sh | sh\n  hash -r; sleep 10\ndone\ncommand -v uv >/dev/null || { echo \"FATAL: uv unavailable\"; exit 1; }\n\n# Build against the checkout on the PVC (so edits are live) but install into\n# /root, never into the shared repo -- concurrent eval jobs must not race on\n# a .venv inside it.\ncd /hugsim-storage/NexusSim\nif ! /root/ns-venv/bin/python -c \"import isaacsim, isaaclab, nexussim\" 2>/dev/null; then\n  uv sync --all-extras --python 3.12\n  [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta     https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab\n  for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do\n    d=/root/IsaacLab/source/$ext\n    [ -d \"$d\" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e \"$d\"\n  done\n  uv pip install --python /root/ns-venv/bin/python lazy_loader einops\nfi\n/root/ns-venv/bin/python -m pip install --quiet grpcio protobuf 2>&1 | tail -1 || true\n\n# --- renderer, this seed only -------------------------------------------\nART=/avl-west/navsafe_dev/export/5166e079c1185f4c/usd-out/$C.usdz\ntest -s \"$ART\"\nCUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0   --enable-editing-actors --renderer default   --artifact-glob \"$ART\" > /tmp/serve.log 2>&1 &\nSERVE_PID=$!\nfor i in $(seq 1 120); do\n  kill -0 $SERVE_PID 2>/dev/null || { echo \"serve-grpc exited early\"; exit 1; }\n  (exec 3<>/dev/tcp/localhost/8080) 2>/dev/null && { echo \"serve up after ${i}0s\"; break; }\n  sleep 10\ndone\n\n# --- rollout -------------------------------------------------------------\nmkdir -p /avl-west/navsafe_dev/eval/5166e079c1185f4c/log_replay\nLD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES   /root/ns-venv/bin/python     /hugsim-storage/NexusSim/nexussim/navsafe/world/run_eval.py     --seed /avl-west/navsafe_dev/seeds/$C     --grpc-host localhost     --traffic-mode log_replay     --model-type drivor     --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth\nkill $SERVE_PID 2>/dev/null || true\ntest -f /avl-west/navsafe_dev/eval/5166e079c1185f4c/log_replay/metrics.json\necho \"EVAL_DONE $C log_replay\"\n"
+        env:
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        resources:
+          limits:
+            nvidia.com/gpu: '1'
+            cpu: '8'
+            memory: 48Gi
+            ephemeral-storage: 150Gi
+          requests:
+            nvidia.com/gpu: '1'
+            cpu: '8'
+            memory: 48Gi
+            ephemeral-storage: 150Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: closed-loop-e2e
+        persistentVolumeClaim:
+          claimName: closed-loop-e2e

@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-dev-export-fd169b08e9b55de5
+  namespace: cogrob
+  labels:
+    app: navsafe-dev
+    k8s-app: navsafe-dev-export-fd169b08e9b55de5
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-dev-export-fd169b08e9b55de5
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      containers:
+      - name: gpu-container
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        args:
+        - "set -ex\nC=fd169b08e9b55de5; RUN=/avl-west/navsafe_dev/recon/fd169b08e9b55de5/fd169b08e9b55de5; EXP=/avl-west/navsafe_dev/export/fd169b08e9b55de5\ntest -f \"$RUN/checkpoints/last.ckpt\"\nmkdir -p \"$EXP/usd-out\"\n# Training already writes artifacts/last.usdz; re-exporting it costs ~5 min for\n# an identical file, so only run export-usdz-artifact when it is absent.\nif [ -f \"$RUN/artifacts/last.usdz\" ]; then\n  cp \"$RUN/artifacts/last.usdz\" \"$EXP/usd-out/$C.usdz\"\nelif ! ls \"$EXP\"/usd-out/*.usdz >/dev/null 2>&1; then\n  /app/run export-usdz-artifact --config-name \"$RUN/config/parsed.yaml\" --checkpoint-name last.ckpt --output-dir \"$RUN/usd-out\"\n  cp \"$RUN\"/usd-out/*.usdz \"$EXP/usd-out/$C.usdz\"\nfi\n# PLYs and world-frame tracks are for actor editing / asset work downstream,\n# not for serve-grpc, so a failure here must not cost the usdz.\nif [ ! -d \"$EXP/plys\" ]; then\n  /app/run export-gaussian-plys  --config-name \"$RUN/config/parsed.yaml\" --checkpoint-name last.ckpt --output-dir \"$RUN/plys\" --format _3DGS || true\n  /app/run export-sequence-tracks --config-name \"$RUN/config/parsed.yaml\" --checkpoint-path \"$RUN/checkpoints/last.ckpt\" --output-dir \"$RUN\" --world-frame --format json || true\n  cp -r \"$RUN\"/plys \"$EXP\"/ 2>/dev/null || true\n  cp \"$RUN\"/*track*.json \"$EXP\"/ 2>/dev/null || true\nfi\nls -la \"$EXP/usd-out\"\ntest -s \"$EXP/usd-out/$C.usdz\"\necho \"EXPORT_DONE $C\"\n"
+        env:
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        resources:
+          limits:
+            nvidia.com/gpu: '1'
+            cpu: '4'
+            memory: 32Gi
+            ephemeral-storage: 120Gi
+          requests:
+            nvidia.com/gpu: '1'
+            cpu: '4'
+            memory: 32Gi
+            ephemeral-storage: 120Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: closed-loop-e2e
+        persistentVolumeClaim:
+          claimName: closed-loop-e2e

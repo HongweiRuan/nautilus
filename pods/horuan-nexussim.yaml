@@ -7,6 +7,7 @@ metadata:
     k8s-app: horuan-nexussim
 spec:
   restartPolicy: Never
+  activeDeadlineSeconds: 86400
   containers:
     - image: robinwangucsd/metabench:latest
       name: nexussim-container
@@ -51,8 +52,31 @@ spec:
             echo "=== nexussim-venv already built; skipping ==="
           fi
 
+          # Raw-nuPlan ingestion (NavSafe seed mining + NCore conversion) needs
+          # deps that uv.lock does not carry: the NCore V4 writer, the nuPlan
+          # devkit ORM, and py123d's [nuplan] extra. nuplan-devkit is installed
+          # --no-deps because its own pins would drag the torch/numpy stack
+          # backwards; its actual runtime needs are the five listed after it.
+          # The guard tests the DISTRIBUTION name, not an import name: what a
+          # wheel installs itself as is exact, whereas a guessed top-level
+          # module name would reinstall on every start when wrong.
+          if ! uv pip show --python /root/nexussim-venv/bin/python nvidia-ncore >/dev/null 2>&1; then
+            echo "=== Installing nuPlan ingestion deps (ncore + devkit) ==="
+            uv pip install --python /root/nexussim-venv/bin/python nvidia-ncore
+            uv pip install --python /root/nexussim-venv/bin/python --no-deps nuplan-devkit
+            uv pip install --python /root/nexussim-venv/bin/python \
+              "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools
+          fi
+
           echo "=== NexusSim env smoke check ==="
           /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"
+          # Check the capability rather than a module name -- what matters is
+          # that the nuPlan->NCore ingestion path imports. Non-fatal on purpose:
+          # a pod that can still train, evaluate and mine is worth having even
+          # when raw-nuPlan conversion is unavailable, and `set -e` would
+          # otherwise turn one missing wheel into a pod that never starts.
+          /root/nexussim-venv/bin/python -c "from nexussim.gs3d_converter.ncore_bridge import NCoreBridge; from nexussim.gs3d_converter.log_ingestion import NuplanLogReader; print('nuPlan->NCore ingestion OK')" \
+            || echo "WARNING: nuPlan->NCore ingestion unavailable (run_ncore.py/run_arrow.py will fail; everything else works)"
 
           # NOTE: IsaacSim commands need the system libstdc++ ahead of conda's
           # (GLIBCXX_3.4.30) — prepend per invocation, e.g.:

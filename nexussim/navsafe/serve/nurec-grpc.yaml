@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navsafe-dev-nurec-grpc
+  namespace: cogrob
+  labels:
+    app: navsafe-dev
+    k8s-app: navsafe-dev-nurec-grpc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: navsafe-dev-nurec-grpc
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-dev-nurec-grpc
+        app: navsafe-dev
+    spec:
+      restartPolicy: Always
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      containers:
+      - name: serve
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - "set -ex\necho \"artifacts:\"; ls -la /avl-west/navsafe_dev/export/*/usd-out/*.usdz || { echo \"NO ARTIFACTS MATCHED\"; exit 1; }\nexec /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors \\\n  --renderer default --artifact-glob \"/avl-west/navsafe_dev/export/*/usd-out/*.usdz\"\n"
+        ports:
+        - containerPort: 8080
+          name: grpc
+        resources:
+          limits:
+            nvidia.com/gpu: '1'
+            cpu: '4'
+            memory: 24Gi
+            ephemeral-storage: 40Gi
+          requests:
+            nvidia.com/gpu: '1'
+            cpu: '4'
+            memory: 24Gi
+            ephemeral-storage: 40Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 60
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navsafe-dev-nurec-grpc
+  namespace: cogrob
+  labels:
+    app: navsafe-dev
+spec:
+  selector:
+    k8s-app: navsafe-dev-nurec-grpc
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
