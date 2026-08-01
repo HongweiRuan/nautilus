@@ -33,7 +33,7 @@ spec:
             - |
               set -x
               /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
-                --artifact-glob '/avl-west/r2s_work/*/output_static/*/usd-out/*.usdz'
+                  --artifact-glob '/avl-west/navsafe-20s/training-a6000-10M-160k/*/artifacts/last.usdz'
           ports: [{ containerPort: 8080 }]
           env:
             - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
