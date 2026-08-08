@@ -1,0 +1,29 @@
+# leaf	name	mined	to_generate	total	available_in_logs
+C-1	Rear-End	23	0	23	323
+C-2	Angle / T-Bone	23	0	23	58
+C-3	Sideswipe	23	0	23	67
+C-4	Multi-Vehicle	23	0	23	100
+C-5	Intersection	130	0	130	784
+C-6	Roadway Departure	33	0	33	132
+C-7	Head-On	1	9	10	1
+C-8	Backing	23	0	23	33
+C-9	Single-Vehicle	0	10	10	0
+C-10	Wrong-Way (crash)	0	10	10	0
+V-1	Red-Light / Stop-Sign	112	0	112	818
+V-2	Failure to Yield	39	0	39	147
+V-3	Unsafe Lane Change	18	0	18	24
+V-4	Reckless / Aggressive	23	0	23	227
+V-5	Speeding	88	0	88	1105
+V-6	Tailgating	23	0	23	76
+V-7	Failure to Maintain Lane	23	0	23	98
+V-8	Illegal U-Turn / Turn	1	9	10	1
+V-9	Blocking Intersection	42	0	42	834
+V-10	Unsafe Merge / Entry	0	10	10	0
+V-11	Driving Wrong Way	0	10	10	0
+R-1	Pedestrian-Involved	68	0	68	661
+R-2	Bicycle-Involved	5	5	10	5
+R-3	Micromobility	0	10	10	0
+R-4	Animal-Involved	0	10	10	0
+I-1	Obstruction / Hazard	22	0	22	128
+I-2	Work-Zone	22	0	22	57
+I-3	General Incident	0	10	10	0

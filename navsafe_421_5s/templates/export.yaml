@@ -1,0 +1,52 @@
+# STAGE 5 (export): trained recon -> gaussian PLYs + per-frame actor tracks +
+# usd-out/*.usdz (the artifact serve-grpc/eval serves). GPU job, reserved 3090.
+# Prereq: train stage done. Placeholders: __SCENE__
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nav5s-export-__SCENE__, namespace: cogrob, labels: { app: navhard421-5s, stage: export, scene: "__SCENE__" } }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navhard421-5s, stage: export, scene: "__SCENE__" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-export
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -ex
+              C=__SCENE__
+              RD=/avl-west/navhard421-website-5s/$C/output_5cam/$C
+              test -f $RD/checkpoints/last.ckpt || { echo "no trained ckpt for $C"; exit 1; }
+              if ls $RD/usd-out/*.usdz >/dev/null 2>&1; then echo "export $C exists, skip"; exit 0; fi
+              /app/run export-gaussian-plys  --config-name $RD/config/parsed.yaml --checkpoint-name last.ckpt --output-dir $RD/plys --format _3DGS
+              /app/run export-sequence-tracks --config-name $RD/config/parsed.yaml --checkpoint-path $RD/checkpoints/last.ckpt --output-dir $RD --world-frame --format json
+              /app/run export-usdz-artifact   --config-name $RD/config/parsed.yaml --checkpoint-name last.ckpt --output-dir $RD/usd-out
+              ls -la $RD/usd-out/*.usdz
+              echo "EXPORT_DONE $C"
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "6", memory: "40Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-01.sdsc.optiputer.net","ry-gpu-02.sdsc.optiputer.net","ry-gpu-03.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net"] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

@@ -9,12 +9,12 @@
 # CephFS checkpoint) — it just re-runs from scratch on resubmit.
 apiVersion: batch/v1
 kind: Job
-metadata: { name: navhard-train-__SCENE__, namespace: cogrob, labels: { app: navhard421, stage: train, scene: "__SCENE__" } }
+metadata: { name: navts-train-__SCENE__, namespace: cogrob, labels: { app: navsafe-testsplit, stage: train, scene: "__SCENE__" } }
 spec:
   backoffLimit: 1          # retry once (absorbs transient CUDA/scheduling hiccups)
   ttlSecondsAfterFinished: 259200
   template:
-    metadata: { labels: { app: navhard421, stage: train, scene: "__SCENE__" } }
+    metadata: { labels: { app: navsafe-testsplit, stage: train, scene: "__SCENE__" } }
     spec:
       restartPolicy: Never
       imagePullSecrets: [{ name: ngc-pull }]
@@ -26,10 +26,10 @@ spec:
             - |
               set -e
               C=__SCENE__
-              SRC=/avl-west/navhard421/$C/clips/$C
+              SRC=/avl-west/navsafe-testsplit/$C/clips/$C
               L=/tmp/clip/$C
               OUTL=/tmp/out
-              DST=/avl-west/navhard421/$C/output_5cam
+              DST=/avl-west/navsafe-testsplit/$C/output_5cam
               test -s $SRC/pai_$C.json || { echo "no ncore store for $C"; exit 1; }
               if [ -f $DST/$C/artifacts/last.usdz ]; then echo "train $C exists, skip"; exit 0; fi
               echo "[train $C] copy-in store+aux CephFS->local ($(du -sh $SRC 2>/dev/null | cut -f1)) ..."
@@ -76,8 +76,8 @@ spec:
             - { name: HYDRA_FULL_ERROR, value: "1" }
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
           resources:                                   # node has 28 CPU / 503Gi / 1.5TB eph / 8 GPU.
-            requests: { cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }  # cpu:3 -> 9/node CPU-wise
-            limits:   { cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }  # => GPU-bound at 8/node (~39 total)
+            requests: { cpu: "3", memory: "40Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }  # bumped mem 24->40, eph 40->80: avoid OOM/evict when 8 pack per node
+            limits:   { cpu: "3", memory: "40Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }  # 8/node => 320Gi RAM / 640Gi disk (nodes: 503Gi / 1.5TB)
           volumeMounts:
             - { name: dshm, mountPath: /dev/shm }
             - { name: avl-west-vol, mountPath: /avl-west }
@@ -89,8 +89,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-01.sdsc.optiputer.net","ry-gpu-03.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net","ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"] }  # ry-gpu-02 excluded (bad GPU)
-                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  # train is a ~4.5h job -> pin to OUR ry-gpu 3090s (stable, no
+                  # foreign preemption). Public federation preempts long jobs mid-run
+                  # (train writes to local disk, so a preempt loses hours). ncore/aux
+                  # are short and stay on the public gpu.product selector.
+                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net","ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"] }  # 8 cogrob-reserved nodes (taints tolerated below)
       tolerations:
         - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
         - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

@@ -1,0 +1,65 @@
+# STAGE 2 (arrow): py123d Arrow scenario source for one navhard half (native 10Hz
+# nuPlan). ego + boxes + traffic-lights + map only (grpc supplies pixels).
+# CephFS-relief: arrow reads NO sensor blobs -- only the log DB (1 file) + the HD
+# maps (~1.4G). Copy both CephFS->local /tmp, run fully local, bulk-copy the small
+# (~52M) arrow output back to CephFS. CPU job; ray capped to 8 workers (big-core
+# nodes else deadlock on the ray-worker import storm). Placeholders: __SCENE__ __LOG__ __T0__ __T1__
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navts-arrow-__SCENE__, namespace: cogrob, labels: { app: navsafe-testsplit, stage: arrow, scene: "__SCENE__" } }
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navsafe-testsplit, stage: arrow, scene: "__SCENE__" } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: arrow
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -ex
+              C=__SCENE__; LOG=__LOG__; T0=__T0__; T1=__T1__
+              ROOT=/avl-west/navsafe-testsplit/$C/arrow
+              if [ -d "$ROOT/logs/nuplan_test/$C" ] && [ -d "$ROOT/maps" ]; then echo "arrow $C exists, skip"; exit 0; fi
+              VENV=/root/cv; python3 -m venv "$VENV"; "$VENV/bin/pip" install -q --upgrade pip
+              cp -a /hugsim-storage/py123d /root/py123d && rm -rf /root/py123d/build /root/py123d/*.egg-info
+              "$VENV/bin/pip" install -q nuplan-devkit nvidia-ncore "/root/py123d[nuplan]"
+              # copy-in: log DB + HD maps CephFS->local (no sensor blobs needed)
+              DST=/tmp/nuplan_local/nuplan-v1.1/splits/test; mkdir -p "$DST"
+              cp -n /avl-west/nuplan/nuplan-v1.1/splits/*/$LOG.db "$DST/" 2>/dev/null || true
+              mkdir -p /tmp/maps && cp -a /avl-west/nuplan/maps/. /tmp/maps/
+              export RAY_DISABLE_USAGE_STATS=1
+              # run fully local: read DB+maps from /tmp, write arrow output to /tmp
+              PYTHONPATH=/hugsim-storage/NexusSim PY123D_DATA_ROOT=/tmp/arrow \
+                timeout 1800 "$VENV/bin/py123d-conversion" dataset=nuplan-navhard \
+                "dataset.parser.scenes=[[$LOG, $C, $T0, $T1]]" \
+                dataset.parser.nuplan_data_root=/tmp/nuplan_local \
+                dataset.parser.nuplan_maps_root=/tmp/maps \
+                execution.threads_per_node=8
+              test -d /tmp/arrow/logs/nuplan_test/$C && test -d /tmp/arrow/maps
+              # copy-out: bulk-write the small arrow output back to CephFS
+              mkdir -p $ROOT && cp -a /tmp/arrow/. $ROOT/
+              test -d $ROOT/logs/nuplan_test/$C && test -d $ROOT/maps && echo "ARROW_DONE $C"
+          resources:
+            requests: { cpu: "8", memory: "32Gi", ephemeral-storage: 40Gi }
+            limits:   { cpu: "10", memory: "48Gi", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:                       # pin to the 5 cogrob-reserved nodes
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - { key: kubernetes.io/hostname, operator: NotIn, values: ["ry-gpu-02.sdsc.optiputer.net"] }  # public 3090 queue; skip bad GPU
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

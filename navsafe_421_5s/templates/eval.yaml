@@ -1,0 +1,94 @@
+# STAGE 6 (eval): closed-loop DrivoR eval for one navhard scene, SELF-CONTAINED
+# (serve-grpc + eval_py123d in the same pod) so 421 evals run in parallel without
+# a shared serve deployment. Uses --nurec-work-dir so the re-referenced recon's
+# origin sidecar aligns the frame anchor (else the render is off-scene mush).
+# GPU job, us-west (reserved 3090 preferred). Prereq: export + arrow done.
+# Placeholders: __SCENE__
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nav5s-eval-__SCENE__, namespace: cogrob, labels: { app: navhard421-5s, stage: eval, scene: "__SCENE__" } }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navhard421-5s, stage: eval, scene: "__SCENE__" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: evaldrivor
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -e
+              trap 'echo "=== serve tail ==="; tail -40 /tmp/serve.log 2>/dev/null || true' EXIT
+              C=__SCENE__
+              USDZ_GLOB=/avl-west/navhard421-website-5s/$C/output_5cam/$C/usd-out/*.usdz
+              ARROW=/avl-west/navhard421-website-5s/$C/arrow
+              WORKDIR=/avl-west/navhard421-website-5s/$C/clips
+              ls $USDZ_GLOB >/dev/null 2>&1 || { echo "no usdz $USDZ_GLOB"; exit 1; }
+              test -d $ARROW/logs/nuplan_test/$C || { echo "no arrow $ARROW"; exit 1; }
+              test -s $WORKDIR/$C/nurec_origin_offset.json || { echo "no sidecar"; exit 1; }
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq git curl python3-venv libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null
+              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PYTHONPATH=/avl-west/nre_stubs:$PYTHONPATH
+              for i in 1 2 3 4; do command -v uv >/dev/null && break; python -m pip install --quiet --user uv 2>/dev/null || pip install --quiet --user uv 2>/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh; hash -r; command -v uv >/dev/null && break; sleep 15; done
+              rm -rf /root/ns; git clone --quiet --no-hardlinks /hugsim-storage/NexusSim /root/ns
+              ( cd /hugsim-storage/NexusSim && git ls-files -mo --exclude-standard ) | while IFS= read -r f; do mkdir -p "/root/ns/$(dirname "$f")"; cp -a "/hugsim-storage/NexusSim/$f" "/root/ns/$f"; done
+              cd /root/ns
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+              CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default --artifact-glob "$USDZ_GLOB" > /tmp/serve.log 2>&1 &
+              SERVE_PID=$!
+              for i in $(seq 1 180); do if ! kill -0 $SERVE_PID 2>/dev/null; then echo "serve exited"; tail -60 /tmp/serve.log; exit 1; fi; (exec 3<>/dev/tcp/localhost/8080) 2>/dev/null && { echo "serve up ${i}0s"; break; }; sleep 10; done
+              DR=/tmp/py123d_$C; rm -rf $DR; mkdir -p $DR/logs/nuplan_test
+              ln -s $ARROW/logs/nuplan_test/$C $DR/logs/nuplan_test/$C
+              ln -s $ARROW/maps $DR/maps
+              OUT=/avl-west/navhard421-website-5s/$C/eval; mkdir -p "$OUT"
+              LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+                NUREC_GRPC_HOST=localhost PY123D_RECENTER=1 NUPLAN_MAPS_ROOT=/avl-west/nuplan/maps NUPLAN_MAP_VERSION=nuplan-maps-v1.0 \
+                /root/ns-venv/bin/python scripts/tools/eval_py123d.py \
+                  --scenario-source py123d --py123d-data-root $DR --py123d-scene-index 0 \
+                  --nurec-work-dir $WORKDIR \
+                  --render-backend nurec_grpc --model-type drivor \
+                  --checkpoint /closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth \
+                  --cam-height navsim --traffic-mode log_replay --controller pure_pursuit \
+                  --ego-replay-frames 20 --eval-frames 180 --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --output-dir "$OUT"
+              kill $SERVE_PID 2>/dev/null || true
+              echo "EVAL_DONE $C"; find $OUT -name 'metrics.json' -o -name 'combined.gif' | head
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+            limits:   { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 120Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:   # hard pin to the 5 cogrob-reserved nodes
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-01.sdsc.optiputer.net","ry-gpu-02.sdsc.optiputer.net","ry-gpu-03.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

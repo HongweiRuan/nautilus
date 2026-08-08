@@ -1,0 +1,16 @@
+# type	have	need	available_in_navhard+navtest
+accelerating_at_crosswalk	1	10	1
+accelerating_at_stop_sign	4	10	5
+accelerating_at_stop_sign_no_crosswalk	1	10	1
+accelerating_at_traffic_light_with_lead	2	10	2
+behind_bike	6	10	6
+behind_long_vehicle	2	10	2
+behind_pedestrian_on_driveable	2	10	2
+following_lane_with_lead	2	10	2
+near_pedestrian_on_crosswalk_with_ego	8	10	8
+starting_high_speed_turn	4	10	4
+starting_low_speed_turn	2	10	2
+stopping_at_crosswalk	2	10	2
+stopping_at_stop_sign_no_crosswalk	2	10	2
+stopping_at_stop_sign_without_lead	1	10	1
+waiting_for_pedestrian_to_cross	2	10	2

@@ -1,0 +1,43 @@
+# Scenario types that navhard+navtest CANNOT fill to 10 (need self-generated scenes later).
+# navtest_available = distinct scenarios found by exact scenario_tag keyframe match
+# (same selection criterion navhard-421 used). need = 10.
+# nuplan FULL taxonomy = 73 types (test split 71 + 2 trainval-only); navtest covers 55;
+# these 33 fall short (15 partial + 18 absent).
+#
+# type	navtest_available	need
+# --- PARTIAL: some navtest scenes exist, converted now, top up by generation ---
+near_pedestrian_on_crosswalk_with_ego	8	10
+behind_bike	6	10
+starting_high_speed_turn	4	10
+accelerating_at_stop_sign	4	10
+waiting_for_pedestrian_to_cross	2	10
+stopping_at_stop_sign_no_crosswalk	2	10
+stopping_at_crosswalk	2	10
+starting_low_speed_turn	2	10
+following_lane_with_lead	2	10
+behind_pedestrian_on_driveable	2	10
+behind_long_vehicle	2	10
+accelerating_at_traffic_light_with_lead	2	10
+stopping_at_stop_sign_without_lead	1	10
+accelerating_at_stop_sign_no_crosswalk	1	10
+accelerating_at_crosswalk	1	10
+# --- ABSENT: 0 in navtest (NAVSIM navtest excludes these); generate fully ---
+changing_lane	0	10
+changing_lane_to_left	0	10
+changing_lane_to_right	0	10
+changing_lane_with_trail	0	10
+stopping_with_lead	0	10
+stopping_at_traffic_light_without_lead	0	10
+stopping_at_traffic_light_with_lead	0	10
+stopping_at_stop_sign_with_lead	0	10
+high_magnitude_jerk	0	10
+near_multiple_pedestrians	0	10
+near_multiple_bikes	0	10
+traversing_narrow_lane	0	10
+crossed_by_vehicle	0	10
+behind_pedestrian_on_pickup_dropoff	0	10
+stationary_at_crosswalk	0	10
+starting_u_turn	0	10
+# --- ABSENT: 0 in navtest AND not even in nuplan test split (trainval-only) ---
+changing_lane_with_lead	0	10
+crossed_by_bike	0	10

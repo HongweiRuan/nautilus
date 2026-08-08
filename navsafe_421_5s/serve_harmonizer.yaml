@@ -36,13 +36,14 @@ spec:
           args:
             - |
               set -x
-              # --cache-size 2: the 24GB 3090 fills if serve keeps the default 10
+              # --cache-size 4: the 24GB 3090 fills if serve keeps the default 10
               # scenes' gaussians resident (~4-7GB each) -> CUDA OOM. This is a
               # single-pass eval (each scene rendered once), so a tiny LRU is fine
               # and keeps peak GPU memory bounded (~2 scenes at a time).
               /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
-                  --cache-size 2 \
-                  --artifact-glob '/avl-west/nurec_serve_webgif/*/artifacts/last.usdz'
+                  --enable-harmonizer \
+                  --cache-size 3 \
+                  --artifact-glob '/avl-west/navhard421-website-5s/*/output_5cam/*/artifacts/last.usdz'
           ports: [{ containerPort: 8080 }]
           env:
             - {
@@ -86,6 +87,9 @@ spec:
                       - ry-gpu-12.sdsc.optiputer.net
                       - ry-gpu-13.sdsc.optiputer.net
                       - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
 ---
 apiVersion: v1
 kind: Service
