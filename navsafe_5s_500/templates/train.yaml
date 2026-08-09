@@ -88,9 +88,12 @@ spec:
             - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
             - { name: HYDRA_FULL_ERROR, value: "1" }
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
-          resources:                                   # node has 28 CPU / 503Gi / 1.5TB eph / 8 GPU
-            requests: { cpu: "3", memory: "40Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
-            limits:   { cpu: "3", memory: "40Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+          resources:      # right-sized from measurement: 50 running pods peaked at
+                          # 1.3 CPU / 12.8Gi RAM, so cpu:3/mem:40Gi was ~3x over-requested
+                          # and dragged the Nautilus utilization metric down. ephemeral
+                          # stays 80Gi: the per-clip store copy + 2.1G ckpt + 2G usdz need it.
+            requests: { cpu: "2", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+            limits:   { cpu: "2", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
           volumeMounts:
             - { name: dshm, mountPath: /dev/shm }
             - { name: avl-west-vol, mountPath: /avl-west }
