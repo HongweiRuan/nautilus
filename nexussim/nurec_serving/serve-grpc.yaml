@@ -36,11 +36,19 @@ spec:
           args:
             - |
               set -x
+              # Harmonizer postproc: better perceptual quality, and the thing that
+              # makes an INSERTED asset sit in the scene's own lighting instead of
+              # reading as a pasted-on mesh. The checkpoint is downloaded from
+              # HuggingFace on first use, so cache it on the PVC — otherwise every
+              # pod cycle re-downloads it and the first render blows the client's
+              # gRPC deadline.
+              mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
               # --cache-size 2: the 24GB 3090 fills if serve keeps the default 10
               # scenes' gaussians resident (~4-7GB each) -> CUDA OOM. This is a
               # single-pass eval (each scene rendered once), so a tiny LRU is fine
               # and keeps peak GPU memory bounded (~2 scenes at a time).
               /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
+                  --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
                   --cache-size 2 \
                   --artifact-glob '/avl-west/nurec_serve_webgif/*/artifacts/last.usdz'
           ports: [{ containerPort: 8080 }]
@@ -63,29 +71,69 @@ spec:
       volumes:
         - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
         - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
-      # PUBLIC path: the ry-gpu nodes lost their cogrob reservation/taints, so no
-      # tolerations are needed. Pin by hostname to the SAME 10 nodes the trains use
-      # (ry-gpu-02 omitted = bad GPU). This is the proven scheduling the trains land
-      # on, so it avoids any gpu.product-label mismatch that a bare product selector
-      # could hit.
+      # The ry-gpu nodes DO still carry the cogrob taints (2026-08-11: this pod
+      # sat Pending with "untolerated taint {nautilus.io/reservation: cogrob}"
+      # until these were added, and horuan-nexussim on ry-gpu-14 tolerates the
+      # same key). Without them the hostname pin below matches 10 nodes that all
+      # reject the pod, so it never schedules at all.
+      tolerations:
+        - { key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule }
+        - { key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule }
+      # PUBLIC QUEUE (2026-08-11): the 10 reserved ry-gpu nodes are GPU-full, so
+      # the hostname pin is dropped and this takes whatever public GPU it gets.
+      #
+      # WATCH THE STORAGE. /avl-west is CephFS at SDSC and read throughput is a
+      # function of how far the node is: measured 65 MB/s on the Fullerton nodes
+      # vs 1.2 MB/s on nrp-fiona-001.sdmz.amnh.org. At 1.2 MB/s a 2 GB artifact
+      # takes ~28 min to load and the client's first render_rgb hits its gRPC
+      # deadline, which looks like a hang rather than a slow disk. So the one
+      # node measured unusable is excluded outright; if a render still times
+      # out, check throughput on the node it landed on before debugging further:
+      #   kubectl exec deploy/nurec-grpc-server -n cogrob -- \
+      #     dd if=/avl-west/nurec_serve_webgif/<clip>/artifacts/last.usdz \
+      #        of=/dev/null bs=1M count=400
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
+              # Both expressions are ANDed (same term): a >=24 GB GPU, and not
+              # the one node whose storage is unusable.
               - matchExpressions:
-                  - key: kubernetes.io/hostname
+                  # VRAM FLOOR. The old hostname pin to the 10 ry-gpu nodes was
+                  # doing double duty: it also guaranteed a 24 GB 3090, which is
+                  # what `--cache-size 2` is tuned for (default 10 resident
+                  # scenes at ~4-7 GB each -> CUDA OOM). Opening the affinity to
+                  # the public queue drops that guarantee, so state it directly
+                  # instead of inferring it from hostnames — otherwise this can
+                  # land on a 12/16 GB card and OOM, and the harmonizer only
+                  # pushes VRAM higher. Every product below is a 24 GB card;
+                  # unknown names in an In-list simply never match, so listing
+                  # extras costs nothing.
+                  - key: nvidia.com/gpu.product
                     operator: In
                     values:
-                      - ry-gpu-01.sdsc.optiputer.net
-                      - ry-gpu-03.sdsc.optiputer.net
-                      - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-06.sdsc.optiputer.net
-                      - ry-gpu-07.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
-                      - ry-gpu-11.sdsc.optiputer.net
-                      - ry-gpu-12.sdsc.optiputer.net
-                      - ry-gpu-13.sdsc.optiputer.net
-                      - ry-gpu-14.sdsc.optiputer.net
+                      - NVIDIA-GeForce-RTX-3090
+                      - NVIDIA-GeForce-RTX-3090-Ti
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-A10
+                      - NVIDIA-A10G
+                      - NVIDIA-L4
+                      - NVIDIA-RTX-A5000
+                      - NVIDIA-A30
+                  # Known-bad nodes. Both were hit for real on 2026-08-11:
+                  #  * nrp-fiona-001 reads /avl-west at 1.2 MB/s (vs 65 MB/s
+                  #    near SDSC) -> a 2 GB artifact takes ~28 min to load and
+                  #    the client's first render_rgb hits its gRPC deadline;
+                  #  * uicnrp-fiona2 fails "initialize NVML: Driver/library
+                  #    version mismatch" -> every GPU container dies at
+                  #    RunContainerError/exit 128 before the process starts.
+                  #    The GPU model is fine, the node's driver is not, so a
+                  #    gpu.product selector cannot filter it out.
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - nrp-fiona-001.sdmz.amnh.org
+                      - uicnrp-fiona2.evl.uic.edu
 ---
 apiVersion: v1
 kind: Service

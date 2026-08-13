@@ -72,17 +72,43 @@ case "$STAGE" in
   train) GLOB="$ROOT/*/output_5cam/*/artifacts/last.usdz"; SED='s#.*/output_5cam/([^/]+)/artifacts/.*#\1#' ;;
 esac
 DONE=$(mktemp)
-kubectl exec -n "$NS" "$POD" -- bash -lc "ls -d $GLOB 2>/dev/null" 2>/dev/null \
-  | sed -E "$SED" | sort -u > "$DONE"
+# NOTE: this exec is the ONLY source of truth for "what is already built". If POD is
+# dead the exec fails, and silently swallowing that made done=0 -> the whole backlog
+# got re-submitted. Fail loudly instead: a wrong done count mis-schedules hundreds of
+# jobs (they no-op thanks to the per-clip skip in the template, but waste slots).
+if ! kubectl exec -n "$NS" "$POD" -- bash -lc "ls -d $GLOB 2>/dev/null" > "$DONE".raw 2>"$DONE".err; then
+  echo "!! cannot read CephFS through pod '$POD' — gap-check impossible, refusing to submit."
+  echo "   $(head -1 "$DONE".err)"
+  echo "   fix: kubectl get pod -n $NS $POD    (recreate it, or pass POD=<another pod>)"
+  rm -f "$CLIPS" "$DONE" "$DONE".raw "$DONE".err; exit 1
+fi
+sed -E "$SED" < "$DONE".raw | sort -u > "$DONE"; rm -f "$DONE".raw "$DONE".err
 NDONE=$(grep -c . "$DONE")
 
-# 3) clips already in flight (any shard job that is Running/Pending owns its clips)
+# 3) clips already in flight. Read the clip list straight out of each live job's spec
+#    (the manifest is embedded in the container args), NOT from local rendered/*.clips:
+#    those files live under an iCloud-synced folder that renames them on conflict
+#    ("sh000 3.clips"), which silently made inflight=0 and caused duplicate assignment.
+#    Reading the cluster also means a resubmit from another machine still sees the truth.
 INFLIGHT=$(mktemp)
-for sh in $(kubectl get pods -n "$NS" -l "app=navsafe_5s_500,stage=$STAGE" \
-    -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.metadata.labels.shard}{"\n"}{end}{range .items[?(@.status.phase=="Pending")]}{.metadata.labels.shard}{"\n"}{end}' 2>/dev/null \
-    | sort -u | grep .); do
-  [ -f "rendered/$STAGE/$sh.clips" ] && cat "rendered/$STAGE/$sh.clips"
-done | sort -u > "$INFLIGHT"
+kubectl get jobs -n "$NS" -l "app=navsafe_5s_500,stage=$STAGE" -o json 2>/dev/null \
+| python3 -c '
+import sys, json, re
+try: d = json.load(sys.stdin)
+except Exception: sys.exit(0)
+out = set()
+for j in d.get("items", []):
+    if not j.get("status", {}).get("active"):      # only jobs with a live pod
+        continue
+    try: args = j["spec"]["template"]["spec"]["containers"][0]["args"][0]
+    except Exception: continue
+    m = re.search(r"<<.MANIFEST_EOF.\n(.*?)\nMANIFEST_EOF", args, re.S)
+    if not m: continue
+    for line in m.group(1).splitlines():
+        t = line.split()
+        if t: out.add(t[0])
+print("\n".join(sorted(out)))
+' > "$INFLIGHT"
 NRUN=$(grep -c . "$INFLIGHT")
 
 # 4) missing = clips - done - inflight
@@ -162,7 +188,7 @@ fi
 
 # 6) apply ONLY this run's shards (names are unique, so no immutable-spec conflicts)
 xargs -n1 kubectl apply -f < "$NEWYAMLS"
-echo "[$STAGE] submitted $NSHARD job(s) covering $NMISS clip(s)."
+echo "[$STAGE] submitted $NSHARD job(s) covering $COVER of $NMISS missing clip(s)."
 echo "         watch:  kubectl get pods -n $NS -l app=navsafe_5s_500,stage=$STAGE"
 echo "         re-run this script when they finish to pick up any failures."
 rm -f "$CLIPS" "$DONE" "$INFLIGHT" "$MISSING" "${NEWYAMLS:-}"

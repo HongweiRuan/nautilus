@@ -8,10 +8,17 @@
 # GPU job. Prereq: aux. Placeholders: SHARD-NAME + a manifest block
 apiVersion: batch/v1
 kind: Job
-metadata: { name: nav500-train-__SHARD__, namespace: cogrob, labels: { app: navsafe_5s_500, stage: train, shard: "__SHARD__" } }
+metadata:
+  {
+    name: nav500-train-__SHARD__,
+    namespace: cogrob,
+    labels: { app: navsafe_5s_500, stage: train, shard: "__SHARD__" },
+  }
 spec:
-  backoffLimit: 1          # retry once; finished clips are skipped so it resumes cheaply
-  ttlSecondsAfterFinished: 7200      # 2h: finished jobs must release the namespace quota
+  backoffLimit:
+    6 # evictions/admission errors are external events, not code
+    # failures; finished clips are skipped so a retry is cheap
+  ttlSecondsAfterFinished: 7200 # 2h: finished jobs must release the namespace quota
   template:
     metadata: { labels: { app: navsafe_5s_500, stage: train, shard: "__SHARD__" } }
     spec:
@@ -85,15 +92,20 @@ spec:
               echo "SHARD_DONE __SHARD__ ok=$ok skip=$skip notready=$notready fail=$fail"
               [ "$fail" -eq 0 ] || { echo "failed:$failed"; exit 1; }
           env:
-            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - {
+                name: NGC_API_KEY,
+                valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } },
+              }
             - { name: HYDRA_FULL_ERROR, value: "1" }
             - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
-          resources:      # right-sized from measurement: 50 running pods peaked at
-                          # 1.3 CPU / 12.8Gi RAM, so cpu:3/mem:40Gi was ~3x over-requested
-                          # and dragged the Nautilus utilization metric down. ephemeral
-                          # stays 80Gi: the per-clip store copy + 2.1G ckpt + 2G usdz need it.
-            requests: { cpu: "2", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
-            limits:   { cpu: "2", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+          resources: # right-sized from measurement: 50 running pods peaked at
+            # 1.3 CPU / 12.8Gi RAM, so cpu:3/mem:40Gi was ~3x over-requested
+            # and dragged the Nautilus utilization metric down. ephemeral
+            # stays 80Gi: the per-clip store copy + 2.1G ckpt + 2G usdz need it.
+            requests:
+              { cpu: "2", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+            limits:
+              { cpu: "2", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
           volumeMounts:
             - { name: dshm, mountPath: /dev/shm }
             - { name: avl-west-vol, mountPath: /avl-west }
@@ -106,7 +118,26 @@ spec:
             nodeSelectorTerms:
               - matchExpressions:
                   # train is long -> pin to OUR ry-gpu 3090s (stable, no foreign preemption)
-                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net","ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"] }
+                  - {
+                      key: kubernetes.io/hostname,
+                      operator: In,
+                      values:
+                        [
+                          "ry-gpu-05.sdsc.optiputer.net",
+                          "ry-gpu-06.sdsc.optiputer.net",
+                          "ry-gpu-07.sdsc.optiputer.net",
+                          "ry-gpu-08.sdsc.optiputer.net",
+                          "ry-gpu-11.sdsc.optiputer.net",
+                          "ry-gpu-12.sdsc.optiputer.net",
+                          "ry-gpu-13.sdsc.optiputer.net",
+                          "ry-gpu-14.sdsc.optiputer.net",
+                        ],
+                    }
       tolerations:
-        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - {
+            effect: NoSchedule,
+            key: nautilus.io/reservation,
+            operator: Equal,
+            value: cogrob,
+          }
         - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
