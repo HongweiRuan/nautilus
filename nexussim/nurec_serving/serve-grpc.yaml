@@ -1,9 +1,17 @@
-# NuRec gRPC render server — serves the 28 navhard webgif recons (one per trained
-# scenario_type category) over the sensorsim gRPC API. The eval client (run in the
-# horuan-nexussim pod) reaches it via NUREC_GRPC_HOST=nurec-grpc and produces the
-# per-category log-replay gifs.
-# artifact-glob points at /avl-west/nurec_serve_webgif/ — a scoped dir of 28
+# NuRec gRPC render server — serves the NavSafe leaf recons over the sensorsim
+# gRPC API. The eval client (run in the horuan-nexussim pod) reaches it via
+# NUREC_GRPC_HOST=nurec-grpc and produces the per-leaf log-replay gifs.
+#
+# artifact-glob points at /avl-west/nurec_serve_navsafe/ — a scoped dir of
 # structure-preserving symlinks (so serve-grpc derives scene_id == <scene>).
+# It carries BOTH pools, because neither alone covers the taxonomy:
+#   * the 30 previous entries (28 navhard "one per scenario_type" + 2 navsafe), and
+#   * the purpose-mined navsafe_5s_500 leaf seeds, whose trained recons live at
+#     /avl-west/navsafe_5s_500/<clip>/output_5cam/<clip>/artifacts/last.usdz
+#     (1087 of them exist; only the leaf-relevant ones are linked here — globbing
+#     all 1087 would make serve-grpc scan every artifact over CephFS at start-up).
+# Add a scene:  mkdir -p $NEW/<clip>/artifacts && ln -s <…>/last.usdz $NEW/<clip>/artifacts/
+# then restart (serve-grpc scans the glob only at start-up).
 # --enable-editing-actors kept so the nurec_grpc backend can move/remove actors.
 #
 # Must be a Deployment (not a bare Pod): Nautilus caps controller-less pods at
@@ -50,7 +58,7 @@ spec:
               /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
                   --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
                   --cache-size 2 \
-                  --artifact-glob '/avl-west/nurec_serve_webgif/*/artifacts/last.usdz'
+                  --artifact-glob '/avl-west/nurec_serve_navsafe/*/artifacts/last.usdz'
           ports: [{ containerPort: 8080 }]
           env:
             - {
