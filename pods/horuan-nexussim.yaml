@@ -67,6 +67,25 @@ spec:
               "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools
           fi
 
+          # Arrow conversion (raw nuPlan log -> the scenario source eval drives)
+          # needs py123d, and py123d needs Python 3.11 — the main venv is 3.12,
+          # so this is a SECOND interpreter rather than more packages in the
+          # first one. It lives on /avl-west, not /root: the pod has a 6 h
+          # activeDeadlineSeconds and a venv on ephemeral storage would be
+          # rebuilt every restart for a step that is run occasionally.
+          export NAVSAFE_CONVERT_PYTHON=/avl-west/navsafe_dev/venv_convert/bin/python
+          if [ ! -x "$NAVSAFE_CONVERT_PYTHON" ]; then
+            echo "=== Building the Arrow-conversion venv (py311 + py123d) ==="
+            uv venv --python 3.11 /avl-west/navsafe_dev/venv_convert \
+              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" "py123d[nuplan]" \
+              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" --no-deps nuplan-devkit \
+              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" \
+                   "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools \
+              || echo "WARNING: conversion venv build failed; make_arrow.sh will not run"
+          else
+            echo "=== Arrow-conversion venv already built; skipping ==="
+          fi
+
           echo "=== NexusSim env smoke check ==="
           /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"
           # Check the capability rather than a module name -- what matters is
@@ -88,7 +107,22 @@ spec:
         - name: PATH
           value: /root/nexussim-venv/bin:/root/.local/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         - name: PYTHONPATH
-          value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim
+          # nurec_protos carries the generated `nre` gRPC stubs: without them
+          # every nurec_grpc eval dies at setup with "No module named 'nre'".
+          # third_party itself carries the vendored pysocialforce the NavSafe
+          # traffic manager drives pedestrians with.
+          value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos:/hugsim-storage/NexusSim/third_party
+        # Where make_arrow.sh and the NavSafe miners read raw nuPlan from. The
+        # canonical tree is /avl-west/nuplan; navsafe_dev/nuplan_local is a
+        # partial copy and pointing at it silently loses most of the splits.
+        - name: NUPLAN_DATA_ROOT
+          value: /avl-west/nuplan
+        - name: NUPLAN_MAPS_ROOT
+          value: /avl-west/nuplan/maps
+        - name: NUPLAN_SENSOR_ROOT
+          value: /avl-west/nuplan/nuplan-v1.1/sensor_blobs
+        - name: NAVSAFE_CONVERT_PYTHON
+          value: /avl-west/navsafe_dev/venv_convert/bin/python
         - name: OMNI_KIT_ACCEPT_EULA
           value: "Y"
         - name: ACCEPT_EULA
