@@ -1,0 +1,69 @@
+# STAGE 1 (ncore): native-10Hz nuPlan -> NCore V4 store for one navhard scene.
+# NuplanLogReader + NCoreBridge (re-referenced to frame-0). CPU job.
+# Out: /avl-west/navsafe-testsplit/413bd1d1d4c45a38s2/clips/413bd1d1d4c45a38s2/pai_413bd1d1d4c45a38s2.json (+ shards
+#      + nurec_origin_offset.json sidecar for the eval anchor).
+# Placeholders: 413bd1d1d4c45a38s2 2021.09.29.19.02.14_veh-28_00964_01689 1632943783249626 1632943788249626
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navts-ncore-413bd1d1d4c45a38s2, namespace: cogrob, labels: { app: navsafe-testsplit, stage: ncore, scene: "413bd1d1d4c45a38s2" } }
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navsafe-testsplit, stage: ncore, scene: "413bd1d1d4c45a38s2" } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ncore
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -ex
+              C=413bd1d1d4c45a38s2; LOG=2021.09.29.19.02.14_veh-28_00964_01689; T0=1632943783249626; T1=1632943788249626
+              OUT=/avl-west/navsafe-testsplit/$C
+              if [ -s "$OUT/clips/$C/pai_$C.json" ]; then echo "ncore $C exists, skip"; exit 0; fi
+              VENV=/root/cv; python3 -m venv "$VENV"; "$VENV/bin/pip" install -q --upgrade pip
+              cp -a /hugsim-storage/py123d /root/py123d && rm -rf /root/py123d/build /root/py123d/*.egg-info
+              "$VENV/bin/pip" install -q nuplan-devkit nvidia-ncore "/root/py123d[nuplan]"
+              DST=/tmp/nuplan_local/nuplan-v1.1/splits/test; mkdir -p "$DST"
+              cp -n /avl-west/nuplan/nuplan-v1.1/splits/*/$LOG.db "$DST/" 2>/dev/null || true
+              PYTHONPATH=/hugsim-storage/NexusSim NCORE_REREF_FRAME0=1 "$VENV/bin/python" - "$C" "$LOG" "$T0" "$T1" <<'PY'
+              import sys, time
+              from pathlib import Path
+              tok, log, t0, t1 = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+              sys.path.insert(0, "/hugsim-storage/NexusSim")
+              from nexussim.gs3d_converter.log_ingestion import NuplanLogReader
+              from nexussim.gs3d_converter.ncore_bridge import NCoreBridge
+              reader = NuplanLogReader(
+                  nuplan_data_root="/tmp/nuplan_local",
+                  sensor_root="/avl-west/nuplan/nuplan-v1.1/sensor_blobs",
+                  maps_root="/avl-west/nuplan/maps",
+                  scenes=[(log, tok, t0, t1)], split="nuplan_test")
+              t=time.time(); scene=next(iter(reader.iter_scenes()))
+              print(f"[{tok}] frames={scene.n_frames} ({time.time()-t:.0f}s)", flush=True)
+              cd = NCoreBridge.prepare(scene, Path("/avl-west/navsafe-testsplit")/tok)
+              print(f"[{tok}] NCore OK -> {cd}", flush=True)
+              PY
+              test -s $OUT/clips/$C/pai_$C.json && test -s $OUT/clips/$C/nurec_origin_offset.json
+              echo "NCORE_DONE $C"
+          resources:
+            requests: { cpu: "6", memory: "24Gi", ephemeral-storage: 40Gi }
+            limits:   { cpu: "8", memory: "32Gi", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:                       # pin to the 5 cogrob-reserved nodes
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - { key: kubernetes.io/hostname, operator: NotIn, values: ["ry-gpu-02.sdsc.optiputer.net"] }  # public 3090 queue; skip bad GPU
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

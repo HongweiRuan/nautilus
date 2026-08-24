@@ -74,17 +74,28 @@ spec:
           # activeDeadlineSeconds and a venv on ephemeral storage would be
           # rebuilt every restart for a step that is run occasionally.
           export NAVSAFE_CONVERT_PYTHON=/avl-west/navsafe_dev/venv_convert/bin/python
-          if [ ! -x "$NAVSAFE_CONVERT_PYTHON" ]; then
-            echo "=== Building the Arrow-conversion venv (py311 + py123d) ==="
-            uv venv --python 3.11 /avl-west/navsafe_dev/venv_convert \
-              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" "py123d[nuplan]" \
-              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" --no-deps nuplan-devkit \
-              && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" \
-                   "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools \
-              || echo "WARNING: conversion venv build failed; make_arrow.sh will not run"
-          else
-            echo "=== Arrow-conversion venv already built; skipping ==="
-          fi
+          # The guard tests the CAPABILITY, not the directory. A first attempt
+          # that created the venv and then failed to install into it left a
+          # directory that existed and imported nothing — and because the test
+          # was `-x $NAVSAFE_CONVERT_PYTHON`, every later restart skipped the
+          # build and kept the half-installed env. `ray` is named explicitly
+          # because a partial ray install (missing ray.util.tracing) imports as
+          # a package but breaks py123d at execution time.
+          # if ! "$NAVSAFE_CONVERT_PYTHON" -c "import py123d, ray" 2>/dev/null; then
+          #   echo "=== Building the Arrow-conversion venv (py311 + py123d) ==="
+          #   [ -x "$NAVSAFE_CONVERT_PYTHON" ] || uv venv --python 3.11 /avl-west/navsafe_dev/venv_convert
+          #   # No `||` swallowing here: if a step fails its error has to be
+          #   # visible in the pod log, or the next person debugs an empty venv.
+          #   uv pip install --python "$NAVSAFE_CONVERT_PYTHON" "py123d[nuplan]" "ray[default]" \
+          #     && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" --no-deps nuplan-devkit \
+          #     && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" \
+          #          "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools \
+          #     || echo "WARNING: conversion venv build FAILED (see errors above); make_arrow.sh will not run"
+          #   "$NAVSAFE_CONVERT_PYTHON" -c "import py123d, ray; print('Arrow conversion env OK', ray.__version__)" \
+          #     || echo "WARNING: conversion venv still incomplete"
+          # else
+          #   echo "=== Arrow-conversion venv already usable; skipping ==="
+          # fi
 
           echo "=== NexusSim env smoke check ==="
           /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"

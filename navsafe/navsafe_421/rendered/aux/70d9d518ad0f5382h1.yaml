@@ -1,0 +1,58 @@
+# STAGE 3 (aux): NuRec aux-data (mask2former sseg + ego-mask + lidar-camvis).
+# CephFS-relief pattern: copy the (relatively-referenced) ncore store CephFS->local
+# /tmp in ONE sequential read, run aux entirely on local disk (read + write), then
+# bulk-copy just the aux stores back to CephFS. Avoids 70+ jobs random-reading small
+# itar shards off CephFS concurrently. GPU job. Prereq: ncore. Placeholders: 70d9d518ad0f5382h1
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navhard-aux-70d9d518ad0f5382h1, namespace: cogrob, labels: { app: navhard421, stage: aux, scene: "70d9d518ad0f5382h1" } }
+spec:
+  backoffLimit: 1          # retry once on a transient (preemption / node hiccup)
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navhard421, stage: aux, scene: "70d9d518ad0f5382h1" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-aux
+          image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -e
+              C=70d9d518ad0f5382h1
+              SRC=/avl-west/navhard421/$C/clips/$C
+              L=/tmp/clip/$C
+              test -s $SRC/pai_$C.json || { echo "no ncore store for $C"; exit 1; }
+              if ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1; then echo "aux $C exists, skip"; exit 0; fi
+              echo "[aux $C] copy-in store CephFS->local ($(du -sh $SRC 2>/dev/null | cut -f1)) ..."
+              mkdir -p $L && cp -a $SRC/. $L/
+              echo "[aux $C] running ncore-aux-data on local /tmp ..."
+              /app/apps/nre_tools ncore-aux-data \
+                --dataset-path=$L/pai_$C.json --output-dir=$L \
+                --segmentation-backend=mask2former --zarr-store-type=itar --store-meta --lidar-seg-camvis --ego-mask
+              echo "[aux $C] copy-out aux stores local->CephFS ..."
+              cp -a $L/$C.aux.* $SRC/
+              ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1 && echo "AUX_DONE $C" || { echo "no aux output for $C"; exit 1; }
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+            limits:   { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:                       # pin to the 5 cogrob-reserved 3090 nodes
+              - matchExpressions:                    # (keeps aux off the A4000 boxes ry-gpu-15/16)
+                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-01.sdsc.optiputer.net","ry-gpu-02.sdsc.optiputer.net","ry-gpu-03.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

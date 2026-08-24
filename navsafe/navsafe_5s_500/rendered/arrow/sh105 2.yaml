@@ -1,0 +1,91 @@
+# STAGE 3 (arrow): py123d Arrow scenario source for a SHARD of clips (native 10Hz nuPlan).
+# ego + boxes + traffic-lights + map only (grpc supplies pixels). Sharding matters most
+# here: the venv install AND the ~1.4G HD-map copy are paid ONCE per shard, not per clip.
+# CPU job; ray capped to 8 workers (big-core nodes else deadlock on the import storm).
+# Placeholders: SHARD-NAME + a manifest block   (manifest lines: "<clip> <log> <t0> <t1>")
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nav500-arrow-sh105, namespace: cogrob, labels: { app: navsafe_5s_500, stage: arrow, shard: "sh105" } }
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navsafe_5s_500, stage: arrow, shard: "sh105" } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: arrow
+          image: robinwangucsd/metabench:latest
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              cat > /tmp/shard.txt <<'MANIFEST_EOF'
+              6fc91bf02f225d1bs3 2021.05.25.14.16.10_veh-35_04097_04328 1621970850300876 1621970855300876
+              6fc91bf02f225d1bs4 2021.05.25.14.16.10_veh-35_04097_04328 1621970855300876 1621970860300876
+              71d14fc8ea3d5b5ds1 2021.06.03.12.02.06_veh-35_01100_01227 1622737397000677 1622737402000677
+              71d14fc8ea3d5b5ds2 2021.06.03.12.02.06_veh-35_01100_01227 1622737402000677 1622737407000677
+              71d14fc8ea3d5b5ds3 2021.06.03.12.02.06_veh-35_01100_01227 1622737407000677 1622737412000677
+              71d14fc8ea3d5b5ds4 2021.06.03.12.02.06_veh-35_01100_01227 1622737412000677 1622737417000677
+              72582c7c29525603s1 2021.09.09.17.18.51_veh-48_00098_00328 1631208196499874 1631208201499874
+              72582c7c29525603s2 2021.09.09.17.18.51_veh-48_00098_00328 1631208201499874 1631208206499874
+              72582c7c29525603s3 2021.09.09.17.18.51_veh-48_00098_00328 1631208206499874 1631208211499874
+              72582c7c29525603s4 2021.09.09.17.18.51_veh-48_00098_00328 1631208211499874 1631208216499874
+              MANIFEST_EOF
+              echo "[arrow sh105] $(grep -c . /tmp/shard.txt) clip(s)"
+              # ---- one-time setup: venv + HD maps (~1.4G) + DB cache dir ----
+              VENV=/root/cv; python3 -m venv "$VENV"; "$VENV/bin/pip" install -q --upgrade pip
+              cp -a /hugsim-storage/py123d /root/py123d && rm -rf /root/py123d/build /root/py123d/*.egg-info
+              "$VENV/bin/pip" install -q nuplan-devkit nvidia-ncore "/root/py123d[nuplan]" || exit 1
+              DBDIR=/tmp/nuplan_local/nuplan-v1.1/splits/test; mkdir -p "$DBDIR"
+              mkdir -p /tmp/maps && cp -a /avl-west/nuplan/maps/. /tmp/maps/
+              export RAY_DISABLE_USAGE_STATS=1
+              ok=0; skip=0; fail=0; failed=""
+              while read -r C LOG T0 T1; do
+                [ -z "${C:-}" ] && continue
+                ROOT=/avl-west/navsafe_5s_500/$C/arrow
+                if [ -d "$ROOT/logs/nuplan_test/$C" ] && [ -d "$ROOT/maps" ]; then
+                  echo "[skip] $C"; skip=$((skip+1)); continue
+                fi
+                cp -n /avl-west/nuplan/nuplan-v1.1/splits/*/$LOG.db "$DBDIR/" 2>/dev/null || true
+                echo "--- $C ($LOG $T0 $T1) ---"
+                rm -rf /tmp/arrow
+                if PYTHONPATH=/hugsim-storage/NexusSim PY123D_DATA_ROOT=/tmp/arrow \
+                     timeout 1800 "$VENV/bin/py123d-conversion" dataset=nuplan-navhard \
+                       "dataset.parser.scenes=[[$LOG, $C, $T0, $T1]]" \
+                       dataset.parser.nuplan_data_root=/tmp/nuplan_local \
+                       dataset.parser.nuplan_maps_root=/tmp/maps \
+                       execution.threads_per_node=8 \
+                   && [ -d /tmp/arrow/logs/nuplan_test/$C ] && [ -d /tmp/arrow/maps ]; then
+                  mkdir -p $ROOT && cp -a /tmp/arrow/. $ROOT/
+                  if [ -d "$ROOT/logs/nuplan_test/$C" ] && [ -d "$ROOT/maps" ]; then
+                    echo "ARROW_DONE $C"; ok=$((ok+1))
+                  else
+                    echo "ARROW_FAIL $C (copy-out)"; fail=$((fail+1)); failed="$failed $C"
+                  fi
+                else
+                  echo "ARROW_FAIL $C"; fail=$((fail+1)); failed="$failed $C"
+                fi
+              done < /tmp/shard.txt
+              echo "SHARD_DONE sh105 ok=$ok skip=$skip fail=$fail"
+              [ "$fail" -eq 0 ] || { echo "failed:$failed"; exit 1; }
+          resources:
+            requests: { cpu: "8", memory: "32Gi", ephemeral-storage: 60Gi }
+            limits:   { cpu: "10", memory: "48Gi", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - { key: kubernetes.io/hostname, operator: NotIn, values: ["ry-gpu-02.sdsc.optiputer.net"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

@@ -1,0 +1,194 @@
+# EVAL: one arm, one scene, one lateral camera offset -> gifs.
+#
+# The ego still drives its logged path; only the camera rig slides sideways
+# (NUREC_GRPC_CAM_LATERAL_M, +left). That makes this a novel-view drift probe of
+# the reconstruction rather than a different episode -- which is the whole point,
+# because on the logged path a broken geometry is invisible (MTGS: dropping their
+# depth loss left LPIPS at 0.271 -> 0.264 while geometry error went 0.078 -> 0.891).
+#
+# The renderer is CO-LOCATED and globs only this arm's artifacts: serve-grpc
+# scans --artifact-glob once at start-up, so sharing one renderer between arms
+# would mean restarting it per arm and mutating symlinks other scenes rely on.
+#
+# Placeholders: stopline-evaldrift-lidardepth 3efebf87894a552e 1630332397000194 /avl-west/runs/20260820-stopline-drift-geomreg/recon/lidardepth/*/artifacts/last.usdz rundir -2.0 /avl-west/runs/20260820-stopline-drift-geomreg/eval/3efebf87894a552e_20s/lidardepth__ego_replay_8s_right2m
+#   /avl-west/runs/20260820-stopline-drift-geomreg/recon/lidardepth/*/artifacts/last.usdz  glob reaching this arm's four last.usdz
+#   rundir corpus | rundir -- where each clip's nurec_origin_offset.json
+#                lives. It must be the store the recon was TRAINED from: the
+#                corpus and rebuilt stores disagree by up to 0.19 m, and mixing
+#                them shifts the whole scene.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: stopline-evaldrift-lidardepth,
+    namespace: cogrob,
+    labels: { app: uturn_drift_geomreg, stage: eval-drift },
+  }
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata: { labels: { app: uturn_drift_geomreg, stage: eval-drift } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: gpu-container
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              trap 'echo "=== serve-grpc tail ==="; tail -40 /tmp/serve.log 2>/dev/null || true' EXIT
+              T=3efebf87894a552e
+              T0=1630332397000194
+              SEG=5000000
+              LAT=-2.0
+              RECGLOB="/avl-west/runs/20260820-stopline-drift-geomreg/recon/lidardepth/*/artifacts/last.usdz"
+              OFFSTYLE=rundir
+              OUT=/avl-west/runs/20260820-stopline-drift-geomreg/eval/3efebf87894a552e_20s/lidardepth__ego_replay_8s_right2m
+              CK=/closed-loop-e2e/weights/navsimv2/DrivoR/drivor_Nav1_25epochs.pth
+
+              off_for() {   # $1 = clip id
+                case "$OFFSTYLE" in
+                  corpus) echo "/avl-west/navsafe_5s_500/$1/clips/$1/nurec_origin_offset.json" ;;
+                  rundir) echo "/avl-west/runs/20260820-stopline-lidardepth/ncore/clips/$1/nurec_origin_offset.json" ;;
+                  *) echo "BADSTYLE"; return 1 ;;
+                esac
+              }
+
+              # Fail before the bootstrap if an input is missing.
+              test -s "$CK" || { echo "FATAL: no DrivoR checkpoint"; exit 1; }
+              test -d /avl-west/navsafe_5s_500/${T}_20s/arrow || { echo "FATAL: no arrow for ${T}_20s"; exit 1; }
+              n=$(ls $RECGLOB 2>/dev/null | wc -l)
+              [ "$n" -eq 4 ] || { echo "FATAL: expected 4 usdz from '$RECGLOB', found $n"; exit 1; }
+              for k in 1 2 3 4; do
+                test -s "$(off_for ${T}s$k)" || { echo "FATAL: no offset sidecar for ${T}s$k"; exit 1; }
+              done
+
+              # --- runtime bootstrap (nre-ga is minimal; IsaacSim needs X11/GL) ---
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq git curl python3-venv \
+                libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 \
+                libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 \
+                libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null
+              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
+              export UV_CACHE_DIR=/avl-west/navsafe_dev/.uv-cache
+              export UV_LINK_MODE=copy          # cache is on CephFS, target is not
+              export UV_PROJECT_ENVIRONMENT=/root/ns-venv
+              export VIRTUAL_ENV=/root/ns-venv
+              for i in 1 2 3 4; do
+                command -v uv >/dev/null && break
+                python -m pip install --quiet --user uv 2>/dev/null || \
+                  pip install --quiet --user uv 2>/dev/null || \
+                  curl -LsSf https://astral.sh/uv/install.sh | sh
+                hash -r; sleep 10
+              done
+              command -v uv >/dev/null || { echo "FATAL: uv unavailable"; exit 1; }
+              cd /hugsim-storage/NexusSim
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                uv sync --all-extras --python 3.12 --frozen
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta \
+                  https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+                  d=/root/IsaacLab/source/$ext
+                  [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"
+                done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              fi
+              /root/ns-venv/bin/python -m pip install --quiet grpcio protobuf 2>&1 | tail -1 || true
+
+              # --- co-located renderer, this arm only --------------------------
+              CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \
+                --enable-editing-actors --renderer default \
+                --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
+                --artifact-glob "$RECGLOB" > /tmp/serve.log 2>&1 &
+              SERVE_PID=$!
+              for i in $(seq 1 120); do
+                kill -0 $SERVE_PID 2>/dev/null || { echo "FATAL: serve-grpc exited early"; exit 1; }
+                (exec 3<>/dev/tcp/localhost/8080) 2>/dev/null && { echo "serve up after ${i}0s"; break; }
+                sleep 10
+              done
+              echo "=== scenes the renderer holds ==="
+              grep -ao "Available scenes.*" /tmp/serve.log | tr ',' '\n' | grep -o "${T}s[0-9]" | sort -u
+
+              H=""
+              for k in 0 1 2 3; do
+                C=${T}s$((k+1))
+                A=$((T0 + k*SEG)); B=$((T0 + (k+1)*SEG))
+                H="${H:+$H;}$C,$(off_for $C),$A,$B"
+              done
+              echo "[handoff] $H"
+              echo "[lateral] NUREC_GRPC_CAM_LATERAL_M=$LAT  (+left)"
+
+              mkdir -p "$OUT"
+              LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 \
+              CUDA_VISIBLE_DEVICES=0 ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES \
+              NUREC_GRPC_HANDOFF="$H" \
+              NUREC_GRPC_CAM_LATERAL_M="$LAT" \
+              PY123D_RECENTER=1 \
+              NUREC_GRPC_HOST=localhost \
+              NUREC_GRPC_CAM_RIG=navsim \
+              NEXUSSIM_NO_CAM_MAP_LINES=1 \
+              PYTHONPATH=/avl-west/nre_stubs:/hugsim-storage/NexusSim \
+              /root/ns-venv/bin/python scripts/tools/eval_py123d.py \
+                --scenario-source py123d \
+                --py123d-data-root /avl-west/navsafe_5s_500/${T}_20s/arrow \
+                --py123d-scene-index 0 \
+                --render-backend nurec_grpc --cam-height navsim \
+                --model-type drivor --checkpoint "$CK" \
+                --traffic-mode log_replay --controller pure_pursuit \
+                --ego-replay-frames 80 --eval-frames 0 --enable-vis \
+                --camera-resolution-scale 1.0 \
+                --output-dir "$OUT"
+              rc=$?
+              kill $SERVE_PID 2>/dev/null || true
+              echo "=== gifs ==="
+              find "$OUT" -name '*.gif' -exec ls -la {} \; 2>/dev/null | head
+              [ $rc -eq 0 ] && echo "EVAL_OK stopline-evaldrift-lidardepth" || echo "EVAL_FAIL stopline-evaldrift-lidardepth rc=$rc"
+              exit $rc
+          env:
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests:
+              { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 150Gi }
+            limits:
+              { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 150Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {
+                      key: kubernetes.io/hostname,
+                      operator: In,
+                      values:
+                        [
+                          "ry-gpu-06.sdsc.optiputer.net",
+                          "ry-gpu-07.sdsc.optiputer.net",
+                          "ry-gpu-08.sdsc.optiputer.net",
+                          "ry-gpu-11.sdsc.optiputer.net",
+                          "ry-gpu-12.sdsc.optiputer.net",
+                          "ry-gpu-13.sdsc.optiputer.net",
+                          "ry-gpu-14.sdsc.optiputer.net",
+                        ],
+                    }
+      tolerations:
+        - {
+            effect: NoSchedule,
+            key: nautilus.io/reservation,
+            operator: Equal,
+            value: cogrob,
+          }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

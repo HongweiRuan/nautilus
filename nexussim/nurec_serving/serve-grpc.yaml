@@ -51,13 +51,24 @@ spec:
               # pod cycle re-downloads it and the first render blows the client's
               # gRPC deadline.
               mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
-              # --cache-size 2: the 24GB 3090 fills if serve keeps the default 10
-              # scenes' gaussians resident (~4-7GB each) -> CUDA OOM. This is a
-              # single-pass eval (each scene rendered once), so a tiny LRU is fine
-              # and keeps peak GPU memory bounded (~2 scenes at a time).
+              # --cache-size is NOT just a speed knob here, it is a correctness
+              # floor. edit_assets applies to the LOADED backend, never to the
+              # usdz, so evicting a backend silently discards the assets inserted
+              # into it; the next render reloads a clean scene and the client's
+              # pose update dies with "'navsafe_<name>' is not in list". A 20 s
+              # NavSafe host is FOUR 5 s recons that the episode renders in turn,
+              # so all four must stay resident for the whole episode — at 2 they
+              # evicted each other and every inserted-actor leaf failed at step 0.
+              # Ceiling is VRAM, and it is tight: 6 was tried and died with the
+              # 4 windows resident plus headroom (21.8 GiB allocated on a 23.6
+              # GiB 3090, render then failed asking for 258 MiB). So this is set
+              # to exactly 4 — the working set, no spare. Consequences: raising
+              # it needs a >24 GB card (the affinity below lists 24 GB only), and
+              # two evals sharing this server will evict each other's edits, so
+              # run them sequentially or give each its own server.
               /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
                   --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
-                  --cache-size 2 \
+                  --cache-size 4 \
                   --artifact-glob '/avl-west/nurec_serve_navsafe/*/artifacts/last.usdz'
           ports: [{ containerPort: 8080 }]
           env:
@@ -109,7 +120,7 @@ spec:
               - matchExpressions:
                   # VRAM FLOOR. The old hostname pin to the 10 ry-gpu nodes was
                   # doing double duty: it also guaranteed a 24 GB 3090, which is
-                  # what `--cache-size 2` is tuned for (default 10 resident
+                  # what `--cache-size` is tuned against (default 10 resident
                   # scenes at ~4-7 GB each -> CUDA OOM). Opening the affinity to
                   # the public queue drops that guarantee, so state it directly
                   # instead of inferring it from hostnames — otherwise this can

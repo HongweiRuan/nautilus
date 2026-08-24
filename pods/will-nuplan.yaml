@@ -1,0 +1,233 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: will-nuplan
+  namespace: cogrob
+  labels:
+    k8s-app: will-nuplan
+spec:
+  restartPolicy: Never
+  containers:
+    - image: robinwangucsd/metabench:latest
+      name: will-nuplan-container
+      imagePullPolicy: Always
+      command:
+        - "bash"
+        - "-lc"
+      args:
+        - |
+          set -e
+
+          # NexusSim (latest main) installs its ENTIRE stack — NexusSim, all
+          # extras, IsaacSim 6.0.0, and cu128 PyTorch — via a single `uv sync`
+          # (pinned in uv.lock). IsaacLab 3.0 is source-installed separately
+          # (it is NOT in uv.lock). This replaces the old conda/isaacsim-5.1
+          # flow. The venv lives on ephemeral /root, so it rebuilds on pod
+          # (re)start (~15 min). Verified working: torch 2.10.0+cu128 (cuda
+          # True), numpy 2.3.1, isaaclab 4.5.22, isaacsim 6.0.0.
+
+          export PATH=$HOME/.local/bin:$PATH
+          export UV_CACHE_DIR=/root/.cache/uv
+          export UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
+          cd /hugsim-storage/NexusSim
+
+          echo "=== Installing uv ==="
+          python -m pip install --quiet --user uv || pip install --quiet --user uv
+
+          if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+            echo "=== uv sync: NexusSim + IsaacSim 6.0.0 + cu128 torch (from uv.lock) ==="
+            uv sync --all-extras --python 3.12
+
+            echo "=== Installing IsaacLab 3.0 from source (not in uv.lock) ==="
+            [ -d /root/IsaacLab/.git ] || \
+              git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+            for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+              d=/root/IsaacLab/source/$ext
+              [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d"
+            done
+            # light deps isaaclab.app import needs but that source install skips
+            uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops
+          else
+            echo "=== nexussim-venv already built; skipping ==="
+          fi
+
+          # Raw-nuPlan ingestion (NavSafe seed mining + NCore conversion) needs
+          # deps that uv.lock does not carry: the NCore V4 writer, the nuPlan
+          # devkit ORM, and py123d's [nuplan] extra. nuplan-devkit is installed
+          # --no-deps because its own pins would drag the torch/numpy stack
+          # backwards; its actual runtime needs are the five listed after it.
+          # The guard tests the DISTRIBUTION name, not an import name: what a
+          # wheel installs itself as is exact, whereas a guessed top-level
+          # module name would reinstall on every start when wrong.
+          if ! uv pip show --python /root/nexussim-venv/bin/python nvidia-ncore >/dev/null 2>&1; then
+            echo "=== Installing nuPlan ingestion deps (ncore + devkit) ==="
+            uv pip install --python /root/nexussim-venv/bin/python nvidia-ncore
+            uv pip install --python /root/nexussim-venv/bin/python --no-deps nuplan-devkit
+            uv pip install --python /root/nexussim-venv/bin/python \
+              "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools
+          fi
+
+          # Arrow conversion (raw nuPlan log -> the scenario source eval drives)
+          # needs py123d, and py123d needs Python 3.11 — the main venv is 3.12,
+          # so this is a SECOND interpreter rather than more packages in the
+          # first one. It lives on /avl-west, not /root: the pod has a 6 h
+          # activeDeadlineSeconds and a venv on ephemeral storage would be
+          # rebuilt every restart for a step that is run occasionally.
+          export NAVSAFE_CONVERT_PYTHON=/avl-west/navsafe_dev/venv_convert/bin/python
+          # The guard tests the CAPABILITY, not the directory. A first attempt
+          # that created the venv and then failed to install into it left a
+          # directory that existed and imported nothing — and because the test
+          # was `-x $NAVSAFE_CONVERT_PYTHON`, every later restart skipped the
+          # build and kept the half-installed env. `ray` is named explicitly
+          # because a partial ray install (missing ray.util.tracing) imports as
+          # a package but breaks py123d at execution time.
+          # if ! "$NAVSAFE_CONVERT_PYTHON" -c "import py123d, ray" 2>/dev/null; then
+          #   echo "=== Building the Arrow-conversion venv (py311 + py123d) ==="
+          #   [ -x "$NAVSAFE_CONVERT_PYTHON" ] || uv venv --python 3.11 /avl-west/navsafe_dev/venv_convert
+          #   # No `||` swallowing here: if a step fails its error has to be
+          #   # visible in the pod log, or the next person debugs an empty venv.
+          #   uv pip install --python "$NAVSAFE_CONVERT_PYTHON" "py123d[nuplan]" "ray[default]" \
+          #     && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" --no-deps nuplan-devkit \
+          #     && uv pip install --python "$NAVSAFE_CONVERT_PYTHON" \
+          #          "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools \
+          #     || echo "WARNING: conversion venv build FAILED (see errors above); make_arrow.sh will not run"
+          #   "$NAVSAFE_CONVERT_PYTHON" -c "import py123d, ray; print('Arrow conversion env OK', ray.__version__)" \
+          #     || echo "WARNING: conversion venv still incomplete"
+          # else
+          #   echo "=== Arrow-conversion venv already usable; skipping ==="
+          # fi
+
+          echo "=== NexusSim env smoke check ==="
+          /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"
+          # Check the capability rather than a module name -- what matters is
+          # that the nuPlan->NCore ingestion path imports. Non-fatal on purpose:
+          # a pod that can still train, evaluate and mine is worth having even
+          # when raw-nuPlan conversion is unavailable, and `set -e` would
+          # otherwise turn one missing wheel into a pod that never starts.
+          /root/nexussim-venv/bin/python -c "from nexussim.gs3d_converter.ncore_bridge import NCoreBridge; from nexussim.gs3d_converter.log_ingestion import NuplanLogReader; print('nuPlan->NCore ingestion OK')" \
+            || echo "WARNING: nuPlan->NCore ingestion unavailable (run_ncore.py/run_arrow.py will fail; everything else works)"
+
+          # NOTE: IsaacSim commands need the system libstdc++ ahead of conda's
+          # (GLIBCXX_3.4.30) — prepend per invocation, e.g.:
+          #   LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 ACCEPT_EULA=Y \
+          #   OMNI_KIT_ACCEPT_EULA=YES /root/nexussim-venv/bin/python <script>
+
+          echo "=== NexusSim pod ready; keeping container alive ==="
+          sleep infinity
+      env:
+        - name: PATH
+          value: /root/nexussim-venv/bin:/root/.local/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        - name: PYTHONPATH
+          # nurec_protos carries the generated `nre` gRPC stubs: without them
+          # every nurec_grpc eval dies at setup with "No module named 'nre'".
+          # third_party itself carries the vendored pysocialforce the NavSafe
+          # traffic manager drives pedestrians with.
+          value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos:/hugsim-storage/NexusSim/third_party
+        # Where make_arrow.sh and the NavSafe miners read raw nuPlan from. The
+        # canonical tree is /avl-west/nuplan; navsafe_dev/nuplan_local is a
+        # partial copy and pointing at it silently loses most of the splits.
+        - name: NUPLAN_DATA_ROOT
+          value: /avl-west/nuplan
+        - name: NUPLAN_MAPS_ROOT
+          value: /avl-west/nuplan/maps
+        - name: NUPLAN_SENSOR_ROOT
+          value: /avl-west/nuplan/nuplan-v1.1/sensor_blobs
+        - name: NAVSAFE_CONVERT_PYTHON
+          value: /avl-west/navsafe_dev/venv_convert/bin/python
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        - name: ACCEPT_EULA
+          value: "Y"
+      resources:
+        requests:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+        limits:
+          cpu: "4"
+          memory: "32Gi"
+          nvidia.com/gpu: "1"
+          ephemeral-storage: 100Gi
+      volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: cogrob-avl-west-vol
+          mountPath: /cogrob-avl-west
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        # The only difference from horuan-nexussim: Will's full raw-nuPlan
+        # tree (25Ti RWX cephfs), mounted read-only so nothing here can
+        # write into a volume this pod does not own.
+        - name: will-nuplan-full-vol
+          mountPath: /will-nuplan-full
+          readOnly: true
+  volumes:
+    - name: dshm
+      emptyDir:
+        medium: Memory
+    - name: avl-west-vol
+      persistentVolumeClaim:
+        claimName: avl-west-vol
+    - name: cogrob-avl-west-vol
+      persistentVolumeClaim:
+        claimName: cogrob-avl-west-vol
+    - name: closed-loop-e2e
+      persistentVolumeClaim:
+        claimName: closed-loop-e2e
+    - name: hugsim-storage
+      persistentVolumeClaim:
+        claimName: horuan-hugsim-vol
+    - name: will-nuplan-full-vol
+      persistentVolumeClaim:
+        claimName: will-nuplan-full-vol
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                  - us-west
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  # - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-GeForce-RTX-3090
+  #                 # - NVIDIA-RTX-A4000
+  #                 # - NVIDIA-RTX-A5000
+  #                 # - Quadro-RTX-6000
+  #                 # - NVIDIA-TITAN-RTX
+  #                 # - NVIDIA-A10
+  #                 # - Tesla-V130-SXM2-32GB
+  #                 # - NVIDIA-A40
+  #                 # - NVIDIA-RTX-A6000
+  #                 # - Quadro-RTX-8000
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - ry-gpu-01.sdsc.optiputer.net
+                  - ry-gpu-02.sdsc.optiputer.net
+                  - ry-gpu-03.sdsc.optiputer.net
+                  - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  - ry-gpu-08.sdsc.optiputer.net
+                  - ry-gpu-09.sdsc.optiputer.net
+                  - ry-gpu-10.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net
+                  - ry-gpu-13.sdsc.optiputer.net
+                  - ry-gpu-14.sdsc.optiputer.net
+
+  tolerations:
+    - effect: NoSchedule
+      key: nautilus.io/reservation
+      operator: Equal
+      value: cogrob

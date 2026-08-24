@@ -1,0 +1,96 @@
+# STAGE 4 (train): car2sim_6cam_static recon (5 cameras, 160k steps / 5M gaussians)
+# for one navhard half. This is the same recipe used for clip5166/handoff/rand7.
+# CephFS-relief pattern: copy the ncore store (+ aux stores) CephFS->local /tmp in
+# ONE sequential read, link aux, train ENTIRELY on local disk (per-step reads are
+# local, out_dir is local), then bulk-copy the finished recon back to CephFS once.
+# This is what kills the multi-hour "loading store off CephFS" startup under 70+
+# concurrent trains. GPU job, reserved+public 3090. Prereq: aux. Placeholders: 515fefed28a65a88h1
+# NOTE: out_dir is local, so a preempted/killed job loses its output (no incremental
+# CephFS checkpoint) — it just re-runs from scratch on resubmit.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: navhard-train-515fefed28a65a88h1, namespace: cogrob, labels: { app: navhard421, stage: train, scene: "515fefed28a65a88h1" } }
+spec:
+  backoffLimit: 1          # retry once (absorbs transient CUDA/scheduling hiccups)
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: { labels: { app: navhard421, stage: train, scene: "515fefed28a65a88h1" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-train
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -e
+              C=515fefed28a65a88h1
+              SRC=/avl-west/navhard421/$C/clips/$C
+              L=/tmp/clip/$C
+              OUTL=/tmp/out
+              DST=/avl-west/navhard421/$C/output_5cam
+              test -s $SRC/pai_$C.json || { echo "no ncore store for $C"; exit 1; }
+              if [ -f $DST/$C/artifacts/last.usdz ]; then echo "train $C exists, skip"; exit 0; fi
+              echo "[train $C] copy-in store+aux CephFS->local ($(du -sh $SRC 2>/dev/null | cut -f1)) ..."
+              mkdir -p $L $OUTL && cp -a $SRC/. $L/
+              # REQUIRED: link aux stores to the manifest base name pai_<scene>.aux.* (local)
+              ( cd "$L" && for f in $C.aux.*.zarr.itar; do [ -e "$f" ] && ln -sf "$f" "pai_$f"; done )
+              ls $L/pai_$C.aux.*.zarr.itar >/dev/null 2>&1 || echo "WARN: no aux stores for $C"
+              echo "[train $C] training on local disk (car2sim_6cam_static, 160k/5M) ..."
+              # car2sim needs the overlay config copied into the container's config dir
+              CFGDIR=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main/configs/apps/prod/Hyperion-8.1
+              cp /avl-west/nre_overlays/car2sim_6cam_static.yaml "$CFGDIR/"
+              /app/run --config-name=configs/apps/prod/Hyperion-8.1/car2sim_6cam_static.yaml \
+                mode=train logger=dummy dataset.path=$L/pai_$C.json out_dir=$OUTL logger.run_id="$C" dataset.aux_data=True \
+                dataset.camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1] \
+                dataset.train_camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1] \
+                dataset.val_camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1] \
+                dataset.n_train_sequential_image_subsample=4 dataset.n_val_image_subsample=4 \
+                dataset.lidar_ids=[lidar_top_360fov] dataset.train_lidar_ids=[lidar_top_360fov] dataset.val_lidar_ids=[lidar_top_360fov] \
+                dataset.n_train_sample_lidar_rays=0 dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION] \
+                model.layers.dynamic_rigids.tracks.label_classes=[NuPlanBoxDetectionLabel.VEHICLE,NuPlanBoxDetectionLabel.BICYCLE] \
+                model.layers.dynamic_deformables.tracks.label_classes=[NuPlanBoxDetectionLabel.PEDESTRIAN] \
+                model.layers.dynamic_rigids.initialization.name=camera-dynamic-tracks \
+                +model.layers.dynamic_rigids.initialization.camera_ids=null +model.layers.dynamic_rigids.initialization.step_frame=1 +model.layers.dynamic_rigids.initialization.fill_with_random_points=true \
+                model.layers.dynamic_deformables.initialization.name=camera-dynamic-tracks \
+                +model.layers.dynamic_deformables.initialization.camera_ids=null +model.layers.dynamic_deformables.initialization.step_frame=1 +model.layers.dynamic_deformables.initialization.fill_with_random_points=true \
+                model.layers.road.initialization.name=lidar-rig-trajectory model.layers.road.initialization.default_scale=0.1 \
+                +model.layers.road.initialization.num_near_points=100000 +model.layers.road.initialization.num_far_points=100000 +model.layers.road.initialization.far_radius_factor=20 +model.layers.road.initialization.observation_scale_factor=0.01 \
+                +model.layers.road.initialization.lidar_ids=null +model.layers.road.initialization.camera_ids=null +model.layers.road.initialization.non_dynamic_points_only=true \
+                dataset.n_samples_per_epoch=160000 \
+                model.strategy.add.max_n_gaussians=5000000 model.strategy.add.end_iteration=140000 \
+                model.strategy.relocate.end_iteration=140000 model.strategy.perturb.end_iteration=160000 \
+                system.optimizers.0.scheduler.args.T_max=160000 checkpoint.every_n_train_steps=40000 \
+                checkpoint.artifact.mesh.ground.enabled=false
+              test -f $OUTL/$C/artifacts/last.usdz || { echo "train produced no last.usdz for $C"; exit 1; }
+              # slim copy-out: car2sim writes artifacts/040000..last.usdz (~2GB each) + ~6GB
+              # checkpoints; keep ONLY last.usdz (the recon eval serves directly, no export
+              # stage) + the tiny config. ~2GB/scene vs ~16GB.
+              echo "[train $C] copy-out last.usdz local->CephFS ($(du -h $OUTL/$C/artifacts/last.usdz 2>/dev/null | cut -f1)) ..."
+              mkdir -p $DST/$C/artifacts && cp -a $OUTL/$C/artifacts/last.usdz $DST/$C/artifacts/
+              cp -a $OUTL/$C/config $DST/$C/ 2>/dev/null || true
+              test -f $DST/$C/artifacts/last.usdz && echo "TRAIN_DONE $C"
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+          resources:                                   # node has 28 CPU / 503Gi / 1.5TB eph / 8 GPU.
+            requests: { cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }  # cpu:3 -> 9/node CPU-wise
+            limits:   { cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }  # => GPU-bound at 8/node (~39 total)
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-01.sdsc.optiputer.net","ry-gpu-03.sdsc.optiputer.net","ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net","ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"] }  # ry-gpu-02 excluded (bad GPU)
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

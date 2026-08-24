@@ -1,0 +1,83 @@
+# STAGE 2 (aux): NuRec aux-data (mask2former sseg + ego-mask + lidar-camvis) for a SHARD.
+# One job walks a list of clips: the container start + model warm-up is paid once, and
+# each clip still uses the CephFS-relief pattern (copy store -> local /tmp, run local,
+# copy just the aux stores back). GPU job. Prereq: ncore.
+# Placeholders: SHARD-NAME + a manifest block   (manifest lines: "<clip> <log> <t0> <t1>")
+apiVersion: batch/v1
+kind: Job
+metadata: { name: nav500-aux-sh050-0808181144, namespace: cogrob, labels: { app: navsafe_5s_500, stage: aux, shard: "sh050-0808181144" } }
+spec:
+  backoffLimit: 1          # a retry is cheap: finished clips are skipped
+  ttlSecondsAfterFinished: 7200      # 2h: finished jobs must release the namespace quota
+  template:
+    metadata: { labels: { app: navsafe_5s_500, stage: aux, shard: "sh050-0808181144" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-aux
+          image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              cat > /tmp/shard.txt <<'MANIFEST_EOF'
+              667f53ef57a95dbes2 2021.09.16.13.53.10_veh-42_00077_00153 1631800579349918 1631800584349918
+              MANIFEST_EOF
+              echo "[aux sh050-0808181144] $(grep -c . /tmp/shard.txt) clip(s)"
+              ok=0; skip=0; fail=0; notready=0; failed=""
+              while read -r C LOG T0 T1; do
+                [ -z "${C:-}" ] && continue
+                SRC=/avl-west/navsafe_5s_500/$C/clips/$C
+                L=/tmp/clip/$C
+                # prerequisite not built yet is NOT a failure — it just means ncore has
+                # not reached this clip. Re-running submit_stage.sh later picks it up,
+                # so aux can be launched alongside ncore and do whatever is ready.
+                if ! [ -s "$SRC/pai_$C.json" ]; then
+                  echo "AUX_NOTREADY $C (no ncore store yet)"; notready=$((notready+1)); continue
+                fi
+                if ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1; then
+                  echo "[skip] $C"; skip=$((skip+1)); continue
+                fi
+                echo "--- $C: copy-in store CephFS->local ($(du -sh $SRC 2>/dev/null | cut -f1)) ---"
+                rm -rf "$L"; mkdir -p "$L" && cp -a $SRC/. $L/
+                if /app/apps/nre_tools ncore-aux-data \
+                     --dataset-path=$L/pai_$C.json --output-dir=$L \
+                     --segmentation-backend=mask2former --zarr-store-type=itar --store-meta \
+                     --lidar-seg-camvis --ego-mask \
+                   && ls $L/$C.aux.* >/dev/null 2>&1; then
+                  cp -a $L/$C.aux.* $SRC/
+                  if ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1; then
+                    echo "AUX_DONE $C"; ok=$((ok+1))
+                  else
+                    echo "AUX_FAIL $C (copy-out)"; fail=$((fail+1)); failed="$failed $C"
+                  fi
+                else
+                  echo "AUX_FAIL $C"; fail=$((fail+1)); failed="$failed $C"
+                fi
+                rm -rf "$L"          # free local disk before the next clip
+              done < /tmp/shard.txt
+              echo "SHARD_DONE sh050-0808181144 ok=$ok skip=$skip notready=$notready fail=$fail"
+              [ "$fail" -eq 0 ] || { echo "failed:$failed"; exit 1; }
+          env:
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests: { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: nvidia.com/gpu.product, operator: In, values: ["NVIDIA-GeForce-RTX-3090"] }
+                  - { key: kubernetes.io/hostname, operator: NotIn, values: ["ry-gpu-02.sdsc.optiputer.net"] }
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
