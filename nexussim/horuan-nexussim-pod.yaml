@@ -1,0 +1,152 @@
+# horuan-nexussim, captured from the live pod on 2026-08-25.
+#
+# It is a BARE pod -- no Deployment, no ownerReferences, so nothing
+# recreates it. The code lives on the /hugsim-storage PVC and survives;
+# the container does not. A restart is therefore:
+#     kubectl delete pod horuan-nexussim -n cogrob
+#     kubectl apply -f this-file
+# and then ~15 min while the venv rebuilds on ephemeral /root.
+#
+# activeDeadlineSeconds is 6 h: the pod self-terminates, which is the
+# usual reason it is gone rather than anything having crashed.
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    nrp.ai/username: http://cilogon.org/serverE/users/439386
+  labels:
+    k8s-app: horuan-nexussim
+  name: horuan-nexussim
+  namespace: cogrob
+spec:
+  activeDeadlineSeconds: 21600
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: topology.kubernetes.io/region
+            operator: In
+            values:
+            - us-west
+          - key: nvidia.com/gpu.product
+            operator: In
+            values:
+            - NVIDIA-GeForce-RTX-3090
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - ry-gpu-01.sdsc.optiputer.net
+            - ry-gpu-02.sdsc.optiputer.net
+            - ry-gpu-03.sdsc.optiputer.net
+            - ry-gpu-04.sdsc.optiputer.net
+            - ry-gpu-05.sdsc.optiputer.net
+            - ry-gpu-06.sdsc.optiputer.net
+            - ry-gpu-07.sdsc.optiputer.net
+            - ry-gpu-08.sdsc.optiputer.net
+            - ry-gpu-09.sdsc.optiputer.net
+            - ry-gpu-10.sdsc.optiputer.net
+            - ry-gpu-11.sdsc.optiputer.net
+            - ry-gpu-12.sdsc.optiputer.net
+            - ry-gpu-13.sdsc.optiputer.net
+            - ry-gpu-14.sdsc.optiputer.net
+  containers:
+  - args:
+    - "set -e\n\n# NexusSim (latest main) installs its ENTIRE stack \u2014 NexusSim, all\n# extras, IsaacSim 6.0.0, and cu128 PyTorch \u2014 via a single `uv sync`\n# (pinned in uv.lock). IsaacLab 3.0 is\
+      \ source-installed separately\n# (it is NOT in uv.lock). This replaces the old conda/isaacsim-5.1\n# flow. The venv lives on ephemeral /root, so it rebuilds on pod\n# (re)start (~15 min). Verified\
+      \ working: torch 2.10.0+cu128 (cuda\n# True), numpy 2.3.1, isaaclab 4.5.22, isaacsim 6.0.0.\n\nexport PATH=$HOME/.local/bin:$PATH\nexport UV_CACHE_DIR=/root/.cache/uv\nexport UV_PROJECT_ENVIRONMENT=/root/nexussim-venv\n\
+      cd /hugsim-storage/NexusSim\n\necho \"=== Installing uv ===\"\npython -m pip install --quiet --user uv || pip install --quiet --user uv\n\nif ! /root/nexussim-venv/bin/python -c \"import isaacsim,\
+      \ isaaclab, nexussim\" 2>/dev/null; then\n  echo \"=== uv sync: NexusSim + IsaacSim 6.0.0 + cu128 torch (from uv.lock) ===\"\n  uv sync --all-extras --python 3.12\n\n  echo \"=== Installing IsaacLab\
+      \ 3.0 from source (not in uv.lock) ===\"\n  [ -d /root/IsaacLab/.git ] || \\\n    git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab\n  for ext in isaaclab\
+      \ isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do\n    d=/root/IsaacLab/source/$ext\n    [ -d \"$d\" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e \"$d\"\n\
+      \  done\n  # light deps isaaclab.app import needs but that source install skips\n  uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops\nelse\n  echo \"=== nexussim-venv already\
+      \ built; skipping ===\"\nfi\n\n# Raw-nuPlan ingestion (NavSafe seed mining + NCore conversion) needs\n# deps that uv.lock does not carry: the NCore V4 writer, the nuPlan\n# devkit ORM, and py123d's\
+      \ [nuplan] extra. nuplan-devkit is installed\n# --no-deps because its own pins would drag the torch/numpy stack\n# backwards; its actual runtime needs are the five listed after it.\n# The guard tests\
+      \ the DISTRIBUTION name, not an import name: what a\n# wheel installs itself as is exact, whereas a guessed top-level\n# module name would reinstall on every start when wrong.\nif ! uv pip show --python\
+      \ /root/nexussim-venv/bin/python nvidia-ncore >/dev/null 2>&1; then\n  echo \"=== Installing nuPlan ingestion deps (ncore + devkit) ===\"\n  uv pip install --python /root/nexussim-venv/bin/python\
+      \ nvidia-ncore\n  uv pip install --python /root/nexussim-venv/bin/python --no-deps nuplan-devkit\n  uv pip install --python /root/nexussim-venv/bin/python \\\n    \"SQLAlchemy==1.4.27\" rasterio aioboto3\
+      \ retry cachetools\nfi\n\n# Arrow conversion (raw nuPlan log -> the scenario source eval drives)\n# needs py123d, and py123d needs Python 3.11 \u2014 the main venv is 3.12,\n# so this is a SECOND\
+      \ interpreter rather than more packages in the\n# first one. It lives on /avl-west, not /root: the pod has a 6 h\n# activeDeadlineSeconds and a venv on ephemeral storage would be\n# rebuilt every\
+      \ restart for a step that is run occasionally.\nexport NAVSAFE_CONVERT_PYTHON=/avl-west/navsafe_dev/venv_convert/bin/python\n# The guard tests the CAPABILITY, not the directory. A first attempt\n\
+      # that created the venv and then failed to install into it left a\n# directory that existed and imported nothing \u2014 and because the test\n# was `-x $NAVSAFE_CONVERT_PYTHON`, every later restart\
+      \ skipped the\n# build and kept the half-installed env. `ray` is named explicitly\n# because a partial ray install (missing ray.util.tracing) imports as\n# a package but breaks py123d at execution\
+      \ time.\n# if ! \"$NAVSAFE_CONVERT_PYTHON\" -c \"import py123d, ray\" 2>/dev/null; then\n#   echo \"=== Building the Arrow-conversion venv (py311 + py123d) ===\"\n#   [ -x \"$NAVSAFE_CONVERT_PYTHON\"\
+      \ ] || uv venv --python 3.11 /avl-west/navsafe_dev/venv_convert\n#   # No `||` swallowing here: if a step fails its error has to be\n#   # visible in the pod log, or the next person debugs an empty\
+      \ venv.\n#   uv pip install --python \"$NAVSAFE_CONVERT_PYTHON\" \"py123d[nuplan]\" \"ray[default]\" \\\n#     && uv pip install --python \"$NAVSAFE_CONVERT_PYTHON\" --no-deps nuplan-devkit \\\n#\
+      \     && uv pip install --python \"$NAVSAFE_CONVERT_PYTHON\" \\\n#          \"SQLAlchemy==1.4.27\" rasterio aioboto3 retry cachetools \\\n#     || echo \"WARNING: conversion venv build FAILED (see\
+      \ errors above); make_arrow.sh will not run\"\n#   \"$NAVSAFE_CONVERT_PYTHON\" -c \"import py123d, ray; print('Arrow conversion env OK', ray.__version__)\" \\\n#     || echo \"WARNING: conversion\
+      \ venv still incomplete\"\n# else\n#   echo \"=== Arrow-conversion venv already usable; skipping ===\"\n# fi\n\necho \"=== NexusSim env smoke check ===\"\n/root/nexussim-venv/bin/python -c \"import\
+      \ sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)\"\
+      \n# Check the capability rather than a module name -- what matters is\n# that the nuPlan->NCore ingestion path imports. Non-fatal on purpose:\n# a pod that can still train, evaluate and mine is worth\
+      \ having even\n# when raw-nuPlan conversion is unavailable, and `set -e` would\n# otherwise turn one missing wheel into a pod that never starts.\n/root/nexussim-venv/bin/python -c \"from nexussim.gs3d_converter.ncore_bridge\
+      \ import NCoreBridge; from nexussim.gs3d_converter.log_ingestion import NuplanLogReader; print('nuPlan->NCore ingestion OK')\" \\\n  || echo \"WARNING: nuPlan->NCore ingestion unavailable (run_ncore.py/run_arrow.py\
+      \ will fail; everything else works)\"\n\n# NOTE: IsaacSim commands need the system libstdc++ ahead of conda's\n# (GLIBCXX_3.4.30) \u2014 prepend per invocation, e.g.:\n#   LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6\
+      \ ACCEPT_EULA=Y \\\n#   OMNI_KIT_ACCEPT_EULA=YES /root/nexussim-venv/bin/python <script>\n\necho \"=== NexusSim pod ready; keeping container alive ===\"\nsleep infinity\n"
+    command:
+    - bash
+    - -lc
+    env:
+    - name: PATH
+      value: "/root/nexussim-venv/bin:/root/.local/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    - name: PYTHONPATH
+      value: "/hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos:/hugsim-storage/NexusSim/third_party"
+    - name: NUPLAN_DATA_ROOT
+      value: "/avl-west/nuplan"
+    - name: NUPLAN_MAPS_ROOT
+      value: "/avl-west/nuplan/maps"
+    - name: NUPLAN_SENSOR_ROOT
+      value: "/avl-west/nuplan/nuplan-v1.1/sensor_blobs"
+    - name: NAVSAFE_CONVERT_PYTHON
+      value: "/avl-west/navsafe_dev/venv_convert/bin/python"
+    - name: OMNI_KIT_ACCEPT_EULA
+      value: "Y"
+    - name: ACCEPT_EULA
+      value: "Y"
+    image: robinwangucsd/metabench:latest
+    imagePullPolicy: Always
+    name: nexussim-container
+    resources:
+      limits:
+        cpu: '4'
+        ephemeral-storage: 100Gi
+        memory: 32Gi
+        nvidia.com/gpu: '1'
+      requests:
+        cpu: '4'
+        ephemeral-storage: 100Gi
+        memory: 32Gi
+        nvidia.com/gpu: '1'
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /dev/shm
+      name: dshm
+    - mountPath: /avl-west
+      name: avl-west-vol
+    - mountPath: /cogrob-avl-west
+      name: cogrob-avl-west-vol
+    - mountPath: /closed-loop-e2e
+      name: closed-loop-e2e
+    - mountPath: /hugsim-storage
+      name: hugsim-storage
+  restartPolicy: Never
+  schedulerName: default-scheduler
+  securityContext: {}
+  terminationGracePeriodSeconds: 30
+  volumes:
+  - emptyDir:
+      medium: Memory
+    name: dshm
+  - name: avl-west-vol
+    persistentVolumeClaim:
+      claimName: avl-west-vol
+  - name: cogrob-avl-west-vol
+    persistentVolumeClaim:
+      claimName: cogrob-avl-west-vol
+  - name: closed-loop-e2e
+    persistentVolumeClaim:
+      claimName: closed-loop-e2e
+  - name: hugsim-storage
+    persistentVolumeClaim:
+      claimName: horuan-hugsim-vol
+

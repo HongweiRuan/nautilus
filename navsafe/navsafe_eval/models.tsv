@@ -1,0 +1,25 @@
+# NavSafe model-zoo evaluation matrix — the single source of truth for the sweep.
+#
+# row_slug   the output directory name under outputs/. One row of the benchmark
+#            table, NOT a model_type: recogdrive/mtdrive/simwam each contribute
+#            two rows that differ only by checkpoint.
+# model_type the --model-type argument (a registered adapter name).
+# ckpt       --checkpoint, relative to $NAVSAFE_ZOO (/avl-west/navsafe_eval/model_zoo).
+#            "none" for the rule-based planners, which take no weights.
+#
+# Order is deliberate: drivor first because it is the one adapter already proven
+# end to end on this cluster (navsafe_421/templates/webgif_eval.yaml), so a
+# fleet-wide setup fault shows up on the row we can attribute it on.
+#
+# The eight subprocess-VLA rows (recogdrive x2, mtdrive x2, autovla, simwam x2,
+# drivelaw) are NOT here: their NAVSAFE_VLA_PYTHON venv and the AutoVLA /
+# DriveLaW / SimWAM upstream clones do not exist on any storage we mount. See
+# README.md "What is not in this sweep".
+#
+# row_slug          model_type       ckpt
+drivor              drivor           drivor/drivor_Nav1_25epochs.pth
+ltf                 ltf              ltf/ltf_seed_0.ckpt
+transfuser          transfuser       transfuser/transfuser_seed_0.ckpt
+ego_status_mlp      ego_mlp          ego_status_mlp/ego_status_mlp_seed_0.ckpt
+diffusiondrive      diffusiondrive   diffusiondrive/diffusiondrive_navsim_88p1_PDMS
+sparsedrivev2       sparsedrivev2    sparsedrivev2/sparsedrive_navsimv1_92p2.ckpt

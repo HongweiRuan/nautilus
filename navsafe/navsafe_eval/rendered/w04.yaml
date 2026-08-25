@@ -1,0 +1,99 @@
+# One NavSafe eval worker. Placeholders: w04 4 30 1 5f098ccc49e1983395b47d7b4112f21ef4dc714e
+#
+# A Job per worker rather than one Indexed Job with parallelism 30, because the
+# util-policy webhook (job.nrp-nautilus.io, per-user account) reacts to a BURST
+# of submissions and the reaction is a cooldown that persists at 0 running jobs.
+# Separate Jobs let submit_eval.sh drip them in and stop on the first denial.
+#
+# Two GPUs in ONE container: serve-grpc on device 0, the rollout on device 1.
+# Splitting them across two pods would need a Service per worker and would let a
+# renderer outlive its client; splitting them across two containers in one pod
+# would need a sentinel file for the renderer to know when to exit, since a Job
+# pod only completes when every container has. One container, one script.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-eval-w04
+  namespace: cogrob
+  labels: { app: navsafe-eval, worker: "w04" }
+spec:
+  # Each retry is a fresh pod that rebuilds the venv and re-derives its slice,
+  # skipping the cells already scored. A Job's pod is not time-capped (the 6 h
+  # activeDeadlineSeconds cogrob injects applies to bare Pods, not to pods a Job
+  # owns), so a worker is expected to finish its slice in one pod; the retries
+  # are for a drained node or an evicted pod, not for a deadline.
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: { app: navsafe-eval, worker: "w04" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          # The renderer ships only in NVIDIA's gated NRE container, and the eval
+          # venv is built inside it at start-up — so the renderer's image is the
+          # pod's image, not the other way round.
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "4" }
+            - { name: WORKERS,      value: "30" }
+            - { name: SEEDS,        value: "1" }
+            - { name: NEXUSSIM_SHA, value: "5f098ccc49e1983395b47d7b4112f21ef4dc714e" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            # Several adapters pull a timm backbone from the HF Hub at load time
+            # (the eval log says so: "You are sending unauthenticated requests").
+            # The cache is per pod, so it is one fetch per pod per model — 180
+            # across the fleet — and unauthenticated requests share a low
+            # anonymous rate limit whose failure mode is a dead cell, not a
+            # retry. Cheap insurance.
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            # 48Gi is the renderer's measured working set and ~24Gi the rollout's;
+            # request==limit keeps the pod Guaranteed. At 8 cpu / 80Gi a 64-core,
+            # 755Gi node still fits all four of its GPU pairs.
+            requests: { cpu: "8", memory: "80Gi", nvidia.com/gpu: "2", ephemeral-storage: 100Gi }
+            limits:   { cpu: "8", memory: "80Gi", nvidia.com/gpu: "2", ephemeral-storage: 100Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-eval-cfg } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              # The cogrob reservation. Pinning here keeps the fleet off the
+              # shared pool, where 60 GPUs would be both slow to schedule and the
+              # thing the util-policy is watching.
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  # Stated directly rather than inferred from the hostnames:
+                  # --cache-size 4 plus the harmonizer needs a 24 GB card.
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
