@@ -1,0 +1,64 @@
+# NavSafe eval renderer (Mode A, split services) — dedicated to the 12-leaf
+# eval sweep, serving bundles from /avl-west/navsafe_eval/dataset. Kept
+# separate from the pre-existing nurec-grpc-server (cogrob), which serves a
+# different, smaller scenario pool (/avl-west/nurec_serve_navsafe) that other
+# work depends on.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navsafe-eval-nurec
+  namespace: cogrob
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: navsafe-eval-nurec}}
+  template:
+    metadata: {labels: {app: navsafe-eval-nurec}}
+    spec:
+      imagePullSecrets: [{name: ngc-pull}]
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-3090-Ti,
+                             NVIDIA-GeForce-RTX-4090, NVIDIA-A10, NVIDIA-A10G,
+                             NVIDIA-L4, NVIDIA-RTX-A5000, NVIDIA-A30]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga:26.04
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              mkdir -p /avl-west/navsafe_eval/.harmonizer-cache
+              /app/run serve-grpc --host 0.0.0.0 --renderer default \
+                --cache-size 4 --enable-editing-actors \
+                --enable-harmonizer --harmonizer-cache /avl-west/navsafe_eval/.harmonizer-cache \
+                --artifact-glob "/avl-west/navsafe_eval/dataset/*/*.usdz"
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+          resources:
+            limits: {cpu: "4", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+            requests: {cpu: "4", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navsafe-eval-nurec
+  namespace: cogrob
+spec:
+  type: ClusterIP
+  selector: {app: navsafe-eval-nurec}
+  ports: [{port: 8080, targetPort: 8080}]

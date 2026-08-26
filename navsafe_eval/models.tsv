@@ -1,0 +1,21 @@
+# label	model_type	checkpoint (relative to /avl-west/navsafe_eval/model_zoo/, or "none")	extra_env
+pdm_closed	pdm_closed	none
+ltf	ltf	ltf/ltf_seed_0.ckpt
+diffusiondrive	diffusiondrive	diffusiondrive/diffusiondrive_navsim_88p1_PDMS
+drivor	drivor	drivor/drivor_Nav1_25epochs.pth
+sparsedrivev2	sparsedrivev2	sparsedrivev2/sparsedrive_navsimv1_92p2.ckpt
+recogdrive_il	recogdrive	recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
+recogdrive_rl	recogdrive	recogdrive/planner_rl/ReCogDrive_Diffusion_Planner_2B_RL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
+mtdrive_sft	mtdrive	mtdrive/mtdrive_sft
+mtdrive_mtgrpo	mtdrive	mtdrive/mtdrive_rl_best
+autovla	autovla	autovla/AutoVLA_PDMS_89.ckpt	NAVSAFE_AUTOVLA_BASE=/avl-west/navsafe_eval/model_zoo/_base/qwen2.5-vl-3b-instruct,NAVSAFE_AUTOVLA_REPO=/avl-west/navsafe_eval/vla_repos/AutoVLA
+drivelaw	drivelaw	drivelaw/inference_front.yaml	NAVSAFE_DRIVELAW_REPO=/avl-west/navsafe_eval/vla_repos/drivelaw
+# EXCLUDED — GPU VRAM OOM on a 2-GPU pod (needs ~23.5GB alone, the whole
+# 3090, leaving nothing for the renderer's GPU on the same pod). Confirmed
+# via a standalone 1-GPU/80Gi-RAM Job (simwam-smoketest): loads fine on
+# system RAM, dies in simwam.runtime.create_simwam -> torch OOM at
+# instantiate. Source machine (bolei-gpu07) had 8 GPUs and dedicated one
+# fully to NAVSAFE_VLA_GPU; our pods only get 2 total. Run these on a
+# dedicated single-GPU-per-model setup elsewhere, not in this sweep.
+# simwam	simwam	simwam/weights/SimWAM.pt	DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth,DIFFSYNTH_DOWNLOAD_SOURCE=huggingface,NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM
+# simwam_rl	simwam	simwam/weights/SimWAM-RL.pt	DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth,DIFFSYNTH_DOWNLOAD_SOURCE=huggingface,NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM

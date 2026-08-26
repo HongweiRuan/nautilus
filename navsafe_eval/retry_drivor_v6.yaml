@@ -1,0 +1,69 @@
+# One-off retry: DrivoR seed2, token 12f96c65436e56bf (leaf V-6) only.
+# This cell's run was interrupted mid-episode (log cut off at frame 510, no
+# DONE line, no metrics.json) rather than a scenario-data bug like the V-7
+# gap. Isolates the token via WORKERS=126/WORKER_INDEX=36 (its position in
+# the sorted evaluatable-token list) and scopes models.tsv to just the
+# drivor row via a second ConfigMap (navsafe-eval-cfg-drivor-retry),
+# leaving the shared navsafe-eval-cfg ConfigMap untouched.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-eval-retry-drivor-v6
+  namespace: cogrob
+  labels: {app: navsafe-eval-retry, model: drivor, seed: "2"}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: {labels: {app: navsafe-eval-retry, model: drivor, seed: "2"}}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [ry-gpu-05.sdsc.optiputer.net, ry-gpu-06.sdsc.optiputer.net,
+                             ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net,
+                             ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net,
+                             ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      containers:
+        - name: eval
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - {name: WORKER_INDEX, value: "36"}
+            - {name: WORKERS, value: "126"}
+            - {name: SEEDS, value: "2"}
+            - {name: NEXUSSIM_SHA, value: "5f098ccc49e1983395b47d7b4112f21ef4dc714e"}
+            - {name: MODELS_TSV, value: "/cfg-retry/models.tsv"}
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HF_TOKEN, valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: ACCEPT_EULA, value: "Y"}
+            - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits: {cpu: "3", ephemeral-storage: "60Gi", memory: "32Gi", nvidia.com/gpu: "2"}
+            requests: {cpu: "3", ephemeral-storage: "60Gi", memory: "32Gi", nvidia.com/gpu: "2"}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: cfg, mountPath: /cfg}
+            - {name: cfg-retry, mountPath: /cfg-retry}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      imagePullSecrets: [{name: ngc-pull}]
+      restartPolicy: Never
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: cfg, configMap: {name: navsafe-eval-cfg}}
+        - {name: cfg-retry, configMap: {name: navsafe-eval-cfg-drivor-retry}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}

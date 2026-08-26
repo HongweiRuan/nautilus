@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-fsdebug
+  namespace: cogrob
+  labels:
+    k8s-app: horuan-fsdebug
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 604800
+  containers:
+    - name: fsdebug-container
+      image: robinwangucsd/metabench:latest
+      imagePullPolicy: IfNotPresent
+      command:
+        - bash
+        - -lc
+      args:
+        - sleep infinity
+      resources:
+        requests:
+          cpu: "2"
+          memory: "8Gi"
+        limits:
+          cpu: "2"
+          memory: "8Gi"
+      volumeMounts:
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: cogrob-avl-west-vol
+          mountPath: /cogrob-avl-west
+        - name: closed-loop-e2e
+          mountPath: /closed-loop-e2e
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+  volumes:
+    - name: avl-west-vol
+      persistentVolumeClaim:
+        claimName: avl-west-vol
+    - name: cogrob-avl-west-vol
+      persistentVolumeClaim:
+        claimName: cogrob-avl-west-vol
+    - name: closed-loop-e2e
+      persistentVolumeClaim:
+        claimName: closed-loop-e2e
+    - name: hugsim-storage
+      persistentVolumeClaim:
+        claimName: horuan-hugsim-vol
+  tolerations:
+    - effect: NoSchedule
+      key: nautilus.io/reservation
+      operator: Equal
+      value: cogrob

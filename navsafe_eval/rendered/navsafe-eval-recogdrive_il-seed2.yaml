@@ -1,0 +1,144 @@
+# NavSafe 12-leaf eval sweep — one pod per (model, seed). Loops over all 12
+# in-scope leaves' scenario tokens (126 total) against the shared
+# navsafe-eval-nurec renderer (Mode A). vis disabled (no --enable-vis),
+# semi_reactive traffic, LQR controller, --eval-frames 600, --eval-seed N.
+#
+# Placeholders: recogdrive_il recogdrive recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b 2
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-eval-recogdrive_il-seed2
+  namespace: cogrob
+  labels: {app: navsafe-eval, model: "recogdrive_il", seed: "2"}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata: {labels: {app: navsafe-eval, model: "recogdrive_il", seed: "2"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090, NVIDIA-GeForce-RTX-3090-Ti,
+                             NVIDIA-GeForce-RTX-4090, NVIDIA-A10, NVIDIA-A10G,
+                             NVIDIA-L4, NVIDIA-RTX-A5000, NVIDIA-A30]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga:26.04
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              MODEL=recogdrive_il
+              MODEL_TYPE=recogdrive
+              CKPT_REL="recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt"
+              SEED=2
+              export NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
+
+              ZOO=/avl-west/navsafe_eval/model_zoo
+              DATASET=/avl-west/navsafe_eval/dataset
+              OUTROOT=/avl-west/navsafe_eval/outputs/${MODEL}/seed${SEED}
+              mkdir -p "$OUTROOT"
+              SUM="$OUTROOT/summary.tsv"
+              [ -f "$SUM" ] || printf 'leaf\ttoken\tstatus\tframes\tout\n' > "$SUM"
+
+              if [ "$CKPT_REL" = "none" ]; then
+                CKPT=none
+              else
+                CKPT="$ZOO/$CKPT_REL"
+              fi
+
+              echo "=== venv setup ==="
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq git curl python3-venv libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null
+              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              for i in 1 2 3 4; do command -v uv >/dev/null && break; python -m pip install --quiet --user uv 2>/dev/null || pip install --quiet --user uv 2>/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh; hash -r; command -v uv >/dev/null && break; sleep 15; done
+              rm -rf /root/ns
+              git clone --quiet --depth 1 https://github.com/VAIL-UCLA/NexusSim.git /root/ns
+              cd /root/ns
+              uv sync --all-extras --python 3.12
+              [ -d /root/IsaacLab/.git ] || git clone --quiet --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+              for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
+              uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+
+              PY=/root/ns-venv/bin/python
+              export PYTHONPATH="/root/ns:/root/ns/third_party/nurec_protos"
+              export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES
+              export NUREC_GRPC_HOST=navsafe-eval-nurec NUREC_GRPC_PORT=8080
+              export NUREC_GRPC_CAM_RIG=navsim NUREC_GRPC_TIMEOUT_S=600 PY123D_RECENTER=1
+              export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+
+              $PY - /config/leaf_tokens.json << 'PYEOF' > /tmp/leaf_token_pairs.tsv
+              import json, sys
+              d = json.load(open(sys.argv[1]))
+              for leaf, toks in d.items():
+                  for t in toks:
+                      print(f"{leaf}\t{t}")
+              PYEOF
+
+              while IFS=$'\t' read -r LEAF TOKEN; do
+                B="$DATASET/$TOKEN"
+                OUT="$OUTROOT/${LEAF}_${TOKEN}"
+                LOG="$OUT.log"
+                if grep -qs '^\[eval_py123d\] DONE\.' "$LOG" 2>/dev/null; then
+                  echo "[skip] $LEAF $TOKEN already done"
+                  continue
+                fi
+                if [ ! -f "$B/manifest.json" ]; then
+                  echo "[MISSING BUNDLE] $LEAF $TOKEN -> $B has no manifest.json"
+                  printf '%s\t%s\tMISSING_BUNDLE\t0\t%s\n' "$LEAF" "$TOKEN" "$OUT" >> "$SUM"
+                  continue
+                fi
+                echo "=== $LEAF $TOKEN -> $OUT ==="
+                export NUREC_GRPC_HANDOFF="$($PY - "$B" << 'HANDOFFEOF'
+              import json, sys
+              b = sys.argv[1]
+              m = json.load(open(b + "/manifest.json"))
+              print(";".join("%s,%s/offsets/%s.json,%d,%d"
+                             % (c["scene_id"], b, c["scene_id"],
+                                c["t_start_us"], c["t_stop_us"])
+                             for c in m["subclips"]))
+              HANDOFFEOF
+              )"
+                timeout --signal=KILL 45m $PY /root/ns/scripts/tools/eval_py123d.py \
+                  --scenario-source py123d --py123d-data-root "$B/arrow" --py123d-scene-index 0 \
+                  --render-backend nurec_grpc --cam-height navsim \
+                  --model-type "$MODEL_TYPE" --checkpoint "$CKPT" \
+                  --traffic-mode semi_reactive --ego-replay-frames 20 \
+                  --terminate-on-collision --execution-mode controller --controller lqr \
+                  --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --eval-frames 600 --eval-seed "$SEED" \
+                  --navsafe-prune-artifacts \
+                  --output-dir "$OUT" > "$LOG" 2>&1 || true
+                N=$(find "$OUT" -name cam_f0.jpg 2>/dev/null | wc -l)
+                if grep -qs '^\[eval_py123d\] DONE\.' "$LOG"; then S=OK; else S=FAILED; fi
+                printf '%s\t%s\t%s\t%s\t%s\n' "$LEAF" "$TOKEN" "$S" "$N" "$OUT" >> "$SUM"
+                echo "[$LEAF/$TOKEN] $S ($N frames)"
+              done < /tmp/leaf_token_pairs.tsv
+
+              echo "=== SWEEP_DONE model=$MODEL seed=$SEED ==="
+              column -t -s$'\t' "$SUM" || true
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            requests: {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: "150Gi"}
+            limits:   {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: "150Gi"}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: leaf-tokens, mountPath: /config}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: leaf-tokens, configMap: {name: navsafe-eval-leaf-tokens}}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
