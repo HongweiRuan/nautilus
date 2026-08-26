@@ -14,12 +14,19 @@
 # then restart (serve-grpc scans the glob only at start-up).
 # --enable-editing-actors kept so the nurec_grpc backend can move/remove actors.
 #
-# Bare Pod (no Deployment). NOTE: Nautilus caps controller-less pods lower than
-# controller-managed ones, and this asks for 48 GB — if admission rejects the
-# request or it never schedules, that cap is the first thing to check. The eval
-# reaches it via NUREC_GRPC_HOST=nurec-grpc (the Service below), which matches
-# on the app label, so it keeps working as long as the pod is recreated with
-# the same labels.
+# Bare Pod (no Deployment). THE RESOURCE REQUEST IS PINNED BY THIS CHOICE:
+# Nautilus' admission webhook rejects controller-less pods over 16 cores /
+# 32 GB outright —
+#   admission webhook "pod.nrp-nautilus.io" denied the request:
+#   PODs without controllers are limited to 16 cores and 32 GB of RAM
+# (hit for real on 2026-08-25, when this asked for 48Gi). It is a preadmission
+# check, so the pod never reaches a scheduler and nothing shows up in
+# `kubectl get pod` — the denial is the only trace. Do not raise cpu past 16
+# or memory past 32Gi here; if serve-grpc ever needs more, it has to go back
+# under a controller (Deployment, or a Job with backoffLimit:0), which the cap
+# does not apply to. The eval reaches it via NUREC_GRPC_HOST=nurec-grpc (the
+# Service below), which matches on the app label, so it keeps working as long
+# as the pod is recreated with the same labels.
 #
 # Cluster caps a single GPU pod's lifetime, so cycle the pod manually every ~6 h
 # (a fresh pod = new GPU lease; the Service is unchanged, evals need no edit):
@@ -82,15 +89,28 @@ spec:
       resources:
         # cpu:4 (not 8) so a node with a free GPU but CPU packed by cpu:3 trains
         # still has room. serve-grpc is GPU-bound; 4 CPU is plenty.
+        #
+        # memory:32Gi is the controller-less ceiling (see the header), NOT a
+        # measured requirement — this used to ask for 48Gi. The working set is
+        # 4 resident recon backends and the bulk of one lives in VRAM rather
+        # than host RAM, so 32Gi is expected to hold, but that has NOT been
+        # measured. An OOMKill here means moving back under a controller, not
+        # a bigger number in this file. NOTE the /dev/shm emptyDir below is
+        # medium:Memory, so anything the process writes there is charged
+        # against THIS limit — the two share one budget, which is why dshm
+        # was cut to 8Gi.
         requests:
-          { cpu: "4", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
         limits:
-          { cpu: "4", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+          { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
       volumeMounts:
         - { name: dshm, mountPath: /dev/shm }
         - { name: avl-west-vol, mountPath: /avl-west }
   volumes:
-    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+    # 8Gi, not 24Gi: a memory-backed emptyDir is charged to the container's
+    # memory limit, and a 24Gi shm under a 32Gi limit would leave serve-grpc
+    # only 8Gi of actual heap.
+    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
     - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
   # The ry-gpu nodes DO still carry the cogrob taints (2026-08-11: this pod
   # sat Pending with "untolerated taint {nautilus.io/reservation: cogrob}"
