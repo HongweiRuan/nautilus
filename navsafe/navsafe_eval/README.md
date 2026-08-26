@@ -28,6 +28,30 @@ Why not the obvious alternatives:
 | **one Indexed Job, parallelism 30** | a Job per worker is independently resumable and independently replaceable: one broken worker can be re-submitted without touching the other 29. All 30 still go out in one pass — the util-policy webhook reacts to a burst only after the fact, and never touches a Job that already exists. |
 | **a shared venv on the PVC** | not ours to create. The venv is rebuilt on each pod's own ephemeral `/root`. |
 
+## When workers sit Pending
+
+The reservation does not always have 30 free GPU pairs. Workers that do not
+schedule stay Pending and start as the running ones exit — correct, but it puts
+their slices in a serial tail, because the stride is fixed by `WORKERS` and only
+that worker index will ever run those scenarios.
+
+Do not fight the scheduler for it (on 2026-08-25 five workers stayed Pending with
+13 GPUs apparently free in this namespace; dropping `ephemeral-storage` from
+100Gi to 50Gi changed nothing, and the scheduler's own reason is unreadable —
+the event message is capped at 1024 characters and spent on other nodes' taints,
+and this account cannot list pods cluster-wide to see what other namespaces hold
+on those nodes).
+
+Redistribute instead, once the first wave is done:
+
+    kubectl delete jobs -n cogrob -l app=navsafe-eval
+    WORKERS=<however many actually scheduled> ./submit_eval.sh
+
+Every finished cell is skipped, so this costs one venv build per pod and hands
+the remaining scenarios to the workers that can actually run. It is safe at any
+moment — including while workers are running, if you are willing to lose their
+in-flight cells.
+
 ## Output layout
 
     /avl-west/navsafe_eval/outputs/
@@ -55,9 +79,16 @@ bundles:
 
     --traffic-mode semi_reactive --ego-replay-frames 20 --terminate-on-collision
     --execution-mode controller --controller lqr --replan-rate 5
-    --camera-resolution-scale 1.0 --navsafe-prune-artifacts
-    (no --eval-frames: the episode is indefinite, ending on a taxonomy event or
-     the 60 s ceiling; no --enable-vis)
+    --camera-resolution-scale 1.0 --eval-frames 600 --navsafe-prune-artifacts
+    (no --enable-vis)
+
+`--eval-frames 600` is the same bound the wrapper gets implicitly, written down.
+`eval_frames` counts SCORED frames, so the episode runs
+`ego_replay_frames + eval_frames = 620` frames; unset, the evaluator stops at
+`ego_replay_frames + SAFETY_CEILING_S / sim_dt = 20 + 60.0/0.1`, also 620. An
+episode still normally ends earlier, on a taxonomy event (goal, contact,
+off-drivable, deadlock) — of the six calibration cells the longest was 415
+frames.
 
 Renderer: `--cache-size 4 --enable-harmonizer --enable-editing-actors --renderer
 default`. All three are load-bearing. `--cache-size 4` is a correctness floor —

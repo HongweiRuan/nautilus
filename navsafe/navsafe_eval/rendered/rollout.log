@@ -1,0 +1,14 @@
+=== adapter readiness ===
+zoo = /avl-west/navsafe_eval/model_zoo
+row                  model_type       registry   ckpt       companions  
+----------------------------------------------------------------------------
+drivor               drivor           ok         ok         -           
+ltf                  ltf              ok         ok         -           
+diffusiondrive       diffusiondrive   ok         ok         ok          
+sparsedrivev2        sparsedrivev2    ok         ok         ok          
+pdm_closed           pdm_closed       ok         n/a        n/a         
+----------------------------------------------------------------------------
+ALL ROWS READY
+=== configmap navsafe-eval-cfg updated ===
+[w00] Error from server: error when creating "rendered/w00.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+=== UTIL-POLICY DENIED at w00 — stop here, let it expire, then re-run ===

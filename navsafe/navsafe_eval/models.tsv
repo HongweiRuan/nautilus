@@ -16,10 +16,19 @@
 # DriveLaW / SimWAM upstream clones do not exist on any storage we mount. See
 # README.md "What is not in this sweep".
 #
+# pdm_closed is not from the zoo and takes no weights by construction: it is the
+# privileged rule-based proposal/score/select planner in
+# nexussim/policy/state/pdm_closed.py, and it is here as the reference the
+# learned rows are read against. (`pdm_closed_fast` and `pdm_closed_agentic` are
+# registered beside it and are NOT this row.)
+#
+# transfuser and ego_status_mlp were dropped from the sweep on 2026-08-26. Cells
+# already scored for them stay on disk under outputs/ — they cost nothing to keep
+# and re-adding the rows here would pick them straight back up.
+#
 # row_slug          model_type       ckpt
 drivor              drivor           drivor/drivor_Nav1_25epochs.pth
 ltf                 ltf              ltf/ltf_seed_0.ckpt
-transfuser          transfuser       transfuser/transfuser_seed_0.ckpt
-ego_status_mlp      ego_mlp          ego_status_mlp/ego_status_mlp_seed_0.ckpt
 diffusiondrive      diffusiondrive   diffusiondrive/diffusiondrive_navsim_88p1_PDMS
 sparsedrivev2       sparsedrivev2    sparsedrivev2/sparsedrive_navsimv1_92p2.ckpt
+pdm_closed          pdm_closed       none

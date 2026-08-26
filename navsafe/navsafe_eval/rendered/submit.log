@@ -1,0 +1,77 @@
+=== adapter readiness ===
+zoo = /avl-west/navsafe_eval/model_zoo
+row                  model_type       registry   ckpt       companions  
+----------------------------------------------------------------------------
+drivor               drivor           ok         ok         -           
+ltf                  ltf              ok         ok         -           
+diffusiondrive       diffusiondrive   ok         ok         ok          
+sparsedrivev2        sparsedrivev2    ok         ok         ok          
+pdm_closed           pdm_closed       ok         n/a        n/a         
+----------------------------------------------------------------------------
+ALL ROWS READY
+=== code: 5f098ccc49e1983395b47d7b4112f21ef4dc714e ===
+=== configmap navsafe-eval-cfg updated ===
+=== submitted 0, left alone 25, of 25 workers ===
+=== jobs ===
+JOB                ACTIVE   OK       FAILED
+navsafe-eval-w00   1        <none>   <none>
+navsafe-eval-w01   1        <none>   <none>
+navsafe-eval-w02   1        <none>   <none>
+navsafe-eval-w03   1        <none>   <none>
+navsafe-eval-w04   1        <none>   <none>
+navsafe-eval-w05   1        <none>   <none>
+navsafe-eval-w06   1        <none>   <none>
+navsafe-eval-w07   1        <none>   <none>
+navsafe-eval-w08   1        <none>   <none>
+navsafe-eval-w09   1        <none>   <none>
+navsafe-eval-w10   1        <none>   <none>
+navsafe-eval-w11   1        <none>   <none>
+navsafe-eval-w12   1        <none>   <none>
+navsafe-eval-w13   1        <none>   <none>
+navsafe-eval-w14   1        <none>   <none>
+navsafe-eval-w15   1        <none>   <none>
+navsafe-eval-w16   1        <none>   <none>
+navsafe-eval-w17   1        <none>   <none>
+navsafe-eval-w18   1        <none>   <none>
+navsafe-eval-w19   1        <none>   <none>
+navsafe-eval-w20   1        <none>   <none>
+navsafe-eval-w21   1        <none>   <none>
+navsafe-eval-w22   1        <none>   <none>
+navsafe-eval-w23   1        <none>   <none>
+navsafe-eval-w24   1        <none>   <none>
+
+=== pods ===
+POD                      PHASE     NODE                           AGE
+navsafe-eval-w00-qwhs4   Running   ry-gpu-13.sdsc.optiputer.net   2026-08-26T01:42:47Z
+navsafe-eval-w01-5q2d6   Running   ry-gpu-13.sdsc.optiputer.net   2026-08-26T01:42:49Z
+navsafe-eval-w02-ktnvs   Running   ry-gpu-14.sdsc.optiputer.net   2026-08-26T01:42:52Z
+navsafe-eval-w03-w5rlz   Running   ry-gpu-13.sdsc.optiputer.net   2026-08-26T01:42:55Z
+navsafe-eval-w04-vfqfq   Running   ry-gpu-14.sdsc.optiputer.net   2026-08-26T01:42:57Z
+navsafe-eval-w05-kf8n7   Running   ry-gpu-13.sdsc.optiputer.net   2026-08-26T01:43:00Z
+navsafe-eval-w06-xk7kf   Running   ry-gpu-11.sdsc.optiputer.net   2026-08-26T01:43:02Z
+navsafe-eval-w07-58pqh   Running   ry-gpu-06.sdsc.optiputer.net   2026-08-26T01:43:05Z
+navsafe-eval-w08-hckd2   Running   ry-gpu-07.sdsc.optiputer.net   2026-08-26T01:43:08Z
+navsafe-eval-w09-b28fk   Running   ry-gpu-12.sdsc.optiputer.net   2026-08-26T01:43:10Z
+navsafe-eval-w10-sg6hp   Running   ry-gpu-05.sdsc.optiputer.net   2026-08-26T01:43:13Z
+navsafe-eval-w11-w92m6   Running   ry-gpu-08.sdsc.optiputer.net   2026-08-26T01:43:15Z
+navsafe-eval-w12-xk6c8   Running   ry-gpu-14.sdsc.optiputer.net   2026-08-26T01:43:18Z
+navsafe-eval-w13-4wt7f   Running   ry-gpu-12.sdsc.optiputer.net   2026-08-26T01:43:21Z
+navsafe-eval-w14-svj8g   Running   ry-gpu-05.sdsc.optiputer.net   2026-08-26T01:43:23Z
+navsafe-eval-w15-zzvf8   Running   ry-gpu-11.sdsc.optiputer.net   2026-08-26T01:43:26Z
+navsafe-eval-w16-lstm2   Running   ry-gpu-07.sdsc.optiputer.net   2026-08-26T01:43:29Z
+navsafe-eval-w17-zlxk5   Running   ry-gpu-08.sdsc.optiputer.net   2026-08-26T01:43:31Z
+navsafe-eval-w18-86m6r   Running   ry-gpu-06.sdsc.optiputer.net   2026-08-26T01:43:34Z
+navsafe-eval-w19-zh259   Running   ry-gpu-11.sdsc.optiputer.net   2026-08-26T01:43:37Z
+navsafe-eval-w20-fkd2h   Running   ry-gpu-05.sdsc.optiputer.net   2026-08-26T01:43:40Z
+navsafe-eval-w21-6d8mc   Running   ry-gpu-12.sdsc.optiputer.net   2026-08-26T01:43:42Z
+navsafe-eval-w22-t7psz   Running   ry-gpu-07.sdsc.optiputer.net   2026-08-26T01:43:45Z
+navsafe-eval-w23-k94dp   Running   ry-gpu-06.sdsc.optiputer.net   2026-08-26T01:43:48Z
+navsafe-eval-w24-h2wgt   Running   ry-gpu-08.sdsc.optiputer.net   2026-08-26T01:43:51Z
+
+=== cells per model x seed ===
+model                seed       done   failed  inflight   pending
+drivor               1            57        0        10        59
+ltf                  1            50        0        14        62
+diffusiondrive       1            41        0        11        74
+sparsedrivev2        1            32        0        16        78
+pdm_closed           1             0        0        19       107

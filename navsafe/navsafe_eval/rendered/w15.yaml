@@ -1,4 +1,4 @@
-# One NavSafe eval worker. Placeholders: w15 15 30 1 5f098ccc49e1983395b47d7b4112f21ef4dc714e
+# One NavSafe eval worker. Placeholders: w15 15 25 1 5f098ccc49e1983395b47d7b4112f21ef4dc714e
 #
 # A Job per worker rather than one Indexed Job with parallelism 30, because the
 # util-policy webhook (job.nrp-nautilus.io, per-user account) reacts to a BURST
@@ -40,7 +40,7 @@ spec:
           command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
           env:
             - { name: WORKER_INDEX, value: "15" }
-            - { name: WORKERS,      value: "30" }
+            - { name: WORKERS,      value: "25" }
             - { name: SEEDS,        value: "1" }
             - { name: NEXUSSIM_SHA, value: "5f098ccc49e1983395b47d7b4112f21ef4dc714e" }
             - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
@@ -55,11 +55,19 @@ spec:
             - { name: ACCEPT_EULA, value: "Y" }
             - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
           resources:
-            # 48Gi is the renderer's measured working set and ~24Gi the rollout's;
-            # request==limit keeps the pod Guaranteed. At 8 cpu / 80Gi a 64-core,
-            # 755Gi node still fits all four of its GPU pairs.
-            requests: { cpu: "8", memory: "80Gi", nvidia.com/gpu: "2", ephemeral-storage: 100Gi }
-            limits:   { cpu: "8", memory: "80Gi", nvidia.com/gpu: "2", ephemeral-storage: 100Gi }
+            # MEASURED, not quoted. `kubectl top` over 24 live workers on
+            # 2026-08-26: 0.96-1.55 CPU and 11.2-15.8 GiB, renderer and rollout
+            # together — nowhere near the 8 cpu / 80Gi first requested, which is
+            # ~17% utilisation and is what the util-policy webhook
+            # (job.nrp-nautilus.io, "your pods resources utilization is too low")
+            # was objecting to. An over-requested fleet does not just waste the
+            # node, it locks the ACCOUNT out of submitting anything.
+            #
+            # ~2x the observed peak, request==limit for Guaranteed QoS. CPU can
+            # only throttle; memory cannot, so it gets the fuller margin.
+            # ephemeral 60Gi against a measured ~47 GB (23G venv + 23G uv cache).
+            requests: { cpu: "3", memory: "32Gi", nvidia.com/gpu: "2", ephemeral-storage: 60Gi }
+            limits:   { cpu: "3", memory: "32Gi", nvidia.com/gpu: "2", ephemeral-storage: 60Gi }
           volumeMounts:
             - { name: dshm, mountPath: /dev/shm }
             - { name: cfg, mountPath: /cfg }

@@ -62,7 +62,8 @@ kubectl exec -n "$NS" "$POD" -- bash -c "
     echo 'renderer: serve-grpc --cache-size 4 --enable-harmonizer --enable-editing-actors --renderer default'
     echo 'episode: semi_reactive traffic, --ego-replay-frames 20, --terminate-on-collision,'
     echo '         --execution-mode controller --controller lqr, --replan-rate 5,'
-    echo '         no --eval-frames (indefinite, 60 s ceiling), no --enable-vis'
+    echo '         --eval-frames 600 (= 20 warm-up + 600 scored = the 60 s ceiling),'
+    echo '         no --enable-vis'
   } >> $ROOT/outputs/campaign.yaml" 2>/dev/null
 
 # ── submit, all at once ──────────────────────────────────────────────────────

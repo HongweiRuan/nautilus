@@ -31,6 +31,14 @@
 #    to the next, so the renderer keeps that scenario's four reconstructions
 #    resident across the whole model list instead of reloading ~8 GB per model.
 #
+#  * --eval-frames 600 states the episode bound instead of inheriting it.
+#    `eval_frames` counts SCORED frames, so the run lasts
+#    ego_replay_frames + eval_frames = 20 + 600 = 620 frames; leaving it unset
+#    stops at ego_replay_frames + round(SAFETY_CEILING_S / sim_dt) =
+#    20 + 60.0/0.1 = the same 620 (evaluator.py, "safety ceiling"). Same bound,
+#    now written down — which is what keeps cells scored before this flag was
+#    added comparable with the ones after.
+#
 #  * Resumable, per cell. A Job's pod is NOT time-capped here (verified: the
 #    6 h activeDeadlineSeconds cogrob injects lands on bare Pods, not on pods a
 #    Job owns), so a worker normally runs its slice to the end in one go. The
@@ -64,12 +72,27 @@ say() { echo "[$W $(date -u +%H:%M:%S)] $*"; }
 # ── 0. which scenarios are mine ──────────────────────────────────────────────
 # Deterministic stride, computed identically by every worker from the same
 # sorted list, so no worker needs to be told and two workers never collide.
-mapfile -t ALL_TOKENS < <(ls "$DATASET" | sort)
+# Directories only, and only bundles that can actually be served. An entry under
+# $DATASET that is not an evaluatable scenario killed a whole worker: it became a
+# dangling symlink in the shard, serve-grpc died on FileNotFoundError before
+# publishing any scene list, and the slice went down with it. Two produced that
+# on 2026-08-26 — a stray top-level manifest.json (a FILE, which `ls` happily
+# returns; since moved to ../dataset_manifest.json) and 442b2cf63c6f570a, which
+# carries arrow/ and offsets/ but no usdz at all. Screened here, where the cost
+# is one skipped scenario rather than one dead worker.
+mapfile -t ALL_TOKENS < <(
+  for d in "$DATASET"/*/; do
+    t=$(basename "$d")
+    [ -f "$d/manifest.json" ] && [ -d "$d/arrow" ] || continue
+    n=0; for f in "$d"/*.usdz; do [ -e "$f" ] && n=$((n+1)); done
+    [ "$n" -ge 1 ] && echo "$t"
+  done | sort
+)
 MY_TOKENS=()
 for i in "${!ALL_TOKENS[@]}"; do
   [ $(( i % WORKERS )) -eq "$WORKER_INDEX" ] && MY_TOKENS+=("${ALL_TOKENS[$i]}")
 done
-say "scenarios ${#ALL_TOKENS[@]} total, ${#MY_TOKENS[@]} mine: ${MY_TOKENS[*]}"
+say "scenarios ${#ALL_TOKENS[@]} evaluatable, ${#MY_TOKENS[@]} mine: ${MY_TOKENS[*]}"
 [ ${#MY_TOKENS[@]} -gt 0 ] || { say "nothing to do"; exit 0; }
 
 mapfile -t ROWS < <(grep -v '^\s*#' "$MODELS_TSV" | grep -v '^\s*$')
@@ -162,8 +185,12 @@ say "venv ready ($(git -C "$REPO" status --porcelain | wc -l) tracked files modi
 # to serve twenty scenes.
 SHARD=/root/shard
 mkdir -p "$SHARD"
+MY_SCENES=()
 for T in "${MY_TOKENS[@]}"; do
-  for S in 1 2 3 4; do ln -sf "$DATASET/$T/${T}s${S}.usdz" "$SHARD/${T}s${S}.usdz"; done
+  for f in "$DATASET/$T"/*.usdz; do
+    [ -e "$f" ] || continue                     # a dangling link is not a scene
+    b=$(basename "$f"); ln -sf "$f" "$SHARD/$b"; MY_SCENES+=("${b%.usdz}")
+  done
 done
 mkdir -p "$HARMONIZER_CACHE"
 
@@ -186,10 +213,8 @@ start_serve() {
   done
   local scenes; scenes=$(grep "Available scenes" /tmp/serve.log | tail -1)
   [ -n "$scenes" ] || { say "no scene list published"; tail -40 /tmp/serve.log; return 1; }
-  for T in "${MY_TOKENS[@]}"; do
-    for S in 1 2 3 4; do
-      echo "$scenes" | grep -q "${T}s${S}" || { say "MISSING scene ${T}s${S} — would render raster"; return 1; }
-    done
+  for SC in "${MY_SCENES[@]}"; do
+    echo "$scenes" | grep -q "$SC" || { say "MISSING scene $SC — would render raster"; return 1; }
   done
   # The scene list is not readiness: serve-grpc prints it while still loading
   # the harmonizer weights and binds the port ~2 min later. Connecting in that
@@ -223,7 +248,19 @@ export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
 
-done_n=0; skip_n=0; fail_n=0
+done_n=0; skip_n=0; fail_n=0; consec_fail=0
+
+# A pod whose GPU has gone bad fails every remaining cell in ~10 s and then
+# exits 0, which tells the Job it SUCCEEDED and abandons the rest of the slice
+# silently. That is what happened on ry-gpu-06 on 2026-08-26: its driver went
+# bad at ~00:10, every eval started after that died in torch._C._cuda_init with
+# "CUDA driver initialization failed, you might not have a CUDA gpu", and two
+# workers reported themselves complete having scored 6 cells of 30. So: when the
+# environment is what failed, exit NON-ZERO, and let the Job put the slice on a
+# fresh pod — probably a different node.
+gpu_is_gone() {
+  grep -qE "cudaErrorInitializationError|CUDA driver initialization failed|no CUDA-capable device" "$1"
+}
 for T in "${MY_TOKENS[@]}"; do
   B="$DATASET/$T"
   HANDOFF=$("$PY" -m nexussim.navsafe.eval.bundle --handoff "$B" 2>/dev/null)
@@ -254,15 +291,26 @@ for T in "${MY_TOKENS[@]}"; do
           --terminate-on-collision \
           --controller lqr --execution-mode controller \
           --replan-rate 5 --camera-resolution-scale 1.0 \
+          --eval-frames 600 \
           --eval-seed "$SEED" \
           --navsafe-prune-artifacts \
           --output-dir "$OUT" > "$LOG" 2>&1
       # One bad cell must not abandon the sweep; its reason is in its own log.
       if grep -qs '^\[eval_py123d\] DONE\.' "$LOG" && [ -f "$OUT/navsafe_metrics.json" ]; then
-        done_n=$((done_n+1)); say "  OK"
+        done_n=$((done_n+1)); consec_fail=0; say "  OK"
       else
-        fail_n=$((fail_n+1)); say "  FAILED (see $LOG)"
+        fail_n=$((fail_n+1)); consec_fail=$((consec_fail+1)); say "  FAILED (see $LOG)"
         tail -5 /tmp/serve.log > "$OUTROOT/$SLUG/seed$SEED/$T.serve.log" 2>/dev/null
+        if gpu_is_gone "$LOG"; then
+          say "GPU UNUSABLE on $(hostname) — CUDA would not initialise. Failing so the Job reschedules."
+          exit 1
+        fi
+        # More consecutive failures than one scenario has models: whatever is
+        # wrong is not this scenario. Bail rather than burn the slice.
+        if [ "$consec_fail" -ge 7 ]; then
+          say "ABORT: $consec_fail consecutive failures across more than one scenario"
+          exit 1
+        fi
       fi
     done
   done
