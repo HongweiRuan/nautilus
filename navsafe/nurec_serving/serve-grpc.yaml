@@ -2,16 +2,42 @@
 # gRPC API. The eval client (run in the horuan-nexussim pod) reaches it via
 # NUREC_GRPC_HOST=nurec-grpc and produces the per-leaf log-replay gifs.
 #
-# artifact-glob points at /avl-west/nurec_serve_navsafe/ — a scoped dir of
-# structure-preserving symlinks (so serve-grpc derives scene_id == <scene>).
-# It carries BOTH pools, because neither alone covers the taxonomy:
-#   * the 30 previous entries (28 navhard "one per scenario_type" + 2 navsafe), and
-#   * the purpose-mined navsafe_5s_500 leaf seeds, whose trained recons live at
-#     /avl-west/navsafe_5s_500/<clip>/output_5cam/<clip>/artifacts/last.usdz
-#     (1087 of them exist; only the leaf-relevant ones are linked here — globbing
-#     all 1087 would make serve-grpc scan every artifact over CephFS at start-up).
-# Add a scene:  mkdir -p $NEW/<clip>/artifacts && ln -s <…>/last.usdz $NEW/<clip>/artifacts/
-# then restart (serve-grpc scans the glob only at start-up).
+# artifact-glob points STRAIGHT AT THE TRAINING TREE:
+#   /avl-west/navsafe_5s_500/<clip>/output_5cam/<clip>/artifacts/last.usdz
+# 1632 of them exist (of 500 scenarios x 4 clips = 2000; the rest are not
+# trained yet, and a glob simply does not match those). No curation, no
+# allow-list: whatever is trained is served.
+#
+# This REPLACED /avl-west/nurec_serve_navsafe/, a hand-maintained dir of
+# symlinks that used to union two pools. Do not reintroduce it. Surveyed
+# 2026-08-27, it held 106 entries of which 32 were DEAD:
+#     28 -> /avl-west/navhard421           (tree deleted)
+#      4 -> /avl-west/navhard421-website-5s (tree deleted)
+#     74 -> /avl-west/navsafe_5s_500        (all live, a subset of the 1632)
+# Both navhard trees are gone from /avl-west, so the "carries both pools"
+# reason for the symlink layer no longer holds — the navhard scenarios would
+# have to be retrained to come back, and that is out of scope here (decided
+# 2026-08-27: not wanted). What the layer did still provide was a way to break
+# the server: a symlink whose target is missing makes serve-grpc die on
+# FileNotFoundError during its start-up scan, before it publishes any scene
+# list, so one stale link took the whole server down. Globbing the training
+# tree cannot hit that — a glob only matches paths that exist, and those are
+# real files, not links.
+#
+# scene_id is unchanged by the move. serve-grpc derives it from the directory
+# above artifacts/, which is <clip> in BOTH layouts (the old symlink was
+# <clip>/artifacts/last.usdz; the tree is <clip>/output_5cam/<clip>/artifacts/
+# last.usdz, and the two <clip> components were verified identical for all
+# 1632). It cannot be deriving it from the filename stem — that is "last" for
+# every artifact in either layout, and the old pool served 106 scenes without
+# collisions.
+#
+# COST OF THE WIDER GLOB: serve-grpc opens every match at start-up even with
+# --test-scenes-are-valid false (proven by the FileNotFoundError above, which
+# fired before CUDA init). It does not fully load them — per-scene load is
+# lazy, ~7-10 s on first render of that scene_id — but 1632 opens over CephFS
+# is slower than the old 74. Enumerating this glob from a pod took >2 min.
+# If start-up looks hung, that is where it is.
 # --enable-editing-actors kept so the nurec_grpc backend can move/remove actors.
 #
 # Bare Pod (no Deployment). THE RESOURCE REQUEST IS PINNED BY THIS CHOICE:
@@ -32,8 +58,9 @@
 # (a fresh pod = new GPU lease; the Service is unchanged, evals need no edit):
 #     kubectl delete pod nurec-grpc-server -n cogrob
 #     kubectl apply -f serve-grpc.yaml
-# Same commands also pick up a NEWLY trained clip (serve-grpc scans
-# --artifact-glob only at start-up).
+# Same commands also pick up a NEWLY trained clip — nothing to link or
+# register, it just has to exist under the glob by the time the pod starts
+# (serve-grpc scans --artifact-glob only at start-up).
 apiVersion: v1
 kind: Pod
 metadata:
@@ -75,10 +102,12 @@ spec:
           # it needs a >24 GB card (the affinity below lists 24 GB only), and
           # two evals sharing this server will evict each other's edits, so
           # run them sequentially or give each its own server.
+          # Globbed directly off the training tree — see the header for why the
+          # old symlink pool is gone and why nothing needs pre-screening here.
           /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
               --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
               --cache-size 4 \
-              --artifact-glob '/avl-west/nurec_serve_navsafe/*/artifacts/last.usdz'
+              --artifact-glob '/avl-west/navsafe_5s_500/*/output_5cam/*/artifacts/last.usdz'
       ports: [{ containerPort: 8080 }]
       env:
         - {
