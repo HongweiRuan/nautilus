@@ -1,17 +1,27 @@
-# Convert a WOD perception split -> py123d Arrow logs (with map.arrow) using
-# py123d's own converter. One split converts every clip in it; the eval later
+# Convert WOD perception clips -> py123d Arrow logs (with map.arrow) using
+# py123d's own converter. Output lands under
+# /avl-west/py123d_arrow_wod/logs/wod-perception_val/<clip>/ ; the eval later
 # points --py123d-data-root at a lean single-clip root symlinked out of this.
 #
-# Adjust dataset.parser.splits (val/train/test) as needed. Output lands under
-# /avl-west/py123d_arrow_wod/logs/<split>/<clip>/.
+# The parser globs EVERY *.tfrecord in <root>/<split-folder>, so restricting the
+# job to one clip means giving it a root that holds only that clip's shard. That
+# is what __SEGMENT__ does: the job builds /tmp/wodroot/validation with a single
+# symlink. One clip per job keeps the unit atomic — a shard that fails cannot
+# take the others' Arrow down with it (`set -e`).
 #
-#   kubectl apply -f convert-wod-arrow.yaml
+#   S=1024360143612057520_3580_000_3600_000
+#   sed -e "s/__SEGMENT__/$S/g" -e "s/__JOBNAME__/${S//_/-}/g" \
+#       convert-wod-arrow.yaml | kubectl apply -f -
+#
+# Whole split instead: set __SEGMENT__ to '*' (the symlink glob then matches all
+# shards in validation/). Adjust the split folder + dataset.parser.splits for
+# train/test.
 apiVersion: batch/v1
 kind: Job
-metadata: { name: convert-wod-arrow, namespace: cogrob }
+metadata: { name: convert-wod-arrow-__JOBNAME__, namespace: cogrob }
 spec:
   backoffLimit: 0
-  activeDeadlineSeconds: 5400
+  activeDeadlineSeconds: 14400
   ttlSecondsAfterFinished: 172800
   template:
     spec:
@@ -27,11 +37,17 @@ spec:
               # py123d pinned to the version the eval reads; tensorflow-cpu reads WOD tfrecords
               pip install --quiet "py123d==0.5.1" tensorflow-cpu
               python -c "import cv2, tensorflow; print('deps OK')"
+              # Lean root: the parser converts every shard it finds, so hand it one.
+              mkdir -p /tmp/wodroot/validation
+              ln -sf /avl-west/WOMD_perception/validation/segment-__SEGMENT__*.tfrecord \
+                     /tmp/wodroot/validation/
+              ls -lL /tmp/wodroot/validation/
               export PY123D_DATA_ROOT=/avl-west/py123d_arrow_wod
               py123d-conversion dataset=wod-perception \
-                dataset.parser.wod_perception_data_root=/avl-west/WOMD_perception \
+                dataset.parser.wod_perception_data_root=/tmp/wodroot \
                 dataset.parser.splits="[wod-perception_val]"
               echo "=== map.arrow present? ==="; find /avl-west/py123d_arrow_wod -name map.arrow | head
+              echo "=== log dir ==="; ls -la /avl-west/py123d_arrow_wod/logs/wod-perception_val/__SEGMENT__/
               echo "=== CONVERT WOD DONE ==="
           volumeMounts:
             - { name: avl-west-vol, mountPath: /avl-west }

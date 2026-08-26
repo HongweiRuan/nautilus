@@ -104,6 +104,35 @@ spec:
           # run them sequentially or give each its own server.
           # Globbed directly off the training tree — see the header for why the
           # old symlink pool is gone and why nothing needs pre-screening here.
+          #
+          # POOL: the NavSafe 5s500 nuPlan pool (restored 2026-08-26 after a
+          # spell on the Waymo r2s_work pool). --artifact-glob is a
+          # single-value click option and glob() has no brace expansion, so ONE
+          # pool at a time; the Service name is unchanged, so an eval needs no
+          # edit either way. CHECK THE ACTIVE GLOB, NOT THIS COMMENT, before
+          # concluding a scene is unavailable: the two drifted apart once and
+          # cost six eval runs that could never have found their scenes.
+          #
+          # WHY output_3dgutdyn AND NOT output: both layouts derive the SAME
+          # scene_id (the dir above the usdz's own dir == <clip>), so a glob
+          # matching both would collide on scene_id. They are also not
+          # equivalent — the car2sim recons under output/ contain NO dynamic
+          # actor nodes at all (measured: checkpoint carries only
+          # gaussians_nodes.{background,road}), because car2sim's
+          # tracks.label_classes allowlist ships NVIDIA class names while our
+          # NCore shard labels cuboids `WODPerceptionBoxDetectionLabel.TYPE_*`
+          # and nothing matches. nurec_wod/nurec_training/train-1gpu-3dgutdyn.yaml
+          # overrides both allowlists and does build dynamic_rigids (49103
+          # gaussians) + dynamic_deformables (479). Only that pool can render a
+          # moving actor, so it is the one served.
+          #
+          # Note the file is usd-out/last.usdz here, not artifacts/last.usdz —
+          # the 3dgutdyn runs export to usd-out/.
+          #
+          # TO SWITCH BACK TO THE WAYMO 3dgutdyn POOL: swap the glob to
+          #   '/avl-west/r2s_work/*/output_3dgutdyn/*/usd-out/last.usdz'
+          # then delete + apply this pod. (Note that pool's file is
+          # usd-out/last.usdz, not artifacts/last.usdz.)
           /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
               --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
               --cache-size 4 \
