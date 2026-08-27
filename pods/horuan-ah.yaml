@@ -1,0 +1,105 @@
+# Asset Harvester worker — NVIDIA Asset Harvester (github.com/NVIDIA/asset-harvester)
+# per-object 3D Gaussian capture, used by NavSafe to replace a reconstruction's
+# baked actors with view-consistent assets at render time.
+#
+# WHY A SEPARATE POD from horuan-nexussim:
+#  * Asset Harvester is a third-party conda env (python 3.10, torch 2.10/cu128,
+#    gsplat built from a pinned source commit) that conflicts with the NexusSim
+#    venv (python 3.12, IsaacSim 6.0). Two envs, two lifecycles, one pod each.
+#  * horuan-nexussim is pinned to the six reserved ry-gpu nodes, which the eval
+#    sweeps keep full. Harvesting only needs *a* >=16 GB card and /avl-west, so
+#    this one takes whatever the public queue has.
+#
+# The env and the checkpoints live on /avl-west (see AH_HOME below), NOT on
+# ephemeral storage: the pod is cycled every ~6 h by the cluster's GPU lease and
+# a 30 GB conda env must not be rebuilt each time. /hugsim-storage is NOT used
+# for it — that PVC is at 93% (73 GB free).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-ah
+  namespace: cogrob
+  labels: { k8s-app: horuan-ah }
+spec:
+  restartPolicy: Never
+  containers:
+    - name: ah
+      image: robinwangucsd/metabench:latest
+      imagePullPolicy: IfNotPresent
+      command: ["bash", "-lc"]
+      args:
+        - |
+          set -e
+          echo "=== horuan-ah: asset-harvester worker ==="
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+          # Conda envs and package cache on the PVC so a pod cycle keeps them.
+          mkdir -p /avl-west/asset_harvester/conda/envs /avl-west/asset_harvester/conda/pkgs
+          echo "AH_HOME=$AH_HOME  CONDA_ENVS_DIRS=$CONDA_ENVS_DIRS"
+          conda env list || true
+          echo "=== ready; keeping container alive ==="
+          sleep infinity
+      env:
+        - { name: AH_HOME, value: /avl-west/asset_harvester }
+        - { name: CONDA_ENVS_DIRS, value: /avl-west/asset_harvester/conda/envs }
+        - { name: CONDA_PKGS_DIRS, value: /avl-west/asset_harvester/conda/pkgs }
+        - { name: HF_HOME, value: /avl-west/asset_harvester/hf }
+        - {
+            name: HF_TOKEN,
+            valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } },
+          }
+        - {
+            name: PYTHONPATH,
+            value: /hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos,
+          }
+      resources:
+        # Bare pod: Nautilus caps controller-less pods at 16 cores / 32 GB.
+        requests:
+          { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+        limits:
+          { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+      volumeMounts:
+        - { name: dshm, mountPath: /dev/shm }
+        - { name: avl-west-vol, mountPath: /avl-west }
+        - { name: hugsim-storage, mountPath: /hugsim-storage }
+  volumes:
+    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+    - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+    - {
+        name: hugsim-storage,
+        persistentVolumeClaim: { claimName: horuan-hugsim-vol },
+      }
+  tolerations:
+    - { key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule }
+    - { key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule }
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              # /avl-west is CephFS at SDSC; staying in us-west keeps read
+              # throughput usable (65 MB/s near SDSC vs 1.2 MB/s far away).
+              - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+              # 16 GB VRAM is the Asset Harvester floor (SparseViewDiT +
+              # TokenGS); below it the run needs --offload and crawls.
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-GeForce-RTX-3090-Ti
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-A10
+                  - NVIDIA-A10G
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-A30
+                  - NVIDIA-A40
+                  - NVIDIA-L40
+                  - NVIDIA-L40S
+                  - NVIDIA-A100-SXM4-80GB
+                  - NVIDIA-A100-PCIE-40GB
+              # Known-bad: nrp-fiona-001 reads /avl-west at 1.2 MB/s;
+              # uicnrp-fiona2 has a broken NVML driver.
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - nrp-fiona-001.sdmz.amnh.org
+                  - uicnrp-fiona2.evl.uic.edu
