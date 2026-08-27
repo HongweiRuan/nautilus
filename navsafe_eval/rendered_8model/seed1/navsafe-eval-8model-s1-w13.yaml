@@ -1,0 +1,85 @@
+# NavSafe 8model eval sweep — ONE plain Job per worker shard (NOT indexed).
+#
+# Replaces the indexed navsafe-eval-8model-seed<N> Job (completions=25,
+# parallelism=26) with 20 independent Jobs submitted in one go, so a
+# dead shard can be resubmitted on its own instead of dragging the whole Job's
+# backoffLimit with it, and so nothing is gated on k8s's completion-index.
+#
+# The scenario shard is still `i % WORKERS == WORKER_INDEX` over the sorted
+# evaluatable-token list (run_worker.sh section 0), computed identically by
+# every worker. WORKER_INDEX is now a plain env literal templated per file
+# rather than read from the downward API; run_worker.sh cannot tell the
+# difference. WORKERS 25 -> 20 redistributes which tokens land in
+# which shard, but the UNION is the same token set, and cells are keyed by
+# $OUTROOT/$SLUG/seed$SEED/$TOKEN — not by worker — so already-finished cells
+# are skipped no matter which shard picks them up now.
+#
+# Nodes: ry-gpu-13/14 are deliberately EXCLUDED and left for other users; the
+# remaining six 3090 boxes hold 6 x 8 = 48 GPUs against this sweep's
+# 20 x 2 = 40.
+#
+# Everything else — image digest, ConfigMap, OUTROOT, NEXUSSIM_SHA, resources,
+# tolerations, volumes — is byte-identical to job_8model_seed1.yaml, because
+# that is what keeps these scores comparable with the seed1 run.
+#
+# Placeholders: 13 w13 1 20
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-eval-8model-s1-w13
+  namespace: cogrob
+  labels: {app: navsafe-eval-8model, seed: "1", worker: "w13"}
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: {app: navsafe-eval-8model, seed: "1", worker: "w13"}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [ry-gpu-05.sdsc.optiputer.net, ry-gpu-06.sdsc.optiputer.net,
+                             ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net,
+                             ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      containers:
+        - name: eval
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - {name: WORKER_INDEX, value: "13"}
+            - {name: WORKERS, value: "20"}
+            - {name: SEEDS, value: "1"}
+            - {name: OUTROOT, value: "/avl-west/navsafe_eval/outputs_v2"}
+            - {name: NEXUSSIM_SHA, value: "f26ad2fe2abb8489bed4f1eb6a492219cbb49764"}
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HF_TOKEN, valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: ACCEPT_EULA, value: "Y"}
+            - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits: {cpu: "3", ephemeral-storage: "100Gi", memory: "48Gi", nvidia.com/gpu: "2"}
+            requests: {cpu: "3", ephemeral-storage: "100Gi", memory: "48Gi", nvidia.com/gpu: "2"}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: cfg, mountPath: /cfg}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      imagePullSecrets: [{name: ngc-pull}]
+      restartPolicy: Never
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: cfg, configMap: {name: navsafe-eval-cfg-8model}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}

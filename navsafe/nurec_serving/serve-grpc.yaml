@@ -228,11 +228,17 @@ spec:
               #    RunContainerError/exit 128 before the process starts.
               #    The GPU model is fine, the node's driver is not, so a
               #    gpu.product selector cannot filter it out.
+              #  * ry-gpu-13 / ry-gpu-14 are reserved for other work
+              #    (2026-08-27): keep every NavSafe job off them. Listed here
+              #    rather than as an In-list of the good nodes so the public
+              #    queue stays available when the ry-gpu pool is full.
               - key: kubernetes.io/hostname
                 operator: NotIn
                 values:
                   - nrp-fiona-001.sdmz.amnh.org
                   - uicnrp-fiona2.evl.uic.edu
+                  - ry-gpu-13.sdsc.optiputer.net
+                  - ry-gpu-14.sdsc.optiputer.net
 ---
 apiVersion: v1
 kind: Service
