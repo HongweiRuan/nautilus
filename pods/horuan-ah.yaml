@@ -52,11 +52,19 @@ spec:
             value: /hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos,
           }
       resources:
-        # Bare pod: Nautilus caps controller-less pods at 16 cores / 32 GB.
+        # RIGHT-SIZED, not padded. Nautilus' util-policy webhook compares a
+        # pod's ACTUAL cpu/mem against its REQUESTS and denies the whole
+        # account every new pod while the ratio is low -- GPU is not part of
+        # that comparison, and the running pods ARE the cause, so waiting it
+        # out does not work. Measured on this pod mid-harvest (`kubectl top`):
+        # 0.89 cpu and 7.6 GiB against 8 cpu / 32 Gi, i.e. 11% and 24%, which
+        # made this pod part of the problem. Set to ~2x observed.
+        # (Nautilus also caps controller-less pods at 16 cores / 32 GB, so
+        # these can never go far up anyway.)
         requests:
-          { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          { cpu: "3", memory: "16Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
         limits:
-          { cpu: "8", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          { cpu: "3", memory: "16Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
       volumeMounts:
         - { name: dshm, mountPath: /dev/shm }
         - { name: avl-west-vol, mountPath: /avl-west }

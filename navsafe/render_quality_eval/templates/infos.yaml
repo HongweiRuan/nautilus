@@ -1,0 +1,79 @@
+# STAGE infos: nuPlan ann_file for every log the benchmark touches, restricted to
+# the benchmark's time windows.
+#
+# One CPU job, not sharded: the converter opens one NuPlanDBWrapper over all the
+# log dbs at once, and the window filter makes the whole thing cheap (measured:
+# ~1 s per log once filtered, vs ~4.6 min per 20 s scene unfiltered).
+#
+# The nuPlan ORM issues millions of small page reads against a single log db,
+# which is pathological on CephFS, so the dbs are staged to the pod's LOCAL disk
+# first and symlinked into a private nuplan root.
+# CPU job. Placeholders: none.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: rqe-infos,
+    namespace: cogrob,
+    labels: { app: render_quality_eval, stage: infos },
+  }
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata: { labels: { app: render_quality_eval, stage: infos } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: converter
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              unset PYTHONPATH
+              ROOT=/avl-west/drivearena_bench
+              RQE=/avl-west/render_quality_eval
+              WD=$ROOT/DriveArena/WorldDreamer
+              source /opt/conda/etc/profile.d/conda.sh
+              conda activate $ROOT/envs/dreamer
+              python3 $RQE/prep_infos_inputs.py          # split yaml + windows + local dbs
+              cd $WD
+              export NUPLAN_BENCH_WINDOWS=$RQE/infos/windows.json
+              mkdir -p $RQE/infos/work
+              python -m tools.create_data nuplan \
+                --root-path $RQE/nuplan_root/ \
+                --version dreamer-trainval \
+                --out-dir $RQE/infos/work \
+                --split-yaml $RQE/infos/split.yaml \
+                --extra-tag nuplan --only_info
+              python3 $RQE/merge_infos.py               # train+val -> nuplan_infos_all.pkl
+              echo INFOS_DONE
+          resources:
+            requests: { cpu: "16", memory: "64Gi", ephemeral-storage: 200Gi }
+            limits:   { cpu: "16", memory: "64Gi", ephemeral-storage: 200Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+                  # CPU job, but pinned to the same nodes as everything else so it
+                  # cannot land on ry-gpu-13/14.
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

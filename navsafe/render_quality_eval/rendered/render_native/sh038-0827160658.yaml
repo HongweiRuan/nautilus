@@ -1,0 +1,138 @@
+# STAGE render_native: replay each 5 s reconstruction at its OWN recorded camera
+# poses, native 1920x1080, for a SHARD of clips run sequentially (~70 s per clip).
+#
+# This is the "our side" render of the render-quality benchmark. --replicate-training-views
+# plays back the clip's own rig trajectory and per-frame intrinsics, so the output is the
+# reconstruction's reproduction of the original CAM_F0 frame -- the same frame a generative
+# renderer is asked to produce, and the same frame FID/FVD/FDpi score against.
+#
+# --frame-naming frame-end-timestamp is load-bearing: the filename IS the camera frame
+# timestamp in microseconds, which is what maps a rendered frame back to a navsim image
+# token. Measured offset against navsim frame timestamps: 0 us.
+#
+# Idempotent: a clip whose camera dir already has jpgs is skipped, so a resubmit only
+# picks up stragglers.
+# GPU job. Prereq: train (last.usdz). Placeholders: sh038-0827160658 + a manifest block
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: rqe-rnative-sh038-0827160658,
+    namespace: cogrob,
+    labels: { app: render_quality_eval, stage: render_native, shard: "sh038-0827160658" },
+  }
+spec:
+  backoffLimit: 6 # evictions are external events; finished clips are skipped on retry
+  ttlSecondsAfterFinished: 7200 # finished jobs must release the namespace pod quota
+  template:
+    metadata: { labels: { app: render_quality_eval, stage: render_native, shard: "sh038-0827160658" } }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: nre-render
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              cat > /tmp/shard.txt <<'MANIFEST_EOF'
+              e989ff3d9dcd5cbbs1
+              e989ff3d9dcd5cbbs2
+              e989ff3d9dcd5cbbs3
+              e989ff3d9dcd5cbbs4
+              e9c2b75226b85cfes1
+              e9c2b75226b85cfes2
+              e9c2b75226b85cfes3
+              e9c2b75226b85cfes4
+              eb182257ecf95fb7s1
+              eb182257ecf95fb7s2
+              eb182257ecf95fb7s3
+              eb182257ecf95fb7s4
+              eb8387eb5a98508fs1
+              eb8387eb5a98508fs2
+              eb8387eb5a98508fs3
+              eb8387eb5a98508fs4
+              edc4a4a176f65feas1
+              edc4a4a176f65feas2
+              edc4a4a176f65feas3
+              edc4a4a176f65feas4
+              eed801b1cd035275s1
+              eed801b1cd035275s2
+              eed801b1cd035275s3
+              eed801b1cd035275s4
+              f038fc7ffdab5bads1
+              f038fc7ffdab5bads2
+              f038fc7ffdab5bads3
+              f038fc7ffdab5bads4
+              f077a062ad9b55e9s1
+              f077a062ad9b55e9s2
+              f077a062ad9b55e9s3
+              f077a062ad9b55e9s4
+              f082cf21642c5cbcs1
+              f082cf21642c5cbcs2
+              f082cf21642c5cbcs3
+              f082cf21642c5cbcs4
+              f1c39e3dd4b958b8s1
+              f1c39e3dd4b958b8s2
+              f1c39e3dd4b958b8s3
+              f1c39e3dd4b958b8s4
+              MANIFEST_EOF
+              echo "[render_native sh038-0827160658] $(grep -c . /tmp/shard.txt) clip(s)"
+              OUTROOT=/avl-west/render_quality_eval/render_raw/nurec_native
+              ok=0; skip=0; fail=0; failed=""
+              while read -r C REST; do
+                [ -z "${C:-}" ] && continue
+                USDZ=/avl-west/navsafe_5s_500/$C/output_5cam/$C/artifacts/last.usdz
+                OUT=$OUTROOT/$C
+                if ls "$OUT/camera_pcam_f0"/*.jpg >/dev/null 2>&1; then
+                  echo "SKIP $C"; skip=$((skip+1)); continue
+                fi
+                if [ ! -f "$USDZ" ]; then
+                  echo "NO_USDZ $C"; fail=$((fail+1)); failed="$failed $C"; continue
+                fi
+                mkdir -p "$OUT"
+                if /app/run render \
+                     --artifact-path "$USDZ" \
+                     --output-dir "$OUT" \
+                     --camera-id camera_pcam_f0 \
+                     --image-scale 1.0 \
+                     --image-format jpg \
+                     --replicate-training-views \
+                     --calib-source training-sensor-poses-calib \
+                     --frame-naming frame-end-timestamp; then
+                  echo "DONE $C $(ls "$OUT/camera_pcam_f0" 2>/dev/null | wc -l) frames"; ok=$((ok+1))
+                else
+                  echo "FAIL $C"; fail=$((fail+1)); failed="$failed $C"
+                fi
+              done < /tmp/shard.txt
+              echo "[render_native sh038-0827160658] ok=$ok skip=$skip fail=$fail"
+              [ -n "$failed" ] && echo "[render_native sh038-0827160658] failed:$failed"
+              exit 0   # partial shards are normal; the resubmit picks up the rest
+          resources:
+            requests: { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+            limits:   { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 80Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# Submit the NavSafe 8model eval sweep as WORKERS independent Jobs (default 20),
+# Submit the NavSafe 8model eval sweep as WORKERS independent Jobs (default 10),
 # each on 2 GPUs, sharded by scenario. Replaces the single indexed
 # navsafe-eval-8model-seed<N> Job.
 #
-#   ./submit_8model.sh                    seed 1, 20 jobs
-#   SEED=4 ./submit_8model.sh             seed 4, 20 jobs
-#   SEED=4 WORKERS=12 ./submit_8model.sh  seed 4, 12 jobs (24 GPUs)
+#   ./submit_8model.sh                    seed 1, 10 jobs (20 GPUs)
+#   SEED=4 ./submit_8model.sh             seed 4, 10 jobs
+#   SEED=4 WORKERS=20 ./submit_8model.sh  seed 4, 20 jobs (40 GPUs)
 #   DRYRUN=1 ./submit_8model.sh           render into rendered_8model/, don't apply
-#   ONLY="w03 w17" ./submit_8model.sh     resubmit just those shards
+#   ONLY="w03 w07" ./submit_8model.sh     resubmit just those shards
+#
+# 10 workers, not the 20 this started at: 20 x 2 GPUs left the six allowed
+# nodes with nothing spare, and the sweep is not the only thing that runs on
+# them. 20 GPUs of 48 leaves room for other jobs. Cells are keyed by
+# model/seed/token and skipped when already finished (run_worker.sh), so
+# resharding across a different WORKERS count costs nothing.
 #
 # Nodes are restricted to ry-gpu-05/06/07/08/11/12 (48 GPUs); 13 and 14 are
 # left for other users. WORKERS x 2 must stay <= 48.
@@ -16,7 +22,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 NS=cogrob
 TEMPLATE=templates/worker_job_8model.yaml
-WORKERS="${WORKERS:-20}"
+WORKERS="${WORKERS:-10}"
 SEED="${SEED:-1}"
 ONLY="${ONLY:-}"
 OUTDIR=rendered_8model/seed${SEED}

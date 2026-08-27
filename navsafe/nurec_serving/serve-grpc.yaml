@@ -219,26 +219,23 @@ spec:
                   - NVIDIA-L4
                   - NVIDIA-RTX-A5000
                   - NVIDIA-A30
-              # Known-bad nodes. Both were hit for real on 2026-08-11:
-              #  * nrp-fiona-001 reads /avl-west at 1.2 MB/s (vs 65 MB/s
-              #    near SDSC) -> a 2 GB artifact takes ~28 min to load and
-              #    the client's first render_rgb hits its gRPC deadline;
-              #  * uicnrp-fiona2 fails "initialize NVML: Driver/library
-              #    version mismatch" -> every GPU container dies at
-              #    RunContainerError/exit 128 before the process starts.
-              #    The GPU model is fine, the node's driver is not, so a
-              #    gpu.product selector cannot filter it out.
-              #  * ry-gpu-13 / ry-gpu-14 are reserved for other work
-              #    (2026-08-27): keep every NavSafe job off them. Listed here
-              #    rather than as an In-list of the good nodes so the public
-              #    queue stays available when the ry-gpu pool is full.
               - key: kubernetes.io/hostname
-                operator: NotIn
+                operator: In
                 values:
-                  - nrp-fiona-001.sdmz.amnh.org
-                  - uicnrp-fiona2.evl.uic.edu
-                  - ry-gpu-13.sdsc.optiputer.net
-                  - ry-gpu-14.sdsc.optiputer.net
+                  # - ry-gpu-01.sdsc.optiputer.net
+                  # - ry-gpu-02.sdsc.optiputer.net
+                  # - ry-gpu-03.sdsc.optiputer.net
+                  # - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  - ry-gpu-08.sdsc.optiputer.net
+                  # - ry-gpu-09.sdsc.optiputer.net
+                  # - ry-gpu-10.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net
+                  # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-14.sdsc.optiputer.net
 ---
 apiVersion: v1
 kind: Service
