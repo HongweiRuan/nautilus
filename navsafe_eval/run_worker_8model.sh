@@ -307,6 +307,14 @@ export PYTHONPATH="$REPO:$REPO/third_party/nurec_protos"
 export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
+# vla_client.py defaults NAVSAFE_VLA_GPU to "7" (the source machine's 8th
+# GPU); this pod only has 2 (0=renderer, 1=main eval). Left unset, the VLA
+# subprocess's CUDA_VISIBLE_DEVICES=7 resolves to no visible device at all --
+# "RuntimeError: No CUDA GPUs are available" on every VLA row, confirmed
+# 2026-08-27. Share GPU 1 with the main eval process, not GPU 0 (the
+# renderer) -- matches the smoke-tested models comfortably fitting a single
+# 3090 standalone.
+export NAVSAFE_VLA_GPU=1
 
 done_n=0; skip_n=0; fail_n=0; consec_fail=0
 
