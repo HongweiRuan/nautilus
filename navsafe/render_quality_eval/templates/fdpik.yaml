@@ -32,7 +32,9 @@ spec:
           command: ["bash", "-c"]
           args:
             - |
-              set -uo pipefail
+              # NOT `set -u`: conda's binutils activate.d script dereferences
+              # ADDR2LINE unset, so nounset kills the shell on `conda activate`.
+              set -o pipefail
               # The pod image exports a global PYTHONPATH at /hugsim-storage/NexusSim,
               # which drags a torch-2.10 `nexussim` into every interpreter.
               unset PYTHONPATH

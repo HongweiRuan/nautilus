@@ -33,7 +33,9 @@ spec:
           command: ["bash", "-c"]
           args:
             - |
-              set -uo pipefail
+              # NOT `set -u`: conda's binutils activate.d script dereferences
+              # ADDR2LINE unset, so nounset kills the shell on `conda activate`.
+              set -o pipefail
               cat > /tmp/shard.txt <<'MANIFEST_EOF'
               __MANIFEST__
               MANIFEST_EOF
