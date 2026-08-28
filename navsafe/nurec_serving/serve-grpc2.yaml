@@ -1,0 +1,101 @@
+# A SECOND NuRec gRPC render server, for work that must not disturb the shared
+# one (`nurec-grpc-server` / Service `nurec-grpc`), which a campaign is usually
+# evaluating against. Two evals on one renderer corrupt each other: closing an
+# episode calls restore_model_parameters, which rolls the whole scene back, and
+# a bounded --cache-size makes one run's scenes evict the other's.
+#
+# It differs from the shared server in two deliberate ways:
+#
+#   * --artifact-glob is NARROWED to one scenario's four windows. The shared
+#     server globs the whole training tree and spends >2 min opening 1636
+#     artifacts before it publishes a scene list; four opens is instant. EDIT
+#     THE TOKEN in the glob for a different scenario -- one at a time, because
+#     serve-grpc takes a single --artifact-glob and python's glob() has no
+#     brace expansion, so '{a,b}s*' silently matches nothing.
+#   * resources are right-sized rather than padded. Nautilus' util-policy
+#     compares actual cpu/mem against requests and denies the account EVERY new
+#     pod while the ratio is low, so an idle 32 Gi request is not free. Measured
+#     on the shared server: 18 m cpu / 1.3 GiB idle; the working set lives in
+#     VRAM, not host RAM.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nurec-grpc-server2
+  namespace: cogrob
+  labels: { app: nurec-grpc-server2 }
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{ name: ngc-pull }]
+  containers:
+    - name: nre
+      image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+      command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+      args:
+        - |
+          set -x
+          mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
+          # --cache-size 4: a 20 s NavSafe host is four 5 s reconstructions and
+          # the episode renders them in turn, so all four must stay resident.
+          /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
+              --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
+              --cache-size 4 \
+              --artifact-glob '/avl-west/navsafe_5s_500/13805e7752fe5685s*/output_5cam/*/artifacts/last.usdz'
+      ports: [{ containerPort: 8080 }]
+      env:
+        - {
+            name: NGC_API_KEY,
+            valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } },
+          }
+        - { name: HYDRA_FULL_ERROR, value: "1" }
+        # Replacing actors pushes the allocator into fragmentation: with 26
+        # assets resident the server died asking for 1.29 GiB while 1.17 GiB
+        # was free and 1.15 GiB sat reserved-but-unallocated. Expandable
+        # segments let those reservations be reused instead of stranded, which
+        # is exactly the shape of that failure (PyTorch's own suggestion in the
+        # OOM text).
+        - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+      resources:
+        requests:
+          { cpu: "3", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+        limits:
+          { cpu: "3", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+      volumeMounts:
+        - { name: dshm, mountPath: /dev/shm }
+        - { name: avl-west-vol, mountPath: /avl-west }
+  volumes:
+    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 6Gi } }
+    - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+  tolerations:
+    - { key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule }
+    - { key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule }
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              # 24 GB is what --cache-size 4 plus the harmonizer is tuned
+              # against; a 12/16 GB card OOMs mid-episode rather than at start.
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-GeForce-RTX-3090-Ti
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-A10
+                  - NVIDIA-A10G
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-A30
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - nrp-fiona-001.sdmz.amnh.org
+                  - uicnrp-fiona2.evl.uic.edu
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nurec-grpc2, namespace: cogrob }
+spec:
+  type: ClusterIP
+  selector: { app: nurec-grpc-server2 }
+  ports:
+    - { port: 8080, targetPort: 8080 }

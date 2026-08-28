@@ -144,6 +144,15 @@ spec:
             valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } },
           }
         - { name: HYDRA_FULL_ERROR, value: "1" }
+        # REQUIRED to replace actors with harvested assets
+        # (--asset-harvester-replace). Without it the ceiling is ~11 replaced
+        # tracks on a 24 GB card and the 12th dies mid-episode: measured
+        # 2026-08-28, the failing allocation was 1.29 GiB while 1.17 GiB was
+        # free and 1.15 GiB sat reserved-but-unallocated -- fragmentation, not
+        # exhaustion. Expandable segments let those reservations be reused and
+        # all 26 assets of a scenario then fit (24.1 GiB used, 0.5 GiB spare).
+        # Harmless when the feature is unused.
+        - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
       resources:
         # cpu:4 (not 8) so a node with a free GPU but CPU packed by cpu:3 trains
         # still has room. serve-grpc is GPU-bound; 4 CPU is plenty.

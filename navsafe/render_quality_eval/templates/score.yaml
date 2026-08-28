@@ -15,7 +15,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   {
-    name: rqe-score,
+    name: rqe-score-__RUNID__,
     namespace: cogrob,
     labels: { app: render_quality_eval, stage: score },
   }
@@ -44,12 +44,17 @@ spec:
               cd $ROOT/unified_evaluator && source env.sh
               export RAY_memory_monitor_refresh_ms=0
               echo "[score] reducing to the common frame set and scoring"
-              python3 /avl-west/render_quality_eval/score.py
+              # No `exit 0`: score.py raises on a failed FID/FVD subprocess, and
+              # swallowing that reported a Completed job for a run whose FVD had
+              # crashed. The job's status is the signal that the numbers exist.
+              python3 /avl-west/render_quality_eval/score.py || { echo "SCORE_FAILED"; exit 1; }
               echo SCORE_DONE
-              exit 0
           resources:
-            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
-            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            # One pod doing image loading + two GPU feature extractors. cpu:8 /
+            # 48Gi was a guess, and an over-request is what the Nautilus
+            # utilization webhook rejects submissions for.
+            requests: { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
           volumeMounts:
             - { name: dshm, mountPath: /dev/shm }
             - { name: avl-west-vol, mountPath: /avl-west }

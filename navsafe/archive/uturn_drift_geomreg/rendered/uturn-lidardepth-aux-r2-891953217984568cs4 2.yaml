@@ -1,0 +1,98 @@
+# STAGE aux for the re-converted (structured-lidar) store. One job per clip so
+# the four run in parallel -- aux is ~17 min per clip.
+#
+# Why this cannot be skipped: aux writes per-point lidar labels keyed BY SENSOR
+# ID, and NRE refuses to supervise a lidar it has no labels for
+# ("KeyError: No lidar semantic segmentation data found for lidar_top_structured").
+# The corpus copy only covers lidar_top_360fov.
+#
+# Placeholder: 891953217984568cs4
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: uturn-lidardepth-aux-r2-891953217984568cs4,
+    namespace: cogrob,
+    labels: { app: uturn_drift_geomreg, stage: lidardepth-aux, clip: "891953217984568cs4" },
+  }
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: { app: uturn_drift_geomreg, stage: lidardepth-aux, clip: "891953217984568cs4" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: aux
+          image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              C=891953217984568cs4
+              SRC=/avl-west/runs/20260820-uturn-lidardepth/ncore/clips/$C
+              L=/tmp/clip/$C
+              if ! [ -s "$SRC/pai_$C.json" ]; then
+                echo "AUX_NOTREADY $C (ncore re-convert has not produced this clip)"; exit 1
+              fi
+              if ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1; then
+                echo "SKIP $C (aux already present)"; exit 0
+              fi
+              echo "--- $C: copy-in store CephFS->local ($(du -sh $SRC 2>/dev/null | cut -f1)) ---"
+              rm -rf "$L"; mkdir -p "$L" && cp -a $SRC/. $L/ || exit 1
+              /app/apps/nre_tools ncore-aux-data \
+                --dataset-path=$L/pai_$C.json --output-dir=$L \
+                --segmentation-backend=mask2former --zarr-store-type=itar --store-meta \
+                --lidar-seg-camvis --ego-mask || { echo "AUX_FAIL $C"; exit 1; }
+              ls $L/$C.aux.* >/dev/null 2>&1 || { echo "AUX_FAIL $C (no outputs)"; exit 1; }
+              cp -a $L/$C.aux.* $SRC/
+              ls $SRC/$C.aux.*.zarr.itar >/dev/null 2>&1 || { echo "AUX_FAIL $C (copy-out)"; exit 1; }
+              echo "aux shards for $C:"; ls -la $SRC/$C.aux.* | awk '{printf "   %10d %s\n", $5, $9}'
+              echo "AUX_DONE $C"
+              rm -rf "$L"
+          env:
+            - {
+                name: NGC_API_KEY,
+                valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } },
+              }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+          resources:
+            requests:
+              { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:
+              { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {
+                      key: kubernetes.io/hostname,
+                      operator: In,
+                      values:
+                        [
+                          "ry-gpu-06.sdsc.optiputer.net",
+                          "ry-gpu-07.sdsc.optiputer.net",
+                          "ry-gpu-08.sdsc.optiputer.net",
+                          "ry-gpu-11.sdsc.optiputer.net",
+                          "ry-gpu-12.sdsc.optiputer.net",
+                          "ry-gpu-13.sdsc.optiputer.net",
+                          "ry-gpu-14.sdsc.optiputer.net",
+                        ],
+                    }
+      tolerations:
+        - {
+            effect: NoSchedule,
+            key: nautilus.io/reservation,
+            operator: Equal,
+            value: cogrob,
+          }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

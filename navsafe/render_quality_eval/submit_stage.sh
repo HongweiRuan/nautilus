@@ -26,8 +26,8 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 STAGE="${1:-}"
-case "$STAGE" in infos|score|render_native|drivearena) ;; *)
-  echo "usage: [JOBS= PER_JOB= POD= DRYRUN=1] $0 <infos|render_native|drivearena|score>"; exit 1;; esac
+case "$STAGE" in infos|infos_merge|score|render_native|drivearena) ;; *)
+  echo "usage: [JOBS= PER_JOB= POD= DRYRUN=1] $0 <infos|infos_merge|render_native|drivearena|score>"; exit 1;; esac
 
 NS="${NS:-cogrob}"
 POD="${POD:-horuan-nexussim}"
@@ -39,12 +39,31 @@ TPL="templates/${STAGE}.yaml"
 RUNID="${RUNID:-$(date +%m%d%H%M%S)}"
 [ -f "$TPL" ] || { echo "!! $TPL missing"; exit 1; }
 
+# --- ship the helper scripts the jobs import ------------------------------------
+# The jobs run them from the PVC, so a local edit that is never copied up produces a
+# FileNotFoundError inside the container long after submission. Sync every time
+# rather than relying on remembering to.
+for f in build_manifest.py prep_infos_shard.py merge_infos.py make_shard_infos.py score.py; do
+  kubectl exec -i -n "$NS" "$POD" -- bash -c "cat > $RQE/$f" < "$f" 2>/dev/null \
+    || { echo "!! could not copy $f to the PVC via pod '$POD'"; exit 1; }
+done
+
 # --- infos is a single un-sharded job -------------------------------------------
-if [ "$STAGE" = "infos" ] || [ "$STAGE" = "score" ]; then
+if [ "$STAGE" = "infos_merge" ] || [ "$STAGE" = "score" ]; then
   if [ -z "${DRYRUN:-}" ]; then
-    kubectl delete job -n "$NS" "rqe-$STAGE" --ignore-not-found --wait=false >/dev/null 2>&1
-    kubectl apply -f "$TPL"
-    echo "[$STAGE] submitted.  watch: ./status.sh"
+    # Unique name per run rather than delete-then-apply: a Job's spec.template is
+    # immutable, and the delete does not always complete before the apply lands
+    # (finalizers, ttlSecondsAfterFinished), which fails with "field is immutable".
+    # The sharded stages already dodge this the same way.
+    RENDERED="rendered/${STAGE}-${RUNID}.yaml"
+    mkdir -p rendered
+    sed "s/__RUNID__/$RUNID/g" "$TPL" > "$RENDERED"
+    if kubectl apply -f "$RENDERED"; then
+      echo "[$STAGE] submitted.  watch: ./status.sh"
+    else
+      echo "[$STAGE] APPLY FAILED — nothing is running. Re-run once the reason above clears."
+      exit 1
+    fi
   else
     echo "[$STAGE] DRYRUN: would apply $TPL"
   fi
@@ -76,6 +95,17 @@ print('\n'.join(s['sid']+'s'+str(k) for s in m for k in (1,2,3,4)))\"" > "$WANT"
     probe "ls -d $RQE/render_raw/$SUB/*/camera_pcam_f0 2>/dev/null" \
       | sed -E 's#.*/([^/]+)/camera_pcam_f0$#\1#' | sort -u > "$DONE" || exit 1
     UNIT=clip; SECS=70 ;;
+  infos)
+    # one unit per LOG. Done = the converter already wrote that log's pkl, in this
+    # run's shard dirs or the earlier un-sharded one -- so the ~21 logs the serial
+    # job finished are not redone.
+    probe "python3 -c \"
+import json
+m=json.load(open('$RQE/manifest.json'))['scenarios']
+print('\n'.join(sorted({s['log'] for s in m})))\"" > "$WANT" || exit 1
+    probe "ls $RQE/infos/work/tmp/*.pkl $RQE/infos/work/sh*/tmp/*.pkl 2>/dev/null" \
+      | sed -E 's#.*/([^/]+)_infos_(train|val)\.pkl$#\1#' | sort -u > "$DONE" || exit 1
+    UNIT=log; SECS=120 ;;
   drivearena)
     probe "python3 -c \"
 import json

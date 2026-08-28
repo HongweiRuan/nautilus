@@ -1,0 +1,134 @@
+# STAGE drivearena: WorldDreamer generates CAM_F0 for a SHARD of scenarios.
+#
+# Sharding is BY SCENARIO, never within one: generation is autoregressive, each frame
+# conditioned on the previous generated frame, and `is_first_frame` re-anchors on the
+# real image at a scenario boundary. Splitting a scenario across jobs would break that
+# chain and change the output.
+#
+# Runs the same offline entry point upstream documents (tools/test.py +
+# test_config_nup+nus + the released nus_nup checkpoint), with four upstream bugs
+# patched -- see /avl-west/drivearena_bench/README.md. Most important of those: the
+# demo caption hard-coded in test.py would otherwise prompt every scenario as
+# "boston-seaport, night".
+#
+# GPU job. Prereq: infos stage. Placeholders: sh000-0828002809 + a manifest block of sids
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: rqe-da-sh000-0828002809,
+    namespace: cogrob,
+    labels: { app: render_quality_eval, stage: drivearena, shard: "sh000-0828002809" },
+  }
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata: { labels: { app: render_quality_eval, stage: drivearena, shard: "sh000-0828002809" } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worlddreamer
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              # NOT `set -u`: conda's binutils activate.d script dereferences
+              # ADDR2LINE unset, so nounset kills the shell on `conda activate`.
+              set -o pipefail
+              cat > /tmp/shard.txt <<'MANIFEST_EOF'
+              00185dab0ba153b9
+              0027991369e05ab2
+              0057ce5b81c35a81
+              005f87dd980253a5
+              0092e40a13ea52f4
+              0093ff0188ea5b90
+              00f925ab5406520f
+              0122ce98b2735558
+              012dc5d8043555ef
+              0166f867762a56e1
+              0179d579d30e588c
+              01a58976a2e45a3d
+              02015675e4585611
+              022cc20c8dd45bc5
+              02379e524f105926
+              028613e11f415422
+              02902d180b405100
+              02b68b9cc51f506a
+              02f1ad081f41550e
+              0317b218061b5c4d
+              MANIFEST_EOF
+              echo "[drivearena sh000-0828002809] $(grep -c . /tmp/shard.txt) scenario(s)"
+              # the pod image exports a global PYTHONPATH that drags a torch-2.10
+              # `nexussim` into every interpreter
+              unset PYTHONPATH
+              ROOT=/avl-west/drivearena_bench
+              RQE=/avl-west/render_quality_eval
+              WD=$ROOT/DriveArena/WorldDreamer
+              source /opt/conda/etc/profile.d/conda.sh
+              conda activate $ROOT/envs/dreamer
+              cd $WD
+              # per-shard infos + token map, so shards never write the same file
+              export WD_RENDER_ROOT=$RQE/render_raw/drivearena
+              export WD_TOKEN_MAP=/tmp/shard_tokens.json
+              export WD_FRONT_ONLY=1
+              mkdir -p "$WD_RENDER_ROOT"
+              # reads WD_RENDER_ROOT and drops scenarios already fully generated
+              python3 $RQE/make_shard_infos.py /tmp/shard.txt /tmp/shard_infos.pkl /tmp/shard_tokens.json \
+                | tee /tmp/shard_infos.log || { echo "SHARD_INFOS_FAILED"; exit 1; }
+              if grep -q SHARD_ALREADY_COMPLETE /tmp/shard_infos.log; then
+                echo "SHARD_DONE sh000-0828002809 (nothing left to generate)"; exit 0
+              fi
+              python tools/test.py \
+                --config-name test_config_nup+nus \
+                resume_from_checkpoint=$WD/dreamer_pretrained/SDv1.5_mv_single_ref_nus_nup/weight-S200000 \
+                runner.validation_index=all \
+                runner.enable_xformers_memory_efficient_attention=false \
+                '~dataset.data.val.nuscenes' \
+                dataset.dataset_root=$ROOT/nuplan_root \
+                dataset.data.val.nuplan.ann_file=/tmp/shard_infos.pkl \
+                'dataset.dataset_cache_file=[null,null]' \
+                show_box_on_img=false show_map_on_img=false
+              # Verify THIS shard's own expected outputs. `find` over the shared
+              # render root counts every shard's frames, so it can report a healthy
+              # number while this shard produced nothing -- which is exactly how a
+              # run where every reference image was unreadable still exited 0.
+              missing=0
+              while read -r rel; do
+                [ -z "$rel" ] && continue
+                [ -f "$WD_RENDER_ROOT/$rel" ] || missing=$((missing+1))
+              done < /tmp/shard_tokens.json.expected
+              want=$(grep -c . /tmp/shard_tokens.json.expected)
+              echo "SHARD_DONE sh000-0828002809 generated=$((want-missing))/$want missing=$missing"
+              [ "$missing" -eq 0 ] || exit 1
+          resources:
+            # Right-sized from `kubectl top` on 8 running pods: 1.1-1.6 CPU,
+            # 12-13Gi RAM. These nodes are 28 CPU / 8 GPU, so at the old cpu:8
+            # a single pod reserved the CPU share of 2.3 GPUs and only 8 of 20
+            # shards could schedule -- with all 48 GPUs sitting idle.
+            requests: { cpu: "3", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "3", memory: "20Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

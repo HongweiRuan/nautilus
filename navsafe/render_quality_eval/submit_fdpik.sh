@@ -40,7 +40,9 @@ rm -f "$DONE".raw
 N=0; NEW=$(mktemp)
 for V in $VARIATIONS; do for A in $AGENTS; do
   grep -qx "$V $A" "$DONE" && { echo "  skip $V/$A (done)"; continue; }
-  SHARD="${V}-${A}-${RUNID}"
+  # k8s object names are RFC 1123: no underscores. The agent and variation
+  # themselves keep theirs -- they are arguments to the eval script, not names.
+  SHARD=$(printf '%s' "${V}-${A}-${RUNID}" | tr '_' '-')
   sed -e "s/__SHARD__/$SHARD/g" -e "s/__AGENT__/$A/g" -e "s/__VARIATION__/$V/g" \
       templates/fdpik.yaml > "$OUT/$SHARD.yaml"
   echo "$OUT/$SHARD.yaml" >> "$NEW"; N=$((N+1))
@@ -48,6 +50,15 @@ done; done
 echo "[fdpik] $N cell(s) to submit"
 [ "$N" -eq 0 ] && { echo "[fdpik] MATRIX COMPLETE."; rm -f "$DONE" "$NEW"; exit 0; }
 if [ -n "${DRYRUN:-}" ]; then echo "[fdpik] DRYRUN: see $OUT/"; rm -f "$DONE" "$NEW"; exit 0; fi
-xargs -n1 kubectl apply -f < "$NEW"
-echo "[fdpik] submitted $N cell(s).  watch: ./status.sh"
+# Count what actually landed. `xargs kubectl apply` reports its own failures on
+# stderr and keeps going, so the old unconditional "submitted N" printed a
+# success line for a run in which every single apply had been rejected.
+OK=0; FAIL=0
+while read -r Y; do
+  if kubectl apply -f "$Y" >/dev/null 2>&1; then OK=$((OK+1)); else
+    FAIL=$((FAIL+1)); echo "  !! apply failed: $(basename "$Y")"; kubectl apply -f "$Y" 2>&1 | tail -1
+  fi
+done < "$NEW"
+echo "[fdpik] submitted $OK of $N cell(s); $FAIL failed.  watch: ./status.sh"
+[ "$FAIL" -eq 0 ] || { rm -f "$DONE" "$NEW"; exit 1; }
 rm -f "$DONE" "$NEW"
