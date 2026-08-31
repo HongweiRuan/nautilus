@@ -1,0 +1,110 @@
+# WHY does the gRPC path look worse than `nre render`?  Answer it by experiment.
+#
+# The offline renderer exposes FOUR pose sources (--calib-source). The gRPC
+# client does not expose any -- it computes camera_to_world itself. So render
+# the SAME clip once per source, render it once through gRPC, and cross-compare
+# with alignment-aware PSNR. Whichever offline variant the gRPC output matches
+# identifies what the gRPC path is effectively using, without reading a line of
+# server code.
+#
+# Also varies the client's --disable-rolling-shutter, the one other knob that
+# changes which instant a pixel is sampled at.
+#
+# Placeholders: 05d0a1a7-0831060638 05d0a1a763fc5334s2
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-posesrc-05d0a1a7-0831060638, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: posesrc, shard: "05d0a1a7-0831060638"}}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: posesrc, shard: "05d0a1a7-0831060638"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -o pipefail
+              C=05d0a1a763fc5334s2
+              CORPUS=/avl-west/navsafe_5s_500
+              USDZ=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+              ROOT=/avl-west/fidelity_eval/posesrc/$C
+              mkdir -p "$ROOT"
+              [ -f "$USDZ" ] || { echo "NO_USDZ $C"; exit 1; }
+
+              # ── offline, one render per pose source ─────────────────────
+              for SRC in training-rig-poses training-rig-poses-per-frame \
+                         training-sensor-poses-nocalib training-sensor-poses-calib; do
+                D=$ROOT/off-$SRC
+                if ls "$D/camera_pcam_f0"/*.jpg >/dev/null 2>&1; then
+                  echo "SKIP off-$SRC"; continue
+                fi
+                mkdir -p "$D"
+                /app/run render --artifact-path "$USDZ" --output-dir "$D" \
+                  --camera-id camera_pcam_f0 --image-scale 1.0 --image-format jpg \
+                  --replicate-training-views --calib-source "$SRC" \
+                  --frame-naming frame-end-timestamp \
+                  && echo "OK off-$SRC $(ls $D/camera_pcam_f0|wc -l)" \
+                  || echo "FAIL off-$SRC"
+              done
+
+              # ── gRPC, harmonizer OFF, with and without rolling shutter ──
+              POOL=/tmp/pool; rm -rf $POOL; mkdir -p $POOL/$C/artifacts
+              ln -sf "$USDZ" $POOL/$C/artifacts/last.usdz
+              /app/run serve-grpc --host 0.0.0.0 --renderer default \
+                --no-enable-harmonizer --cache-size 2 \
+                --artifact-glob "$POOL/*/artifacts/last.usdz" > /tmp/serve.log 2>&1 &
+              SPID=$!
+              for _ in $(seq 1 150); do
+                kill -0 $SPID 2>/dev/null || { echo SERVE_DIED; tail -30 /tmp/serve.log; exit 1; }
+                grep -q "Available scenes" /tmp/serve.log && break
+                sleep 5
+              done
+              grep "Available scenes" /tmp/serve.log | tail -1 || { echo NO_SCENES; exit 1; }
+
+              for RS in keep disable; do
+                D=$ROOT/grpc-rs$RS
+                if find "$D" -name '*.jp*g' 2>/dev/null | grep -q .; then echo "SKIP grpc-$RS"; continue; fi
+                mkdir -p "$D"
+                EXTRA=""; [ "$RS" = "disable" ] && EXTRA="--disable-rolling-shutter"
+                /app/run render-grpc --artifact-path "$USDZ" --output-dir "$D" \
+                  --camera-id camera_pcam_f0 --height 1080 --image-format jpeg \
+                  --host localhost --port 8080 $EXTRA \
+                  && echo "OK grpc-$RS $(find $D -name '*.jp*g'|wc -l)" \
+                  || echo "FAIL grpc-$RS"
+              done
+              kill $SPID 2>/dev/null
+              echo "POSESRC_DONE 05d0a1a7-0831060638"
+              for d in $ROOT/*/; do
+                echo "  $(basename $d): $(find $d -name '*.jp*g' 2>/dev/null|wc -l)"
+              done
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            requests: {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In,
+                     values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net",
+                              "ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net",
+                              "ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net"]}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

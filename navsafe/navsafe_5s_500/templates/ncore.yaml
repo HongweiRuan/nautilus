@@ -59,7 +59,15 @@ spec:
                 fi
                 cp -n /avl-west/nuplan/nuplan-v1.1/splits/*/$LOG.db "$DBDIR/" 2>/dev/null || true
                 echo "--- $C ($LOG $T0 $T1) ---"
+                # NUPLAN_STRUCTURED_LIDAR: default 1, the beam model NRE needs for
+                # depth supervision, written as its own component. Set 0 when the
+                # clip is being built to HARVEST from rather than to train on:
+                # asset-harvester's ncore_parser asserts `len(lidar_ids) == 1`
+                # and dies on any clip that carries both lidars, which is every
+                # clip built since a4774a4a. The 407 clips that predate it have
+                # one lidar, which is why they harvest and newer ones do not.
                 if PYTHONPATH=/hugsim-storage/NexusSim NCORE_REREF_FRAME0=1 \
+                     NUPLAN_STRUCTURED_LIDAR=__STRUCTLIDAR__ \
                      "$VENV/bin/python" /tmp/run_one.py "$C" "$LOG" "$T0" "$T1" \
                    && [ -s "$OUT/clips/$C/pai_$C.json" ] && [ -s "$OUT/clips/$C/nurec_origin_offset.json" ]; then
                   echo "NCORE_DONE $C"; ok=$((ok+1))

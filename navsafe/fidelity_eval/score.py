@@ -37,7 +37,37 @@ SPLITS = UE / "navsim/planning/script/config/common/train_test_split"
 SIDES = {
     "nurec":      ("render_raw/nurec_native", (1920, 1080)),
     "drivearena": ("render_raw/drivearena",   (400, 224)),
+    # The eval pipeline's own render path, in its two configurations. Measured
+    # 2026-08-31: the gRPC path matches `nre render` for sharpness (Laplacian
+    # variance 32.0 vs 33.4) and the DiffusionHarmonizer post-pass is what
+    # costs the eval its detail (10.9). These two rows are that ablation.
+    "grpc_off":   ("/avl-west/fidelity_eval/grpc/hoff", (1920, 1080)),
+    "grpc_on":    ("/avl-west/fidelity_eval/grpc/hon",  (1920, 1080)),
 }
+# Where the offline render lives; used only to translate the gRPC path's
+# contiguous frame index back into the timestamp the manifest keys on.
+OFFLINE_ROOT = RQE / "render_raw/nurec_native"
+
+
+def _grpc_index_to_ts(sid):
+    """{shard: [ts0, ts1, ...]} in render order, read off the offline render.
+
+    render-grpc writes 000000.jpeg, 000001.jpeg ... with no timestamp anywhere,
+    while the manifest keys on timestamp. Both walk the SAME training
+    trajectory in the same order and emit the same count, so the offline
+    render's time-sorted filenames ARE the index->timestamp table. Verified
+    rather than assumed: grpc frame i best-matches offline frame i at 36-37 dB
+    aligned, against 27-32 dB for i+-1.
+    """
+    table = {}
+    for d in sorted(OFFLINE_ROOT.glob(f"{sid}*")):
+        cam = d / "camera_pcam_f0"
+        if not cam.is_dir():
+            continue
+        ts = sorted(int(p.stem) for p in cam.glob("*.jpg") if p.stem.isdigit())
+        if ts:
+            table[d.name] = ts
+    return table
 
 
 def resolve(side, man):
@@ -51,8 +81,35 @@ def resolve(side, man):
     share -- `nre render --frame-naming frame-end-timestamp` emits exactly the
     manifest ts, which is why the manifest pins ts per frame.
     """
-    root = RQE / SIDES[side][0]
+    spec = SIDES[side][0]
+    root = Path(spec) if str(spec).startswith("/") else RQE / spec
     out = {}
+    if side.startswith("grpc_"):
+        # Scoped PER SCENARIO on purpose. 47 timestamps in this manifest are
+        # claimed by more than one scenario (overlapping windows), so a global
+        # ts -> frame table would hand one scenario another's reconstruction.
+        # Building the table inside the loop keeps every lookup inside the
+        # scenario that owns the frame.
+        for sc in man:
+            table = _grpc_index_to_ts(sc["sid"])
+            if not table:
+                continue
+            # ts -> (shard, index) for every shard of this scenario
+            where = {}
+            for shard, tss in table.items():
+                for i, t in enumerate(tss):
+                    where.setdefault(t, (shard, i))
+            for f in sc["frames"]:
+                hit = where.get(f["ts"])
+                if not hit:
+                    continue
+                shard, i = hit
+                for ext in ("jpeg", "jpg"):
+                    p = root / shard / f"{i:06d}.{ext}"
+                    if p.exists():
+                        out[f["data_path"]] = p
+                        break
+        return out
     if side == "drivearena":
         for sc in man:
             for f in sc["frames"]:

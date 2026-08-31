@@ -1,0 +1,94 @@
+# STAGE fdpik: one (agent x variation) cell of the FDpi^k matrix.
+#
+# FDpi^k is the metric that actually transfers across sample sizes. Verified on this
+# data: the same renderer/agent scored 0.2422 on 310 tokens vs their published 0.2518
+# on 11156 (DrivoR), because dividing by tr(Sigma_original) cancels most of the
+# small-N bias. FID does NOT transfer -- the same official render scores 41.80 at
+# 11156 tokens and 123.21 at 310 -- so FID is only ever compared at matched N.
+#
+# One job per cell rather than one per variation: RAP is ~10x the cost of LTF, and
+# a per-cell job lets the slow ones run alongside instead of serialising behind
+# their variation's cheap agents.
+# GPU job. Prereq: score (which builds the *_cmp render dirs) + the token yaml.
+# Placeholders: grpc-off-cmp-ltf-0831090700 ltf grpc_off_cmp
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: rqe-fdpik-grpc-off-cmp-ltf-0831090700,
+    namespace: cogrob,
+    labels: { app: render_quality_eval, stage: fdpik, shard: "grpc-off-cmp-ltf-0831090700" },
+  }
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata: { labels: { app: render_quality_eval, stage: fdpik, shard: "grpc-off-cmp-ltf-0831090700" } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ue-eval
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              # NOT `set -u`: conda's binutils activate.d script dereferences
+              # ADDR2LINE unset, so nounset kills the shell on `conda activate`.
+              set -o pipefail
+              # The pod image exports a global PYTHONPATH at /hugsim-storage/NexusSim,
+              # which drags a torch-2.10 `nexussim` into every interpreter.
+              unset PYTHONPATH
+              ROOT=/avl-west/drivearena_bench
+              source /opt/conda/etc/profile.d/conda.sh
+              conda activate $ROOT/envs/ue
+              cd $ROOT/unified_evaluator && source env.sh
+              export RAY_memory_monitor_refresh_ms=0
+              echo "[fdpik grpc-off-cmp-ltf-0831090700] agent=ltf variation=grpc_off_cmp"
+              scripts/eval_navsim_unified_variation.sh \
+                $ROOT/render/navsim/grpc_off_cmp_navtest_frame \
+                grpc_off_cmp ltf
+              rc=$?
+              echo "[fdpik grpc-off-cmp-ltf-0831090700] exit=$rc"
+              # Propagate. Every cell is its own Job, so a failure here cannot
+              # stop the other cells -- and reporting Completed for a cell that
+              # produced no json meant `kubectl get pods` said the matrix was
+              # fine while rap had written nothing at all.
+              exit $rc
+          env:
+            # RAP builds a DINOv3 backbone from `facebook/dinov3-vith16plus-
+            # pretrain-lvd1689m`, which is a GATED repo: without a token the
+            # fetch is an anonymous 401 and the cell dies with `rap:no_npz`,
+            # several minutes after it has already loaded its local 3.9 GB
+            # checkpoint. The local checkpoint is not the whole model.
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HUGGING_FACE_HUB_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            # Cache on the PVC: the backbone is fetched once for the whole
+            # matrix rather than once per cell.
+            - { name: HF_HOME, value: /avl-west/drivearena_bench/.hf_cache }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

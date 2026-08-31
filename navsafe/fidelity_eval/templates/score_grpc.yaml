@@ -1,0 +1,85 @@
+# STAGE score (gRPC harmonizer ablation): FID + FVD on the intersection of the two render sets.
+#
+# FDpi^k is the metric that actually transfers across sample sizes. Verified on this
+# data: the same renderer/agent scored 0.2422 on 310 tokens vs their published 0.2518
+# on 11156 (DrivoR), because dividing by tr(Sigma_original) cancels most of the
+# small-N bias. FID does NOT transfer -- the same official render scores 41.80 at
+# 11156 tokens and 123.21 at 310 -- so FID is only ever compared at matched N.
+#
+# One job per cell rather than one per variation: RAP is ~10x the cost of LTF, and
+# a per-cell job lets the slow ones run alongside instead of serialising behind
+# their variation's cheap agents.
+# GPU job. Prereq: render_native + drivearena.
+# Placeholders: score  
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {
+    name: fid-score-__RUNID__,
+    namespace: cogrob,
+    labels: { app: fidelity_eval, stage: score },
+  }
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata: { labels: { app: fidelity_eval, stage: score } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ue-eval
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              # NOT `set -u`: conda's binutils activate.d script dereferences
+              # ADDR2LINE unset, so nounset kills the shell on `conda activate`.
+              set -o pipefail
+              # The pod image exports a global PYTHONPATH at /hugsim-storage/NexusSim,
+              # which drags a torch-2.10 `nexussim` into every interpreter.
+              unset PYTHONPATH
+              ROOT=/avl-west/drivearena_bench
+              source /opt/conda/etc/profile.d/conda.sh
+              conda activate $ROOT/envs/ue
+              cd $ROOT/unified_evaluator && source env.sh
+              export RAY_memory_monitor_refresh_ms=0
+              echo "[score] reducing to the common frame set and scoring"
+              # No `exit 0`: score.py raises on a failed FID/FVD subprocess, and
+              # swallowing that reported a Completed job for a run whose FVD had
+              # crashed. The job's status is the signal that the numbers exist.
+              # The eval pipeline's own render path, in its two configurations.
+              # `--sides` names them explicitly: score.py's default pair is the
+              # offline-vs-DriveArena comparison, which is a different question.
+              python3 /avl-west/render_quality_eval/score.py \
+                --sides grpc_off grpc_on || { echo "SCORE_FAILED"; exit 1; }
+              echo SCORE_DONE
+          resources:
+            # One pod doing image loading + two GPU feature extractors. cpu:8 /
+            # 48Gi was a guess, and an over-request is what the Nautilus
+            # utilization webhook rejects submissions for.
+            requests: { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+            limits:   { cpu: "4", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 16Gi } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: topology.kubernetes.io/region, operator: In, values: [us-west] }
+                  - { key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090] }
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }

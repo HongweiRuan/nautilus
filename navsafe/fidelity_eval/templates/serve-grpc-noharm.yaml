@@ -1,0 +1,269 @@
+# DERIVED from navsafe/nurec_serving/serve-grpc.yaml -- the SAME server with the
+# harmonizer OFF, under its own pod name and Service so the production one is
+# untouched and the two can run side by side.
+#
+# Why it exists: measured 2026-08-31, the harmonizer is what costs the eval
+# pipeline its sharpness. Laplacian variance on the same scene content:
+#     offline `nre render`            33.4
+#     gRPC direct, harmonizer OFF     32.0    <- the render path is not the problem
+#     eval pipeline, harmonizer ON    10.9 (recon rig) / 14.2 (navsim rig)
+# The gRPC path matches offline; it is the DiffusionHarmonizer post-pass that
+# smooths the frame. Point an eval at NUREC_GRPC_HOST=nurec-grpc-noharm to get
+# the sharp version.
+#
+# NuRec gRPC render server — serves the NavSafe leaf recons over the sensorsim
+# gRPC API. The eval client (run in the horuan-nexussim pod) reaches it via
+# NUREC_GRPC_HOST=nurec-grpc and produces the per-leaf log-replay gifs.
+#
+# artifact-glob points STRAIGHT AT THE TRAINING TREE:
+#   /avl-west/navsafe_5s_500/<clip>/output_5cam/<clip>/artifacts/last.usdz
+# 1632 of them exist (of 500 scenarios x 4 clips = 2000; the rest are not
+# trained yet, and a glob simply does not match those). No curation, no
+# allow-list: whatever is trained is served.
+#
+# This REPLACED /avl-west/nurec_serve_navsafe/, a hand-maintained dir of
+# symlinks that used to union two pools. Do not reintroduce it. Surveyed
+# 2026-08-27, it held 106 entries of which 32 were DEAD:
+#     28 -> /avl-west/navhard421           (tree deleted)
+#      4 -> /avl-west/navhard421-website-5s (tree deleted)
+#     74 -> /avl-west/navsafe_5s_500        (all live, a subset of the 1632)
+# Both navhard trees are gone from /avl-west, so the "carries both pools"
+# reason for the symlink layer no longer holds — the navhard scenarios would
+# have to be retrained to come back, and that is out of scope here (decided
+# 2026-08-27: not wanted). What the layer did still provide was a way to break
+# the server: a symlink whose target is missing makes serve-grpc die on
+# FileNotFoundError during its start-up scan, before it publishes any scene
+# list, so one stale link took the whole server down. Globbing the training
+# tree cannot hit that — a glob only matches paths that exist, and those are
+# real files, not links.
+#
+# scene_id is unchanged by the move. serve-grpc derives it from the directory
+# above artifacts/, which is <clip> in BOTH layouts (the old symlink was
+# <clip>/artifacts/last.usdz; the tree is <clip>/output_5cam/<clip>/artifacts/
+# last.usdz, and the two <clip> components were verified identical for all
+# 1632). It cannot be deriving it from the filename stem — that is "last" for
+# every artifact in either layout, and the old pool served 106 scenes without
+# collisions.
+#
+# COST OF THE WIDER GLOB: serve-grpc opens every match at start-up even with
+# --test-scenes-are-valid false (proven by the FileNotFoundError above, which
+# fired before CUDA init). It does not fully load them — per-scene load is
+# lazy, ~7-10 s on first render of that scene_id — but 1632 opens over CephFS
+# is slower than the old 74. Enumerating this glob from a pod took >2 min.
+# If start-up looks hung, that is where it is.
+# --enable-editing-actors kept so the nurec_grpc backend can move/remove actors.
+#
+# Bare Pod (no Deployment). THE RESOURCE REQUEST IS PINNED BY THIS CHOICE:
+# Nautilus' admission webhook rejects controller-less pods over 16 cores /
+# 32 GB outright —
+#   admission webhook "pod.nrp-nautilus.io" denied the request:
+#   PODs without controllers are limited to 16 cores and 32 GB of RAM
+# (hit for real on 2026-08-25, when this asked for 48Gi). It is a preadmission
+# check, so the pod never reaches a scheduler and nothing shows up in
+# `kubectl get pod` — the denial is the only trace. Do not raise cpu past 16
+# or memory past 32Gi here; if serve-grpc ever needs more, it has to go back
+# under a controller (Deployment, or a Job with backoffLimit:0), which the cap
+# does not apply to. The eval reaches it via NUREC_GRPC_HOST=nurec-grpc (the
+# Service below), which matches on the app label, so it keeps working as long
+# as the pod is recreated with the same labels.
+#
+# Cluster caps a single GPU pod's lifetime, so cycle the pod manually every ~6 h
+# (a fresh pod = new GPU lease; the Service is unchanged, evals need no edit):
+#     kubectl delete pod nurec-grpc-server -n cogrob
+#     kubectl apply -f serve-grpc.yaml
+# Same commands also pick up a NEWLY trained clip — nothing to link or
+# register, it just has to exist under the glob by the time the pod starts
+# (serve-grpc scans --artifact-glob only at start-up).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nurec-grpc-noharm
+  namespace: cogrob
+  labels: { app: nurec-grpc-noharm }
+spec:
+  # Cycling is manual (delete + apply), so never let the kubelet restart the
+  # process in place — a crashed serve-grpc has lost its loaded backends and
+  # any actors edited into them anyway.
+  restartPolicy: Never
+  imagePullSecrets: [{ name: ngc-pull }]
+  containers:
+    - name: nre
+      image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+      command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+      args:
+        - |
+          set -x
+          # Harmonizer postproc: better perceptual quality, and the thing that
+          # makes an INSERTED asset sit in the scene's own lighting instead of
+          # reading as a pasted-on mesh. The checkpoint is downloaded from
+          # HuggingFace on first use, so cache it on the PVC — otherwise every
+          # pod cycle re-downloads it and the first render blows the client's
+          # gRPC deadline.
+          mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
+          # --cache-size is NOT just a speed knob here, it is a correctness
+          # floor. edit_assets applies to the LOADED backend, never to the
+          # usdz, so evicting a backend silently discards the assets inserted
+          # into it; the next render reloads a clean scene and the client's
+          # pose update dies with "'navsafe_<name>' is not in list". A 20 s
+          # NavSafe host is FOUR 5 s recons that the episode renders in turn,
+          # so all four must stay resident for the whole episode — at 2 they
+          # evicted each other and every inserted-actor leaf failed at step 0.
+          # Ceiling is VRAM, and it is tight: 6 was tried and died with the
+          # 4 windows resident plus headroom (21.8 GiB allocated on a 23.6
+          # GiB 3090, render then failed asking for 258 MiB). So this is set
+          # to exactly 4 — the working set, no spare. Consequences: raising
+          # it needs a >24 GB card (the affinity below lists 24 GB only), and
+          # two evals sharing this server will evict each other's edits, so
+          # run them sequentially or give each its own server.
+          # Globbed directly off the training tree — see the header for why the
+          # old symlink pool is gone and why nothing needs pre-screening here.
+          #
+          # POOL: the NavSafe 5s500 nuPlan pool (restored 2026-08-26 after a
+          # spell on the Waymo r2s_work pool). --artifact-glob is a
+          # single-value click option and glob() has no brace expansion, so ONE
+          # pool at a time; the Service name is unchanged, so an eval needs no
+          # edit either way. CHECK THE ACTIVE GLOB, NOT THIS COMMENT, before
+          # concluding a scene is unavailable: the two drifted apart once and
+          # cost six eval runs that could never have found their scenes.
+          #
+          # WHY output_3dgutdyn AND NOT output: both layouts derive the SAME
+          # scene_id (the dir above the usdz's own dir == <clip>), so a glob
+          # matching both would collide on scene_id. They are also not
+          # equivalent — the car2sim recons under output/ contain NO dynamic
+          # actor nodes at all (measured: checkpoint carries only
+          # gaussians_nodes.{background,road}), because car2sim's
+          # tracks.label_classes allowlist ships NVIDIA class names while our
+          # NCore shard labels cuboids `WODPerceptionBoxDetectionLabel.TYPE_*`
+          # and nothing matches. nurec_wod/nurec_training/train-1gpu-3dgutdyn.yaml
+          # overrides both allowlists and does build dynamic_rigids (49103
+          # gaussians) + dynamic_deformables (479). Only that pool can render a
+          # moving actor, so it is the one served.
+          #
+          # Note the file is usd-out/last.usdz here, not artifacts/last.usdz —
+          # the 3dgutdyn runs export to usd-out/.
+          #
+          # TO SWITCH BACK TO THE WAYMO 3dgutdyn POOL: swap the glob to
+          #   '/avl-west/r2s_work/*/output_3dgutdyn/*/usd-out/last.usdz'
+          # then delete + apply this pod. (Note that pool's file is
+          # usd-out/last.usdz, not artifacts/last.usdz.)
+          /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
+              --no-enable-harmonizer \
+              --cache-size 4 \
+              --artifact-glob '/avl-west/navsafe_5s_500/*/output_5cam/*/artifacts/last.usdz'
+      ports: [{ containerPort: 8080 }]
+      env:
+        - {
+            name: NGC_API_KEY,
+            valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } },
+          }
+        - { name: HYDRA_FULL_ERROR, value: "1" }
+        # REQUIRED to replace actors with harvested assets
+        # (--asset-harvester-replace). Without it the ceiling is ~11 replaced
+        # tracks on a 24 GB card and the 12th dies mid-episode: measured
+        # 2026-08-28, the failing allocation was 1.29 GiB while 1.17 GiB was
+        # free and 1.15 GiB sat reserved-but-unallocated -- fragmentation, not
+        # exhaustion. Expandable segments let those reservations be reused and
+        # all 26 assets of a scenario then fit (24.1 GiB used, 0.5 GiB spare).
+        # Harmless when the feature is unused.
+        - { name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True" }
+      resources:
+        # cpu:4 (not 8) so a node with a free GPU but CPU packed by cpu:3 trains
+        # still has room. serve-grpc is GPU-bound; 4 CPU is plenty.
+        #
+        # memory:32Gi is the controller-less ceiling (see the header), NOT a
+        # measured requirement — this used to ask for 48Gi. The working set is
+        # 4 resident recon backends and the bulk of one lives in VRAM rather
+        # than host RAM, so 32Gi is expected to hold, but that has NOT been
+        # measured. An OOMKill here means moving back under a controller, not
+        # a bigger number in this file. NOTE the /dev/shm emptyDir below is
+        # medium:Memory, so anything the process writes there is charged
+        # against THIS limit — the two share one budget, which is why dshm
+        # was cut to 8Gi.
+        requests:
+          { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+        limits:
+          { cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi }
+      volumeMounts:
+        - { name: dshm, mountPath: /dev/shm }
+        - { name: avl-west-vol, mountPath: /avl-west }
+  volumes:
+    # 8Gi, not 24Gi: a memory-backed emptyDir is charged to the container's
+    # memory limit, and a 24Gi shm under a 32Gi limit would leave serve-grpc
+    # only 8Gi of actual heap.
+    - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 8Gi } }
+    - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+  # The ry-gpu nodes DO still carry the cogrob taints (2026-08-11: this pod
+  # sat Pending with "untolerated taint {nautilus.io/reservation: cogrob}"
+  # until these were added, and horuan-nexussim on ry-gpu-14 tolerates the
+  # same key). Without them the hostname pin below matches 10 nodes that all
+  # reject the pod, so it never schedules at all.
+  tolerations:
+    - { key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule }
+    - { key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule }
+  # PUBLIC QUEUE (2026-08-11): the 10 reserved ry-gpu nodes are GPU-full, so
+  # the hostname pin is dropped and this takes whatever public GPU it gets.
+  #
+  # WATCH THE STORAGE. /avl-west is CephFS at SDSC and read throughput is a
+  # function of how far the node is: measured 65 MB/s on the Fullerton nodes
+  # vs 1.2 MB/s on nrp-fiona-001.sdmz.amnh.org. At 1.2 MB/s a 2 GB artifact
+  # takes ~28 min to load and the client's first render_rgb hits its gRPC
+  # deadline, which looks like a hang rather than a slow disk. So the one
+  # node measured unusable is excluded outright; if a render still times
+  # out, check throughput on the node it landed on before debugging further:
+  #   kubectl exec nurec-grpc-server -n cogrob -- \
+  #     dd if=/avl-west/nurec_serve_webgif/<clip>/artifacts/last.usdz \
+  #        of=/dev/null bs=1M count=400
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          # Both expressions are ANDed (same term): a >=24 GB GPU, and not
+          # the one node whose storage is unusable.
+          - matchExpressions:
+              # VRAM FLOOR. The old hostname pin to the 10 ry-gpu nodes was
+              # doing double duty: it also guaranteed a 24 GB 3090, which is
+              # what `--cache-size` is tuned against (default 10 resident
+              # scenes at ~4-7 GB each -> CUDA OOM). Opening the affinity to
+              # the public queue drops that guarantee, so state it directly
+              # instead of inferring it from hostnames — otherwise this can
+              # land on a 12/16 GB card and OOM, and the harmonizer only
+              # pushes VRAM higher. Every product below is a 24 GB card;
+              # unknown names in an In-list simply never match, so listing
+              # extras costs nothing.
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-GeForce-RTX-3090-Ti
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-A10
+                  - NVIDIA-A10G
+                  - NVIDIA-L4
+                  - NVIDIA-RTX-A5000
+                  - NVIDIA-A30
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  # - ry-gpu-01.sdsc.optiputer.net
+                  # - ry-gpu-02.sdsc.optiputer.net
+                  # - ry-gpu-03.sdsc.optiputer.net
+                  # - ry-gpu-04.sdsc.optiputer.net
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  - ry-gpu-08.sdsc.optiputer.net
+                  # - ry-gpu-09.sdsc.optiputer.net
+                  # - ry-gpu-10.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net
+                  # - ry-gpu-13.sdsc.optiputer.net
+                  # - ry-gpu-14.sdsc.optiputer.net
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nurec-grpc-noharm, namespace: cogrob }
+spec:
+  type: ClusterIP
+  selector: { app: nurec-grpc-noharm }
+  ports:
+    - { port: 8080, targetPort: 8080 }

@@ -1,0 +1,130 @@
+# PARITY CHECK: is the gRPC render path the same picture as the offline one?
+#
+# The ablation the paper wants is Base vs +Harmonizer, and the harmonizer is
+# reachable ONLY from serve-grpc (`--enable-harmonizer`, default OFF; the
+# offline `render` subcommand has no such option at all -- verified from its
+# --help under a GPU, which is required even to print help). So +Harmonizer
+# must come from the gRPC path.
+#
+# That makes render-path a second variable. This job renders the SAME clips
+# both ways with the harmonizer off, so the two can be compared pixel-wise:
+#
+#   equal      -> the 15,815 offline frames already ARE Base; only the
+#                 +Harmonizer side needs a full render.
+#   different  -> both rows must be rendered through gRPC, or the ablation
+#                 confounds "harmonizer" with "which renderer".
+#
+# One GPU, a handful of clips. Placeholders: sh-0831053257 + a manifest of clips.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-parity-sh-0831053257, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: parity, shard: "sh-0831053257"}}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: parity, shard: "sh-0831053257"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -o pipefail
+              cat > /tmp/clips.txt <<'EOF'
+              00185dab0ba153b9s1
+              0057ce5b81c35a81s1
+              02b68b9cc51f506as1
+              054e4984e1b55ec9s1
+              20cc0fdb7e2d5c3fs1
+              2575048779565f0bs1
+              EOF
+              ROOT=/avl-west/fidelity_eval/parity
+              CORPUS=/avl-west/navsafe_5s_500
+              mkdir -p "$ROOT"
+
+              # ── ONE server for all clips ────────────────────────────
+              # Not one per clip: each would bind :8080, the second cannot
+              # while the first is releasing it, and the client then talks to
+              # the surviving server and gets "Scene artifact_id=... not
+              # available" for every clip but the first. That is exactly how
+              # the first attempt produced 303 offline frames and zero gRPC
+              # ones. serve-grpc derives scene_id from the directory ABOVE
+              # artifacts/, which is <clip> in both the training tree and this
+              # symlink pool, so the ids the client asks for still match.
+              POOL=/tmp/parity_pool
+              rm -rf "$POOL"; mkdir -p "$POOL"
+              for C in $(grep -v '^ *$' /tmp/clips.txt); do
+                U=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+                [ -f "$U" ] || { echo "NO_USDZ $C"; continue; }
+                mkdir -p "$POOL/$C/artifacts"
+                ln -sf "$U" "$POOL/$C/artifacts/last.usdz"
+              done
+              echo "[parity sh-0831053257] pool: $(ls $POOL | wc -l) clip(s)"
+              /app/run serve-grpc --host 0.0.0.0 --renderer default \
+                --no-enable-harmonizer --cache-size 4 \
+                --artifact-glob "$POOL/*/artifacts/last.usdz" \
+                > /tmp/serve.log 2>&1 &
+              SPID=$!
+              for _ in $(seq 1 150); do
+                kill -0 $SPID 2>/dev/null || { echo "SERVE_DIED"; tail -30 /tmp/serve.log; exit 1; }
+                grep -q "Available scenes" /tmp/serve.log && break
+                sleep 5
+              done
+              grep "Available scenes" /tmp/serve.log | tail -1 || { echo "NO_SCENE_LIST"; tail -30 /tmp/serve.log; exit 1; }
+
+              for C in $(grep -v '^ *$' /tmp/clips.txt); do
+                USDZ=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+                [ -f "$USDZ" ] || continue
+
+                # 1. offline -- byte-for-byte the command the scored frames came from
+                OFF=$ROOT/offline/$C
+                if ! ls "$OFF/camera_pcam_f0"/*.jpg >/dev/null 2>&1; then
+                  mkdir -p "$OFF"
+                  /app/run render --artifact-path "$USDZ" --output-dir "$OFF" \
+                    --camera-id camera_pcam_f0 --image-scale 1.0 --image-format jpg \
+                    --replicate-training-views \
+                    --calib-source training-sensor-poses-calib \
+                    --frame-naming frame-end-timestamp || echo "OFFLINE_FAIL $C"
+                fi
+
+                # 2. gRPC, harmonizer OFF, same clip, --height 1080 to match the
+                #    offline native render (the client defaults to 300).
+                GRP=$ROOT/grpc_off/$C
+                if ! find "$GRP" -name '*.jpg' -o -name '*.jpeg' 2>/dev/null | grep -q .; then
+                  mkdir -p "$GRP"
+                  /app/run render-grpc --artifact-path "$USDZ" --output-dir "$GRP" \
+                    --camera-id camera_pcam_f0 --height 1080 --image-format jpeg \
+                    --host localhost --port 8080 || echo "GRPC_FAIL $C"
+                fi
+                echo "COUNTS $C offline=$(ls $OFF/camera_pcam_f0 2>/dev/null|wc -l) grpc=$(find $GRP \( -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null|wc -l)"
+              done
+              kill $SPID 2>/dev/null
+              echo "PARITY_RENDER_DONE sh-0831053257"
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+          resources:
+            requests: {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "4", memory: "32Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In,
+                     values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net",
+                              "ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net",
+                              "ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net"]}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

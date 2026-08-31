@@ -54,14 +54,25 @@
 #   SEEDS         space-separated --eval-seed values, e.g. "1" or "1 2 3"
 #   NEXUSSIM_SHA  the commit every worker in the campaign evaluates
 #   CAMPAIGN      output subtree name under outputs/
+#
+# Optional, for a campaign other than the model-zoo sweep:
+#   ROOT          campaign root holding dataset/ and outputs/ (default below)
+#   AH_REPLACE    1 = render the logged actors from their harvested assets
+#                 (docs/navsafe_harvested_actors.md). The bank is found beside
+#                 each scenario, so a bundle needs an `ah_assets` entry.
+#   AH_REPLACE_MAX  how many actors at once; 12 is what a 24 GB card holds
+#                 through a whole episode with four reconstructions resident.
 set -uo pipefail
 
 : "${WORKER_INDEX:?}" "${WORKERS:?}" "${SEEDS:?}" "${NEXUSSIM_SHA:?}"
-ROOT=/avl-west/navsafe_eval
-DATASET=$ROOT/dataset
-OUTROOT=$ROOT/outputs
+ROOT=${ROOT:-/avl-west/navsafe_eval}
+DATASET=${DATASET:-$ROOT/dataset}
+# Two campaigns can share one dataset and differ only in a flag -- a harvested
+# replacement run and its baseline, for instance -- so the output subtree is
+# separable from the root.
+OUTROOT=${OUTROOT:-$ROOT/outputs}
 MODELS_TSV=${MODELS_TSV:-/cfg/models.tsv}
-ZOO=$ROOT/model_zoo
+ZOO=${ZOO:-$ROOT/model_zoo}
 HARMONIZER_CACHE=${HARMONIZER_CACHE:-/avl-west/navsafe_dev/.harmonizer-cache}
 PORT=8080
 CELL_TIMEOUT=${CELL_TIMEOUT:-45m}
@@ -84,6 +95,10 @@ mapfile -t ALL_TOKENS < <(
   for d in "$DATASET"/*/; do
     t=$(basename "$d")
     [ -f "$d/manifest.json" ] && [ -d "$d/arrow" ] || continue
+    # With replacement on, a scenario without a bank is not evaluatable in this
+    # campaign at all: the eval refuses rather than quietly rendering the baked
+    # actors, so screening here costs one scenario instead of one dead worker.
+    [ "${AH_REPLACE:-0}" = "1" ] && { [ -f "$d/ah_assets/replace_manifest.json" ] || continue; }
     n=0; for f in "$d"/*.usdz; do [ -e "$f" ] && n=$((n+1)); done
     [ "$n" -ge 1 ] && echo "$t"
   done | sort
@@ -134,6 +149,38 @@ rm -rf "$REPO"
 git clone --quiet --no-hardlinks /hugsim-storage/NexusSim "$REPO" || { say "clone FAILED"; exit 1; }
 git -C "$REPO" checkout --quiet "$NEXUSSIM_SHA" || { say "checkout $NEXUSSIM_SHA FAILED"; exit 1; }
 say "code at $(git -C "$REPO" log --oneline -1)"
+
+# A clone carries COMMITTED state only, which is the point: a campaign has to be
+# able to name the commit its numbers came from. But a feature under test is
+# not committed yet, and without this the workers run code that does not have
+# the flag and every cell dies on "unrecognized arguments".
+#
+# NEXUSSIM_OVERLAY=1 copies the source checkout's uncommitted changes on top and
+# SAYS SO. Provenance does not silently degrade: eval_py123d already stamps a
+# run from a dirty tree as corresponding to no commit and records the diff.
+if [ "${NEXUSSIM_OVERLAY:-0}" = "1" ]; then
+  SRC=/hugsim-storage/NexusSim
+  # -uall lists untracked FILES; the default collapses them to a directory
+  # ("?? nexussim/navsafe/harvest/"), which the -f test below then skips — that
+  # is how a whole new package went missing and every cell died on an import.
+  mapfile -t DIRTY < <(git -C "$SRC" status --porcelain -uall | awk '{print $NF}')
+  for f in "${DIRTY[@]}"; do
+    [ -f "$SRC/$f" ] || continue
+    mkdir -p "$REPO/$(dirname "$f")" && cp -f "$SRC/$f" "$REPO/$f"
+  done
+  say "OVERLAID ${#DIRTY[@]} uncommitted file(s) from $SRC — these numbers "\
+      "correspond to no commit"
+  # Fail here rather than 25 minutes into the first cell. The overlay exists
+  # solely so this worker can run code that is not committed yet; if the pieces
+  # that code needs did not arrive, every cell dies identically on an import or
+  # an unrecognized argument, and the fleet burns an hour saying so.
+  if [ "${AH_REPLACE:-0}" = "1" ]; then
+    grep -q -- "--asset-harvester-replace" "$REPO/scripts/tools/eval_py123d.py" \
+      || { say "overlay incomplete: eval_py123d.py has no --asset-harvester-replace"; exit 1; }
+    [ -f "$REPO/nexussim/navsafe/harvest/manifest.py" ] \
+      || { say "overlay incomplete: nexussim/navsafe/harvest/ did not arrive"; exit 1; }
+  fi
+fi
 
 cd "$REPO"
 if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
@@ -248,6 +295,41 @@ export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
 
+# Harvested-actor replacement, off unless the campaign asks for it. The flag
+# takes no value: it finds <bundle>/ah_assets/replace_manifest.json beside the
+# scenario's arrow. The cap is a VRAM budget, not a preference — all of a
+# scenario's assets fit statically on a 24 GB card and then kill the episode
+# partway through (measured: frame 151 of 200).
+AH_FLAGS=()
+if [ "${AH_REPLACE:-0}" = "1" ]; then
+  AH_FLAGS=(--asset-harvester-replace)
+fi
+export NUREC_GRPC_ASSET_REPLACE_MAX=${AH_REPLACE_MAX:-12}
+[ ${#AH_FLAGS[@]} -gt 0 ] && \
+  say "harvested-actor replacement ON (max ${NUREC_GRPC_ASSET_REPLACE_MAX} actors)"
+
+# VIS=1 writes per-frame BEV + front-camera images under <out>/frames/NNNNN/.
+# Off by default: it is ~40% more wall-clock per cell and the scored numbers do
+# not need it. On for runs whose product is a video rather than a metric.
+VIS_FLAGS=()
+if [ "${VIS:-0}" = "1" ]; then
+  VIS_FLAGS=(--enable-vis)
+  say "per-frame visualisation ON"
+fi
+
+# AH_PAIR=1 runs BOTH conditions for every cell, back to back on the same GPU
+# against the same renderer process. That is the point: a side-by-side video of
+# replaced vs not must differ in the replacement and nothing else — not the
+# node, not the driver, not the server's warm state. The renderer resets its
+# per-scene edit state at every setup, so the un-replaced half really is
+# un-replaced even though a replaced episode ran on that server a minute ago.
+if [ "${AH_PAIR:-0}" = "1" ]; then
+  CONDS=(base ah)
+  say "paired run: each cell evaluated twice, without and with replacement"
+else
+  CONDS=(single)
+fi
+
 done_n=0; skip_n=0; fail_n=0; consec_fail=0
 
 # A pod whose GPU has gone bad fails every remaining cell in ~10 s and then
@@ -272,15 +354,21 @@ for T in "${MY_TOKENS[@]}"; do
     [ "$CK" = "none" ] && CKPT=none || CKPT="$ZOO/$CK"
 
     for SEED in $SEEDS; do
-      OUT="$OUTROOT/$SLUG/seed$SEED/$T"
-      LOG="$OUTROOT/$SLUG/seed$SEED/$T.log"
+     for COND in "${CONDS[@]}"; do
+      case "$COND" in
+        base) CFLAGS=();               ODIR="$OUTROOT/baseline" ;;
+        ah)   CFLAGS=(--asset-harvester-replace); ODIR="$OUTROOT/replaced" ;;
+        *)    CFLAGS=("${AH_FLAGS[@]}"); ODIR="$OUTROOT" ;;
+      esac
+      OUT="$ODIR/$SLUG/seed$SEED/$T"
+      LOG="$ODIR/$SLUG/seed$SEED/$T.log"
       if grep -qs '^\[eval_py123d\] DONE\.' "$LOG" && [ -f "$OUT/navsafe_metrics.json" ]; then
         skip_n=$((skip_n+1)); continue
       fi
       serve_alive || { say "renderer died — restarting"; kill $SERVE_PID 2>/dev/null; start_serve || exit 1; }
 
       mkdir -p "$OUT"
-      say "$SLUG seed$SEED $T"
+      say "$SLUG seed$SEED $T [$COND]"
       timeout --signal=KILL "$CELL_TIMEOUT" \
         "$PY" "$REPO/scripts/tools/eval_py123d.py" \
           --scenario-source py123d --py123d-data-root "$B/arrow" --py123d-scene-index 0 \
@@ -294,13 +382,14 @@ for T in "${MY_TOKENS[@]}"; do
           --eval-frames 600 \
           --eval-seed "$SEED" \
           --navsafe-prune-artifacts \
+          "${CFLAGS[@]}" "${VIS_FLAGS[@]}" \
           --output-dir "$OUT" > "$LOG" 2>&1
       # One bad cell must not abandon the sweep; its reason is in its own log.
       if grep -qs '^\[eval_py123d\] DONE\.' "$LOG" && [ -f "$OUT/navsafe_metrics.json" ]; then
         done_n=$((done_n+1)); consec_fail=0; say "  OK"
       else
         fail_n=$((fail_n+1)); consec_fail=$((consec_fail+1)); say "  FAILED (see $LOG)"
-        tail -5 /tmp/serve.log > "$OUTROOT/$SLUG/seed$SEED/$T.serve.log" 2>/dev/null
+        tail -5 /tmp/serve.log > "$ODIR/$SLUG/seed$SEED/$T.serve.log" 2>/dev/null
         if gpu_is_gone "$LOG"; then
           say "GPU UNUSABLE on $(hostname) — CUDA would not initialise. Failing so the Job reschedules."
           exit 1
@@ -312,6 +401,7 @@ for T in "${MY_TOKENS[@]}"; do
           exit 1
         fi
       fi
+     done
     done
   done
 done

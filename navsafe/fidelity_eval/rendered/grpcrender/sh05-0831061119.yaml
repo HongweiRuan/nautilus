@@ -1,0 +1,204 @@
+# Render a shard of clips through the EVAL's own render path (gRPC), once with
+# the harmonizer OFF and once ON, so FID/FVD/FDpi^k can be measured on the two
+# configurations the eval pipeline can actually be run in.
+#
+# Why gRPC and not `nre render`: the eval renders through serve-grpc, and the
+# harmonizer is a serve-grpc post-pass with no offline equivalent. Measured
+# 2026-08-31 on identical scene content (Laplacian variance, no registration,
+# so a pose offset cannot skew it):
+#     offline `nre render`          33.4
+#     gRPC direct, harmonizer OFF   32.0   <- the render path is NOT the problem
+#     eval pipeline, harmonizer ON  10.9
+# So the two rows worth measuring are gRPC-off and gRPC-on, and rendering them
+# both here keeps every other variable (node, GPU, artifact, trajectory) fixed.
+#
+# render-grpc walks the training trajectory and names frames by a contiguous
+# index; the offline render names them by timestamp. Verified same ORDER (grpc
+# index i best-matches offline frame i, 36-37 dB aligned, vs 27-32 for i+-1),
+# so position is the key the scorer maps back to manifest tokens.
+#
+# Placeholders: sh05-0831061119 + a manifest block of clip ids
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-grpcrender-sh05-0831061119, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: grpcrender, shard: "sh05-0831061119"}}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: grpcrender, shard: "sh05-0831061119"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -o pipefail
+              cat > /tmp/clips.txt <<'EOF'
+              14d53f85ccc65f23s4
+              14fe69db03425780s1
+              14fe69db03425780s2
+              14fe69db03425780s3
+              14fe69db03425780s4
+              17296f6032025eccs1
+              17296f6032025eccs2
+              17296f6032025eccs3
+              17296f6032025eccs4
+              173369dc059d5fe9s1
+              173369dc059d5fe9s2
+              173369dc059d5fe9s3
+              173369dc059d5fe9s4
+              1786ef7edac65502s1
+              1786ef7edac65502s2
+              1786ef7edac65502s3
+              1786ef7edac65502s4
+              17a6a4a6137553cds1
+              17a6a4a6137553cds2
+              17a6a4a6137553cds3
+              17a6a4a6137553cds4
+              17b0992157365222s1
+              17b0992157365222s2
+              17b0992157365222s3
+              17b0992157365222s4
+              17cac31ef9135fafs1
+              17cac31ef9135fafs2
+              17cac31ef9135fafs3
+              17cac31ef9135fafs4
+              184c11a8cc875403s1
+              184c11a8cc875403s2
+              184c11a8cc875403s3
+              184c11a8cc875403s4
+              18b5995484435fbes1
+              18b5995484435fbes2
+              18b5995484435fbes3
+              18b5995484435fbes4
+              190808cc16cc53afs1
+              190808cc16cc53afs2
+              190808cc16cc53afs3
+              190808cc16cc53afs4
+              190bf8dd22a25d1cs1
+              190bf8dd22a25d1cs2
+              190bf8dd22a25d1cs3
+              190bf8dd22a25d1cs4
+              190c8d0cece45af1s1
+              190c8d0cece45af1s2
+              190c8d0cece45af1s3
+              190c8d0cece45af1s4
+              1961d1075a085a1ds1
+              1961d1075a085a1ds2
+              1961d1075a085a1ds3
+              1961d1075a085a1ds4
+              1981a85eb4ba5001s1
+              1981a85eb4ba5001s2
+              1981a85eb4ba5001s3
+              1981a85eb4ba5001s4
+              198bc5f3280e52cds1
+              198bc5f3280e52cds2
+              198bc5f3280e52cds3
+              198bc5f3280e52cds4
+              19b85cbca28f5c41s1
+              19b85cbca28f5c41s2
+              19b85cbca28f5c41s3
+              19b85cbca28f5c41s4
+              1ad96f74e72750dbs1
+              1ad96f74e72750dbs2
+              1ad96f74e72750dbs3
+              1ad96f74e72750dbs4
+              1b25edea36205814s1
+              1b25edea36205814s2
+              1b25edea36205814s3
+              1b25edea36205814s4
+              1bdfacbfcff75c27s1
+              1bdfacbfcff75c27s2
+              1bdfacbfcff75c27s3
+              1bdfacbfcff75c27s4
+              1bf45a481f1d52e3s1
+              1bf45a481f1d52e3s2
+              EOF
+              CORPUS=/avl-west/navsafe_5s_500
+              ROOT=/avl-west/fidelity_eval/grpc
+              N=$(grep -c . /tmp/clips.txt)
+              echo "[grpcrender sh05-0831061119] $N clip(s)"
+
+              # One symlink pool for the whole shard, one server per harmonizer
+              # setting. NOT one server per clip: they all bind :8080 and the
+              # second cannot start while the first releases it, which makes the
+              # client talk to a stale server and report "Scene not available".
+              POOL=/tmp/pool; rm -rf $POOL
+              for C in $(grep -v '^ *$' /tmp/clips.txt); do
+                U=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+                [ -f "$U" ] && { mkdir -p $POOL/$C/artifacts; ln -sf "$U" $POOL/$C/artifacts/last.usdz; }
+              done
+              echo "  pool: $(ls $POOL 2>/dev/null | wc -l) clip(s)"
+
+              ok=0; fail=0
+              for HARM in off on; do
+                FLAG="--no-enable-harmonizer"
+                if [ "$HARM" = "on" ]; then
+                  mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
+                  FLAG="--enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache"
+                fi
+                echo "=== harmonizer=$HARM ==="
+                /app/run serve-grpc --host 0.0.0.0 --renderer default --cache-size 4 \
+                  $FLAG --artifact-glob "$POOL/*/artifacts/last.usdz" > /tmp/serve_$HARM.log 2>&1 &
+                SPID=$!
+                for _ in $(seq 1 180); do
+                  kill -0 $SPID 2>/dev/null || { echo "SERVE_DIED $HARM"; tail -30 /tmp/serve_$HARM.log; break; }
+                  grep -q "Available scenes" /tmp/serve_$HARM.log && break
+                  sleep 5
+                done
+                kill -0 $SPID 2>/dev/null || { fail=$((fail+1)); continue; }
+                grep -q "Available scenes" /tmp/serve_$HARM.log || { echo "NO_SCENES $HARM"; kill $SPID; fail=$((fail+1)); continue; }
+
+                for C in $(grep -v '^ *$' /tmp/clips.txt); do
+                  U=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+                  [ -f "$U" ] || continue
+                  D=$ROOT/h$HARM/$C
+                  if find "$D" -name '*.jp*g' 2>/dev/null | grep -q .; then ok=$((ok+1)); continue; fi
+                  mkdir -p "$D"
+                  if /app/run render-grpc --artifact-path "$U" --output-dir "$D" \
+                       --camera-id camera_pcam_f0 --height 1080 --image-format jpeg \
+                       --host localhost --port 8080 >/dev/null 2>&1; then
+                    ok=$((ok+1))
+                  else
+                    echo "RENDER_FAIL $HARM $C"; fail=$((fail+1))
+                  fi
+                done
+                kill $SPID 2>/dev/null; sleep 8
+              done
+              echo "SHARD_DONE sh05-0831061119 ok=$ok fail=$fail"
+              # Both configurations are the deliverable; a shard that produced
+              # only one of them has not done its job.
+              a=$(find $ROOT/hoff -maxdepth 1 -mindepth 1 2>/dev/null | wc -l)
+              b=$(find $ROOT/hon  -maxdepth 1 -mindepth 1 2>/dev/null | wc -l)
+              echo "  clips rendered so far: hoff=$a hon=$b"
+              [ "$fail" -eq 0 ] || exit 1
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True"}
+          resources:
+            requests: {cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 12Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In,
+                     values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net",
+                              "ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net",
+                              "ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net"]}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

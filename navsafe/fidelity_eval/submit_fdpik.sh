@@ -6,19 +6,26 @@
 # this stage waits for the full-corpus render rather than reusing the 10-scenario one.
 #
 #   ./submit_fdpik.sh                                   # all cells still missing
-#   AGENTS="drivor_f0 dd_front ltf" ./submit_fdpik.sh    # skip the two that need CUDA exts
+#   AGENTS="rap sd" ./submit_fdpik.sh                    # just the two added last
 #   VARIATIONS="nurec_cmp" ./submit_fdpik.sh              # one side only
 #   DRYRUN=1 ./submit_fdpik.sh
 set -uo pipefail
 cd "$(dirname "$0")"
 NS="${NS:-cogrob}"; POD="${POD:-horuan-nexussim}"
-# Three agents, not the paper's five. RAP and SparseDriveV2 build and import fine
-# but have never been run end to end here, and both carry runtime risk worth not
-# taking mid-batch: RAP is a DINOv3 backbone at 1280-d being fed 1920x1080 on a 24 GB
-# 3090, and SparseDriveV2 silently produces wrong features if its navsim-v1 metric
-# config is not honoured. FDpi^k is a mean over an arbitrary panel, so three is a
-# valid metric -- just not comparable to the paper's five-policy cells.
-AGENTS="${AGENTS:-drivor_f0 dd_front ltf}"
+# All five of the paper's panel. The two that used to be skipped are in:
+#
+#   * RAP's D=1280 needed N >> 310 to be estimable, and the full-corpus render
+#     gives it 4164 tokens.
+#   * SparseDriveV2's deformable-aggregation CUDA extension is built and matches
+#     this env (cpython-310 .so beside its source).
+#
+# Both were verified to build, load their checkpoint and move to GPU. What is
+# NOT verified by that is memory under load: RAP is a DINO backbone at 1280-d
+# taking 1920x1080 on a 24 GB 3090. If a cell OOMs it is that, not the setup.
+# SparseDriveV2 also silently produces wrong features if its navsim-v1 metric
+# config is not honoured, so check `feature_dim` and `n_intersect` in its output
+# json rather than trusting a zero exit.
+AGENTS="${AGENTS:-drivor_f0 dd_front ltf rap sd}"
 VARIATIONS="${VARIATIONS:-nurec_cmp drivearena_cmp}"
 RUNID="${RUNID:-$(date +%m%d%H%M%S)}"
 OUT="rendered/fdpik"; mkdir -p "$OUT"

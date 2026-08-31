@@ -47,8 +47,24 @@ spec:
               scripts/eval_navsim_unified_variation.sh \
                 $ROOT/render/navsim/__VARIATION___navtest_frame \
                 __VARIATION__ __AGENT__
-              echo "[fdpik __SHARD__] exit=$?"
-              exit 0   # a failed cell is reported by the collector, not by the job
+              rc=$?
+              echo "[fdpik __SHARD__] exit=$rc"
+              # Propagate. Every cell is its own Job, so a failure here cannot
+              # stop the other cells -- and reporting Completed for a cell that
+              # produced no json meant `kubectl get pods` said the matrix was
+              # fine while rap had written nothing at all.
+              exit $rc
+          env:
+            # RAP builds a DINOv3 backbone from `facebook/dinov3-vith16plus-
+            # pretrain-lvd1689m`, which is a GATED repo: without a token the
+            # fetch is an anonymous 401 and the cell dies with `rap:no_npz`,
+            # several minutes after it has already loaded its local 3.9 GB
+            # checkpoint. The local checkpoint is not the whole model.
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HUGGING_FACE_HUB_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            # Cache on the PVC: the backbone is fetched once for the whole
+            # matrix rather than once per cell.
+            - { name: HF_HOME, value: /avl-west/drivearena_bench/.hf_cache }
           resources:
             requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }
             limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi }

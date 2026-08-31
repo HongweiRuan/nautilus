@@ -1,0 +1,182 @@
+# RIG A/B: one closed-loop eval, rendered through the RECON rig instead of the
+# navsim one, harmonizer OFF.
+#
+# Why this exists. NavSafe eval renders with NUREC_GRPC_CAM_RIG=navsim, which
+# nurec_grpc.py itself calls a "legacy synthetic policy camera ... not the
+# quality default": it rebuilds a zero-distortion pinhole from seven scalars
+# (x/y/z/yaw/pitch/roll/fov, via utils/camera_utils.py at 1920x1120), throwing
+# away the calibrated distortion and principal point, and renders the Gaussian
+# field from rays it was never fit on -- a novel view, which is why eval frames
+# look soft next to an `nre render --replicate-training-views` frame of the
+# same clip. `recon` reuses the reconstruction's own training CameraSpec.
+#
+# Everything else is copied from navsafe_eval/run_worker_current.sh so the only
+# variables are the rig and the harmonizer.
+#
+# Placeholders: 05d0a1a763fc5334 05d0a1a7-recon-hoff recon off 0831040530
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-rigeval-05d0a1a7-recon-hoff-0831040530, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: rigeval, slug: "05d0a1a7-recon-hoff"}}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: rigeval, slug: "05d0a1a7-recon-hoff"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              T=05d0a1a763fc5334
+              RIG=recon
+              HARM=off
+              OUT=/avl-west/fidelity_eval/rigeval/05d0a1a7-recon-hoff
+              CORPUS=/avl-west/navsafe_5s_500
+              mkdir -p "$OUT"
+
+              # ── environment ─────────────────────────────────────────────
+              # Built on the pod's own /root exactly as navsafe_eval's worker
+              # does, and for the same reasons recorded there: python3-dev
+              # because SparseDriveV2 JIT-builds a C++/CUDA extension, ninja
+              # because torch refuses to load one without it, IsaacLab from
+              # source. ~15 min, paid once per pod. Do NOT swap in the tool
+              # pod's /root/nexussim-venv -- that interpreter does not exist
+              # in this image, which is how the first attempt died at exit 127.
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq && apt-get install -y -qq git curl python3-venv python3-dev \
+                libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 \
+                libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 \
+                libice6 libgomp1 >/dev/null || { echo "apt FAILED"; exit 1; }
+              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
+              export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv
+              for i in 1 2 3 4; do
+                command -v uv >/dev/null && break
+                python -m pip install --quiet --user uv 2>/dev/null \
+                  || pip install --quiet --user uv 2>/dev/null \
+                  || curl -LsSf https://astral.sh/uv/install.sh | sh
+                hash -r; sleep 5
+              done
+              command -v uv >/dev/null || { echo "uv unavailable"; exit 1; }
+              REPO=/root/ns
+              rm -rf "$REPO"
+              git clone --quiet --no-hardlinks /hugsim-storage/NexusSim "$REPO" || { echo "clone FAILED"; exit 1; }
+              echo "[rigeval] code at $(git -C "$REPO" log --oneline -1)"
+              cd "$REPO"
+              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                echo "[rigeval] uv sync (~15 min)"
+                uv sync --all-extras --python 3.12 || { echo "uv sync FAILED"; exit 1; }
+                [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta \
+                  https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+                  d=/root/IsaacLab/source/$ext
+                  [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d" >/dev/null
+                done
+                uv pip install --python /root/ns-venv/bin/python lazy_loader einops ninja >/dev/null
+              fi
+              PY=/root/ns-venv/bin/python
+              "$PY" -c "import nexussim, isaaclab" || { echo "venv unusable"; exit 1; }
+
+              # ── renderer on GPU 0 ────────────────────────────────────────
+              HARM_ARGS="--no-enable-harmonizer"
+              if [ "$HARM" = "on" ]; then
+                mkdir -p /avl-west/navsafe_dev/.harmonizer-cache
+                HARM_ARGS="--enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache"
+              fi
+              echo "[rigeval] rig=$RIG harmonizer=$HARM token=$T"
+              CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \
+                --enable-editing-actors --renderer default --cache-size 4 \
+                $HARM_ARGS \
+                --artifact-glob "$CORPUS/${T}s*/output_5cam/${T}s*/artifacts/last.usdz" \
+                > /tmp/serve.log 2>&1 &
+              SPID=$!
+              # The scene list is CHECKED, never assumed: a renderer asked for a
+              # scene it does not hold falls back to raster silently, and the
+              # result reads as a reconstruction problem, not a config one.
+              for _ in $(seq 1 150); do
+                kill -0 $SPID 2>/dev/null || { echo "SERVE_DIED"; tail -40 /tmp/serve.log; exit 1; }
+                grep -q "Available scenes" /tmp/serve.log && break
+                sleep 5
+              done
+              grep "Available scenes" /tmp/serve.log | tail -1 || { echo "NO_SCENE_LIST"; tail -40 /tmp/serve.log; exit 1; }
+
+              # ── hand-off: which 5 s reconstruction covers which timestamps ─
+              HANDOFF=""
+              read -r _ _ T0 T1 _ < <(grep "^$T" /avl-west/navsafe_dev/scenes_500.tsv)
+              STEP=$(( (T1 - T0) / 4 ))
+              for k in 1 2 3 4; do
+                a=$(( T0 + (k-1)*STEP )); b=$(( T0 + k*STEP ))
+                HANDOFF="${HANDOFF}${T}s${k},$CORPUS/${T}s${k}/clips/${T}s${k}/nurec_origin_offset.json,$a,$b;"
+              done
+              export NUREC_GRPC_HANDOFF="${HANDOFF%;}"
+              echo "[rigeval] handoff=$NUREC_GRPC_HANDOFF"
+
+              # ── eval on GPU 1 — flags copied from run_worker_current.sh ──
+              export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=8080
+              export NUREC_GRPC_CAM_RIG=$RIG NUREC_GRPC_TIMEOUT_S=600
+              export PY123D_RECENTER=1
+              export NUPLAN_MAP_VERSION=nuplan-maps-v1.0
+              export NEXUSSIM_NO_CAM_MAP_LINES=1
+              export PYTHONPATH="$REPO:$REPO/third_party/nurec_protos"
+              export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
+              export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+              export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
+
+              timeout --signal=KILL 60m \
+                "$PY" "$REPO/scripts/tools/eval_py123d.py" \
+                  --scenario-source py123d --py123d-data-root "$CORPUS/${T}_20s/arrow" \
+                  --py123d-scene-index 0 \
+                  --render-backend nurec_grpc --cam-height navsim \
+                  --model-type drivor \
+                  --checkpoint /avl-west/navsafe_eval/model_zoo/drivor/drivor_Nav1_25epochs.pth \
+                  --traffic-mode semi_reactive \
+                  --ego-replay-frames 20 \
+                  --terminate-on-collision \
+                  --controller lqr --execution-mode controller \
+                  --replan-rate 5 --camera-resolution-scale 1.0 \
+                  --eval-frames 600 --eval-seed 1 \
+                  --output-dir "$OUT" 2>&1 | tee "$OUT/eval.log"
+              rc=${PIPESTATUS[0]}
+              kill $SPID 2>/dev/null
+              echo "[rigeval 05d0a1a7-recon-hoff] frames=$(ls $OUT/frames 2>/dev/null|wc -l) exit=$rc"
+              # Propagate: a cell that wrote no frames must not read as Completed.
+              [ -f "$OUT/navsafe_metrics.json" ] || { echo "NO_METRICS"; exit 1; }
+              exit $rc
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HF_TOKEN, valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: ACCEPT_EULA, value: "Y"}
+            - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+          resources:
+            # Two GPUs: serve-grpc holds the Gaussian field on GPU 0, the policy
+            # runs on GPU 1. One card was not enough in the eval campaign.
+            requests: {cpu: "3", memory: "32Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi"}
+            limits:   {cpu: "3", memory: "32Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi"}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In,
+                     values: ["ry-gpu-05.sdsc.optiputer.net","ry-gpu-06.sdsc.optiputer.net",
+                              "ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net",
+                              "ry-gpu-11.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net"]}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

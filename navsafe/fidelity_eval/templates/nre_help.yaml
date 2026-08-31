@@ -1,0 +1,32 @@
+# Throwaway introspection job: what does the NRE CLI actually offer?
+# Kept because the harmonizer question (is it reachable from the offline
+# renderer, or only from serve-grpc?) decides the whole ablation design.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: nre-help, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 1800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: h
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh","bash","-c"]
+          args:
+            - |
+              echo "===== RENDER-GRPC ====="; /app/run render-grpc --help 2>&1 | grep -v readobject | head -70
+              echo "===== SERVE-GRPC ====="; /app/run serve-grpc --help 2>&1 | grep -v readobject | grep -iE "harmon|renderer|artifact|cache" | head -20
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+          # A GPU is REQUIRED even for --help: without a CUDA runtime the CLI
+          # dies on "Unknown compute capability" before printing anything, and
+          # a grep over that empty output reads as "the flag does not exist".
+          resources:
+            requests: {cpu: "2", memory: "8Gi", nvidia.com/gpu: "1"}
+            limits:   {cpu: "2", memory: "8Gi", nvidia.com/gpu: "1"}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

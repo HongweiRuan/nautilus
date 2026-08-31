@@ -155,7 +155,7 @@ OUT="rendered/${STAGE}"; mkdir -p "$OUT"
 find "$OUT" -type f -mtime +3 -delete 2>/dev/null || true
 NEWYAMLS=$(mktemp)
 python3 - "$TPL" "$CLIPS" "$MISSING" "$OUT" "$PER" "$NSHARD" "$RUNID" "$NEWYAMLS" <<'PY'
-import sys, math, re
+import os, sys, math, re
 tpl_p, clips_p, miss_p, out_d = sys.argv[1:5]
 per, nshard = int(sys.argv[5]), int(sys.argv[6])
 runid, newlist = sys.argv[7], sys.argv[8]
@@ -174,7 +174,9 @@ for i in range(0, min(len(missing), per * nshard), per):
     name = "sh%03d-%s" % (i // per, runid)
     manifest = "\n".join(f"{indent}{c} {rows[c][0]} {rows[c][1]} {rows[c][2]}"
                          for c in shard if c in rows)
-    y = tpl.replace(indent + "__MANIFEST__", manifest).replace("__SHARD__", name)
+    y = (tpl.replace(indent + "__MANIFEST__", manifest)
+            .replace("__SHARD__", name)
+            .replace("__STRUCTLIDAR__", os.environ.get("STRUCT_LIDAR", "1")))
     open(f"{out_d}/{name}.yaml", "w").write(y)
     open(f"{out_d}/{name}.clips", "w").write("\n".join(shard) + "\n")
     open(newlist, "a").write(f"{out_d}/{name}.yaml\n")

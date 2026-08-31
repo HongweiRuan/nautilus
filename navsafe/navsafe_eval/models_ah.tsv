@@ -1,0 +1,5 @@
+# One row: the AH-replacement test varies the RENDERER, not the planner.
+# drivor is the adapter already proven end to end on this cluster.
+#
+# row_slug   model_type   ckpt
+drivor              drivor           drivor/drivor_Nav1_25epochs.pth

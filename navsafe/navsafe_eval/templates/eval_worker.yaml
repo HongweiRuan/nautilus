@@ -13,7 +13,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: navsafe-eval-__W__
+  name: __JOBPREFIX__-__W__
   namespace: cogrob
   labels: { app: navsafe-eval, worker: "__W__" }
 spec:
@@ -43,6 +43,15 @@ spec:
             - { name: WORKERS,      value: "__WORKERS__" }
             - { name: SEEDS,        value: "__SEEDS__" }
             - { name: NEXUSSIM_SHA, value: "__SHA__" }
+            - { name: ROOT,         value: "__ROOT__" }
+            - { name: AH_REPLACE,   value: "__AHREPLACE__" }
+            - { name: AH_PAIR,      value: "__AHPAIR__" }
+            - { name: DATASET,      value: "__DATASET__" }
+            - { name: CELL_TIMEOUT, value: "__CELLTIMEOUT__" }
+            - { name: VIS,          value: "__VIS__" }
+            - { name: NEXUSSIM_OVERLAY, value: "__OVERLAY__" }
+            - { name: OUTROOT,      value: "__OUTROOT__" }
+            - { name: ZOO,          value: "__ZOO__" }
             - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
             # Several adapters pull a timm backbone from the HF Hub at load time
             # (the eval log says so: "You are sending unauthenticated requests").
@@ -75,7 +84,7 @@ spec:
             - { name: hugsim-storage, mountPath: /hugsim-storage }
       volumes:
         - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
-        - { name: cfg, configMap: { name: navsafe-eval-cfg } }
+        - { name: cfg, configMap: { name: __CFGMAP__ } }
         - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
         - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
       affinity:
@@ -86,17 +95,14 @@ spec:
               # shared pool, where 60 GPUs would be both slow to schedule and the
               # thing the util-policy is watching.
               - matchExpressions:
+                  # ry-gpu-08 is left out as of 2026-08-28: its NVIDIA device
+                  # plugin fails ("error getting NVLink for devices (6, 0)"), so
+                  # pods there are rejected at admission or handed a GPU torch
+                  # cannot open. Put it back when nvidia-smi on the node is
+                  # clean. NODES overrides the list for one campaign.
                   - key: kubernetes.io/hostname
                     operator: In
-                    values:
-                      - ry-gpu-05.sdsc.optiputer.net
-                      - ry-gpu-06.sdsc.optiputer.net
-                      - ry-gpu-07.sdsc.optiputer.net
-                      - ry-gpu-08.sdsc.optiputer.net
-                      - ry-gpu-11.sdsc.optiputer.net
-                      - ry-gpu-12.sdsc.optiputer.net
-                      - ry-gpu-13.sdsc.optiputer.net
-                      - ry-gpu-14.sdsc.optiputer.net
+                    values: [__NODES__]
                   # Stated directly rather than inferred from the hostnames:
                   # --cache-size 4 plus the harmonizer needs a 24 GB card.
                   - key: nvidia.com/gpu.product
