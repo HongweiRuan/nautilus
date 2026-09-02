@@ -60,8 +60,9 @@
 #   AH_REPLACE    1 = render the logged actors from their harvested assets
 #                 (docs/navsafe_harvested_actors.md). The bank is found beside
 #                 each scenario, so a bundle needs an `ah_assets` entry.
-#   AH_REPLACE_MAX  how many actors at once; 12 is what a 24 GB card holds
-#                 through a whole episode with four reconstructions resident.
+#   AH_REPLACE_MAX  how many resident copies at once -- a car served by three
+#                 of the four 5 s scenes counts three times. 10 is what a 24 GB
+#                 card holds through a whole episode with four reconstructions.
 set -uo pipefail
 
 : "${WORKER_INDEX:?}" "${WORKERS:?}" "${SEEDS:?}" "${NEXUSSIM_SHA:?}"
@@ -337,9 +338,9 @@ AH_FLAGS=()
 if [ "${AH_REPLACE:-0}" = "1" ]; then
   AH_FLAGS=(--asset-harvester-replace)
 fi
-export NUREC_GRPC_ASSET_REPLACE_MAX=${AH_REPLACE_MAX:-12}
+export NUREC_GRPC_ASSET_REPLACE_MAX=${AH_REPLACE_MAX:-10}
 [ ${#AH_FLAGS[@]} -gt 0 ] && \
-  say "harvested-actor replacement ON (max ${NUREC_GRPC_ASSET_REPLACE_MAX} actors)"
+  say "harvested-actor replacement ON (max ${NUREC_GRPC_ASSET_REPLACE_MAX} resident copies)"
 
 # VIS=1 writes per-frame BEV + front-camera images under <out>/frames/NNNNN/.
 # Off by default: it is ~40% more wall-clock per cell and the scored numbers do

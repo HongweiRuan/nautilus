@@ -1,106 +1,111 @@
-[2026-09-01 20:20:07] === chain start ===
-[2026-09-01 20:20:07] submitting ncore ...
+[2026-09-01 22:57:21] === chain start ===
+[2026-09-01 22:57:21] submitting ncore ...
+[ncore] reading the corpus through running pod horuan-nexussim (/avl-west)
 [ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
 [ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
-   sh000-0901202007: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
-   sh001-0901202007: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
-   sh002-0901202007: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
-   sh003-0901202007: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
-   sh004-0901202007: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
-   sh005-0901202007: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
-   sh006-0901202007: 1 scenario(s), 4 unit(s)  e9567d54464052f7
-Error from server: error when creating "rendered/ncore/sh000-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh001-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh002-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh003-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh004-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh005-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh006-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
-         re-run this script once the rejection clears; it is idempotent.
-[2026-09-01 20:20:22] ncore refused by the Nautilus utilization policy — retrying in 300s
-[2026-09-01 20:25:22] submitting ncore ...
-[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
-[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
-   sh000-0901202522: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
-   sh001-0901202522: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
-   sh002-0901202522: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
-   sh003-0901202522: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
-   sh004-0901202522: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
-   sh005-0901202522: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
-   sh006-0901202522: 1 scenario(s), 4 unit(s)  e9567d54464052f7
-Error from server: error when creating "rendered/ncore/sh000-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh001-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh002-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh003-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh004-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh005-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh006-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
-         re-run this script once the rejection clears; it is idempotent.
-[2026-09-01 20:25:39] ncore refused by the Nautilus utilization policy — retrying in 300s
-[2026-09-01 20:30:39] submitting ncore ...
-[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
-[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
-   sh000-0901203039: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
-   sh001-0901203039: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
-   sh002-0901203039: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
-   sh003-0901203039: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
-   sh004-0901203039: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
-   sh005-0901203039: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
-   sh006-0901203039: 1 scenario(s), 4 unit(s)  e9567d54464052f7
-Error from server: error when creating "rendered/ncore/sh000-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh001-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh002-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh003-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh004-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh005-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh006-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
-         re-run this script once the rejection clears; it is idempotent.
-[2026-09-01 20:30:56] ncore refused by the Nautilus utilization policy — retrying in 300s
-[2026-09-01 20:35:56] submitting ncore ...
-[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
-[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
-   sh000-0901203556: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
-   sh001-0901203556: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
-   sh002-0901203556: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
-   sh003-0901203556: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
-   sh004-0901203556: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
-   sh005-0901203556: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
-   sh006-0901203556: 1 scenario(s), 4 unit(s)  e9567d54464052f7
-Error from server: error when creating "rendered/ncore/sh000-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh001-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh002-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh003-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh004-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh005-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh006-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
-         re-run this script once the rejection clears; it is idempotent.
-[2026-09-01 20:36:13] ncore refused by the Nautilus utilization policy — retrying in 300s
-[2026-09-01 20:41:13] submitting ncore ...
-[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
-[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
-   sh000-0901204113: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
-   sh001-0901204113: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
-   sh002-0901204113: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
-   sh003-0901204113: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
-   sh004-0901204113: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
-   sh005-0901204113: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
-   sh006-0901204113: 1 scenario(s), 4 unit(s)  e9567d54464052f7
-Error from server: error when creating "rendered/ncore/sh000-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh001-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh002-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh003-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh004-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh005-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-Error from server: error when creating "rendered/ncore/sh006-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
-[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
-         re-run this script once the rejection clears; it is idempotent.
-[2026-09-01 20:41:29] ncore refused by the Nautilus utilization policy — retrying in 300s
-[2026-09-01 20:46:29] submitting ncore ...
-!! cannot read CephFS through pod 'horuan-nexussim' — gap-check impossible, refusing to submit.
-   error: cannot exec into a container in a completed pod; current phase is Failed
-   fix: kubectl get pod -n cogrob horuan-nexussim    (recreate it, or pass POD=<another pod>)
-[2026-09-01 20:46:31] ncore FAILED for a reason that is not the utilization policy — see chain.log
+   sh000-0901225721: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901225721: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901225721: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901225721: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901225721: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901225721: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901225721: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh000-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh001-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh002-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh003-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh004-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh005-0901225721 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> cpu limit/request ratio <1.3333333333333333> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <ncore> memory limit <32Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-ncore-sh006-0901225721 created
+[ncore] submitted 7 job(s). watch: kubectl get pods -n cogrob -l app=illegal_turn_recon,stage=ncore
+[2026-09-01 22:57:40] ncore submitted (or already complete)
+[2026-09-01 22:57:40] submitting arrow ...
+[arrow] reading the corpus through running pod horuan-nexussim (/avl-west)
+[arrow] scenarios=13 units=13 done=401 inflight=0 missing=13
+[arrow] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901225740: 2 scenario(s), 2 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901225740: 2 scenario(s), 2 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901225740: 2 scenario(s), 2 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901225740: 2 scenario(s), 2 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901225740: 2 scenario(s), 2 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901225740: 2 scenario(s), 2 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901225740: 1 scenario(s), 1 unit(s)  e9567d54464052f7
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh000-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh001-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh002-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh003-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh004-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh005-0901225740 created
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> cpu limit/request ratio <1.25> exceeds maximum allowed ratio <1.2>
+Warning: [container-must-meet-memory-and-cpu-ratio] container <arrow> memory limit <48Gi> is higher than the maximum allowed ratio of <1.2>
+job.batch/itr-arrow-sh006-0901225740 created
+[arrow] submitted 7 job(s). watch: kubectl get pods -n cogrob -l app=illegal_turn_recon,stage=arrow
+[2026-09-01 22:57:58] arrow submitted (or already complete)
+[2026-09-01 22:57:59] ncore: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:02:58] ncore: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:07:59] ncore: 1 job(s) still active — checking again in 300s
+[2026-09-01 23:13:01] ncore drained
+[2026-09-01 23:13:01] submitting aux ...
+[aux] reading the corpus through running pod horuan-nexussim (/avl-west)
+[aux] scenarios=13 units=52 done=1628 inflight=0 missing=52
+[aux] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901231301: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901231301: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901231301: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901231301: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901231301: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901231301: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901231301: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+job.batch/itr-aux-sh000-0901231301 created
+job.batch/itr-aux-sh001-0901231301 created
+job.batch/itr-aux-sh002-0901231301 created
+job.batch/itr-aux-sh003-0901231301 created
+job.batch/itr-aux-sh004-0901231301 created
+job.batch/itr-aux-sh005-0901231301 created
+job.batch/itr-aux-sh006-0901231301 created
+[aux] submitted 7 job(s). watch: kubectl get pods -n cogrob -l app=illegal_turn_recon,stage=aux
+[2026-09-01 23:13:20] aux submitted (or already complete)
+[2026-09-01 23:13:21] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:18:23] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:23:24] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:28:25] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:33:27] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:38:28] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:43:30] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:48:31] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:53:32] aux: 7 job(s) still active — checking again in 300s
+[2026-09-01 23:58:34] aux: 6 job(s) still active — checking again in 300s
+[2026-09-02 00:03:34] aux drained
+[2026-09-02 00:03:34] submitting train ...
+[train] no pod mounts avl-west-vol — starting throwaway pod itr-gapcheck-0902000334-train
+!! could not create the gap-check pod:
+error: error validating "/var/folders/8z/lrv5q0w91kx919rfcvq5cj6m0000gn/T/tmp.YKlIzdD6nU": error validating data: failed to download openapi: Get "https://67.58.53.148:443/openapi/v2?timeout=32s": dial tcp 67.58.53.148:443: connect: network is unreachable; if you choose to ignore these errors, turn validation off with --validate=false
+!! cannot read the corpus on avl-west-vol — gap-check impossible, refusing to submit.
+   tried: ${POD:-<none set>}, any Running pod mounting avl-west-vol, a throwaway pod.
+[2026-09-02 00:03:34] train FAILED for a reason that is not the utilization policy — see chain.log

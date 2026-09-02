@@ -36,8 +36,19 @@ submit() {
       rm -f "$try"; return 0
     fi
     cat "$try" >> "$LOG"
-    if grep -q "utilization is too low" "$try" && [ "$(date +%s)" -lt "$deadline" ]; then
-      say "$stage refused by the Nautilus utilization policy — retrying in ${POLL}s"
+    # Two kinds of "not now, try later". The utilization policy is the expected one.
+    # The other is the laptop losing the network mid-chain: on 2026-09-02 aux drained
+    # at 00:03 and the train submit died on "network is unreachable", so train never
+    # went in and the chain exited — 36 h of GPU work simply did not start. A dropped
+    # link is not a reason to abandon the pipeline.
+    if [ "$(date +%s)" -lt "$deadline" ] && grep -qE \
+         "utilization is too low|network is unreachable|connection refused|no route to host|i/o timeout|TLS handshake timeout|Unable to connect to the server|unexpected EOF|dial tcp" \
+         "$try"; then
+      if grep -q "utilization is too low" "$try"; then
+        say "$stage refused by the Nautilus utilization policy — retrying in ${POLL}s"
+      else
+        say "$stage: cluster unreachable — retrying in ${POLL}s"
+      fi
       sleep "$POLL"
       continue
     fi
@@ -48,12 +59,18 @@ submit() {
 
 # Block until no job of this stage still has a live pod.
 drain() {
-  local stage=$1
+  local stage=$1 raw n
   while :; do
-    local n
-    n=$(kubectl get jobs -n "$NS" -l "app=$APP,stage=$stage" \
-          -o jsonpath='{range .items[*]}{.status.active}{"\n"}{end}' 2>/dev/null \
-        | grep -c '[1-9]')
+    # Ask, and only then decide. Piping kubectl straight into grep -c swallowed its
+    # exit status, so a network blip produced an empty list -> n=0 -> "drained" ->
+    # the NEXT stage got submitted while this one was still running. Prerequisites
+    # would have been half-built and the shard would skip clips as NOTREADY.
+    if ! raw=$(kubectl get jobs -n "$NS" -l "app=$APP,stage=$stage" \
+                 -o jsonpath='{range .items[*]}{.status.active}{"\n"}{end}' 2>&1); then
+      say "$stage: cannot reach the cluster — NOT assuming drained, retrying in ${POLL}s"
+      sleep "$POLL"; continue
+    fi
+    n=$(printf '%s\n' "$raw" | grep -c '[1-9]')
     [ "${n:-0}" -eq 0 ] && { say "$stage drained"; return 0; }
     say "$stage: $n job(s) still active — checking again in ${POLL}s"
     sleep "$POLL"

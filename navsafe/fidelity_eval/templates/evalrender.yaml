@@ -5,28 +5,39 @@
 # fills a 3090 on its own, leaving nothing for the policy. That is
 # run_worker_current.sh's finding, reused here unchanged.
 #
-# Pinned to ONE node per job (__NODE__) because ry-gpu-07/08/11/12 each have
-# exactly two free GPUs while navsafe-final18 holds the rest; letting the
-# scheduler choose would stack two shards on one node and strand another.
+# Scheduled on the PUBLIC pool: no hostname pin and no cogrob reservation
+# toleration, so a shard runs wherever capacity turns up. The only node
+# constraint left is GPU model, and it is not a preference: serve-grpc with the
+# harmonizer plus the eval process needs a 24 GB card, and a smaller one fails
+# with RESOURCE_EXHAUSTED partway through a pass rather than at start-up.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: __NAME__
 spec:
-  backoffLimit: 2
+  backoffLimit: 4
   ttlSecondsAfterFinished: 604800
   template:
     spec:
       restartPolicy: Never
-      tolerations:
-        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
-        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - {key: kubernetes.io/hostname, operator: In, values: ["__NODE__"]}
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-GeForce-RTX-3090
+                      - NVIDIA-GeForce-RTX-4090
+                      - NVIDIA-TITAN-RTX
+                      - NVIDIA-RTX-A5000
+                      - NVIDIA-RTX-A6000
+                      - NVIDIA-A10
+                      - NVIDIA-A40
+                      - NVIDIA-L40
+                      - NVIDIA-L40S
+                      - Quadro-RTX-8000
       containers:
         - name: worker
           image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90

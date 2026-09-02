@@ -83,6 +83,10 @@ if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/
   uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops >/dev/null
 fi
 PY=/root/nexussim-venv/bin/python
+# Announced before it runs: `import isaaclab` is the slowest thing in the
+# bootstrap, and a pod killed inside it leaves a log that simply stops,
+# with no line saying which step it stopped on.
+say "checking the venv (import nexussim, isaaclab)"
 "$PY" -c "import nexussim, isaaclab" || { say "venv unusable"; exit 1; }
 
 # Warm Kit shader cache: without it every eval spends ~7.7 min inside
@@ -120,11 +124,17 @@ mkdir -p "$HARMONIZER_CACHE"
 
 SERVE_PID=""
 start_serve() {                      # $1 = on|off
-  local harm=()
-  [ "$1" = on ] && harm=(--enable-harmonizer --harmonizer-cache "$HARMONIZER_CACHE")
-  say "serve-grpc starting on GPU 0 (harmonizer=$1)"
+  # --cache-size 1 with the harmonizer, 4 without. The harmonizer's weights sit
+  # on the same GPU as the scene cache, and four resident scenes alongside them
+  # take serve-grpc to ~18 GiB of a 3090's 23.5 -- a render then dies with
+  # RESOURCE_EXHAUSTED partway through the pass, not at start-up.
+  local harm=() cache=4
+  if [ "$1" = on ]; then
+    harm=(--enable-harmonizer --harmonizer-cache "$HARMONIZER_CACHE"); cache=1
+  fi
+  say "serve-grpc starting on GPU 0 (harmonizer=$1, cache-size=$cache)"
   CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \
-    --enable-editing-actors --renderer default --cache-size 4 \
+    --enable-editing-actors --renderer default --cache-size $cache \
     "${harm[@]}" --artifact-glob "$SHARD/*.usdz" > /tmp/serve.$1.log 2>&1 &
   SERVE_PID=$!
   # The scene list is CHECKED, never assumed: a renderer asked for a scene it
@@ -170,6 +180,12 @@ gpu_is_gone() { grep -qE "cudaErrorInitializationError|CUDA driver initializatio
 run_pass() {                          # $1 = on|off
   local tag=$1 out=$OUTROOT/h$1
   mkdir -p "$out"
+  # A resumed shard whose pass is already complete should not pay two minutes
+  # of scene enumeration to then skip every cell.
+  local todo=0
+  for T in "${MY[@]}"; do [ -f "$out/$T/.done" ] || todo=$((todo+1)); done
+  if [ "$todo" -eq 0 ]; then say "pass $tag already complete (${#MY[@]} cells)"; return 0; fi
+  say "pass $tag: $todo of ${#MY[@]} cells to do"
   start_serve "$tag" || exit 1
   local n=0 ok=0 skip=0 fail=0
   for T in "${MY[@]}"; do
