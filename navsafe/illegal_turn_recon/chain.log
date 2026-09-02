@@ -1,0 +1,106 @@
+[2026-09-01 20:20:07] === chain start ===
+[2026-09-01 20:20:07] submitting ncore ...
+[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
+[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901202007: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901202007: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901202007: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901202007: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901202007: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901202007: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901202007: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Error from server: error when creating "rendered/ncore/sh000-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh001-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh002-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh003-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh004-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh005-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh006-0901202007.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
+         re-run this script once the rejection clears; it is idempotent.
+[2026-09-01 20:20:22] ncore refused by the Nautilus utilization policy — retrying in 300s
+[2026-09-01 20:25:22] submitting ncore ...
+[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
+[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901202522: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901202522: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901202522: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901202522: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901202522: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901202522: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901202522: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Error from server: error when creating "rendered/ncore/sh000-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh001-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh002-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh003-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh004-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh005-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh006-0901202522.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
+         re-run this script once the rejection clears; it is idempotent.
+[2026-09-01 20:25:39] ncore refused by the Nautilus utilization policy — retrying in 300s
+[2026-09-01 20:30:39] submitting ncore ...
+[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
+[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901203039: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901203039: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901203039: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901203039: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901203039: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901203039: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901203039: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Error from server: error when creating "rendered/ncore/sh000-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh001-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh002-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh003-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh004-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh005-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh006-0901203039.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
+         re-run this script once the rejection clears; it is idempotent.
+[2026-09-01 20:30:56] ncore refused by the Nautilus utilization policy — retrying in 300s
+[2026-09-01 20:35:56] submitting ncore ...
+[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
+[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901203556: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901203556: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901203556: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901203556: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901203556: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901203556: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901203556: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Error from server: error when creating "rendered/ncore/sh000-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh001-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh002-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh003-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh004-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh005-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh006-0901203556.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
+         re-run this script once the rejection clears; it is idempotent.
+[2026-09-01 20:36:13] ncore refused by the Nautilus utilization policy — retrying in 300s
+[2026-09-01 20:41:13] submitting ncore ...
+[ncore] scenarios=13 units=52 done=1660 inflight=0 missing=52
+[ncore] 13 scenario(s) -> 7 job(s) x <= 2 scenario(s)
+   sh000-0901204113: 2 scenario(s), 8 unit(s)  0980dd9cdc0e543a 14c0a657ac3e5bb7
+   sh001-0901204113: 2 scenario(s), 8 unit(s)  19fbcfd8a27a5324 31d01134ae865a73
+   sh002-0901204113: 2 scenario(s), 8 unit(s)  61b3149306a3501a 67eb77e9004a503f
+   sh003-0901204113: 2 scenario(s), 8 unit(s)  7c00774138ae5805 8decf23c348f5b65
+   sh004-0901204113: 2 scenario(s), 8 unit(s)  b66f23071e675170 c8600743d9e050a9
+   sh005-0901204113: 2 scenario(s), 8 unit(s)  d8353beff3415135 e1526251bd0a53ee
+   sh006-0901204113: 1 scenario(s), 4 unit(s)  e9567d54464052f7
+Error from server: error when creating "rendered/ncore/sh000-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh001-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh002-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh003-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh004-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh005-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+Error from server: error when creating "rendered/ncore/sh006-0901204113.yaml": admission webhook "job.nrp-nautilus.io" denied the request: Your pods resources utilization is too low for account http://cilogon.org/serverE/users/439386. See your stats at https://nrp.ai/userinfo/ for details.
+[ncore] 0 applied, 7 REJECTED — nothing to watch for the rejected ones.
+         re-run this script once the rejection clears; it is idempotent.
+[2026-09-01 20:41:29] ncore refused by the Nautilus utilization policy — retrying in 300s
+[2026-09-01 20:46:29] submitting ncore ...
+!! cannot read CephFS through pod 'horuan-nexussim' — gap-check impossible, refusing to submit.
+   error: cannot exec into a container in a completed pod; current phase is Failed
+   fix: kubectl get pod -n cogrob horuan-nexussim    (recreate it, or pass POD=<another pod>)
+[2026-09-01 20:46:31] ncore FAILED for a reason that is not the utilization policy — see chain.log

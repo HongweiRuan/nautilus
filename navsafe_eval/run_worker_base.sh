@@ -116,7 +116,7 @@ apt-get update -qq && apt-get install -y -qq git curl python3-venv python3-dev \
   libice6 libgomp1 >/dev/null || { say "apt FAILED"; exit 1; }
 
 export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
-export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv
+export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
 for i in 1 2 3 4; do
   command -v uv >/dev/null && break
   python -m pip install --quiet --user uv 2>/dev/null \
@@ -136,26 +136,55 @@ git -C "$REPO" checkout --quiet "$NEXUSSIM_SHA" || { say "checkout $NEXUSSIM_SHA
 say "code at $(git -C "$REPO" log --oneline -1)"
 
 cd "$REPO"
-if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
   say "uv sync (IsaacSim 6.0 + cu128 torch, ~15 min)"
   uv sync --all-extras --python 3.12 || { say "uv sync FAILED"; exit 1; }
   [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta \
     https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
   for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
     d=/root/IsaacLab/source/$ext
-    [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d" >/dev/null
+    [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d" >/dev/null
   done
-  uv pip install --python /root/ns-venv/bin/python lazy_loader einops >/dev/null
+  uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops >/dev/null
   # SparseDriveV2 JIT-builds a CUDA extension (deformable attention) at its first
   # forward pass, and torch.utils.cpp_extension refuses to without ninja:
   # "Ninja is required to load C++ extensions". The NRE image ships nvcc 12.8 and
   # g++ but not ninja, so the cell died at frame 0 with an infra_failure that
   # reads like a broken adapter. Compiled once per pod into
   # /root/.cache/torch_extensions.
-  uv pip install --python /root/ns-venv/bin/python ninja >/dev/null
+  uv pip install --python /root/nexussim-venv/bin/python ninja >/dev/null
 fi
-PY=/root/ns-venv/bin/python
+PY=/root/nexussim-venv/bin/python
 "$PY" -c "import nexussim, isaaclab" || { say "venv unusable"; exit 1; }
+
+# ── warm Omniverse Kit shader/material cache ─────────────────────────────────
+# Without this every worker spends ~7.7 min inside AppLauncher, on an EMPTY
+# stage, while Kit compiles materials (omni.ujitso) and ray-tracing pipelines
+# (RtPso) into caches that die with the pod. Measured 2026-08-31 on an
+# otherwise identical pair of jobs: AppLauncher returned after 467 s cold and
+# 10.5 s restored, with byte-identical metrics. Ten workers per wave, so this
+# is ~77 GPU-minutes a wave.
+#
+# The compile finishes before the scenario is read, so ONE cache serves every
+# token. The tar is keyed on driver version (the OptiX and Vulkan pipeline
+# caches are) and its members are venv-agnostic: `kit/` unpacks into whichever
+# isaacsim package $PY has. A miss only costs the old boot time, so nothing
+# here aborts. To refresh after an IsaacSim or driver upgrade, run one eval to
+# completion and repack from that pod:
+#   KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))")
+#   tar -cf /avl-west/navsafe_dev/kitcache/kitcache-3090-$DRV.tar -C "$KITPKG" kit \
+#       -C / var/tmp/OptixCache_root root/.cache/ov root/.cache/warp root/.nv
+KITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | tr -d ' ').tar
+if [ -f "$KITCACHE" ]; then
+  KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))" 2>/dev/null)
+  if [ -n "$KITPKG" ] && tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
+    say "Kit shader cache restored into $KITPKG"
+  else
+    say "Kit cache restore failed; IsaacSim will recompile (~8 min)"
+  fi
+else
+  say "no Kit cache for this driver; IsaacSim will recompile (~8 min)"
+fi
 # `uv sync` rewrites uv.lock in place — it normalises the environment markers for
 # this platform, same package versions — and every eval then records itself as
 # "launched from a DIRTY tree ... this run corresponds to no commit". Restoring
@@ -166,11 +195,11 @@ git -C "$REPO" checkout -- uv.lock 2>/dev/null || true
 # The venv's bin/ has to be on PATH, not just its interpreter. torch checks for
 # ninja by SHELLING OUT (`subprocess.run(["ninja", "--version"])` in
 # verify_ninja_availability), so installing ninja into the venv while invoking
-# only /root/ns-venv/bin/python leaves it invisible and SparseDriveV2 still dies
+# only /root/nexussim-venv/bin/python leaves it invisible and SparseDriveV2 still dies
 # at frame 0 with "Ninja is required to load C++ extensions". Checked here
 # rather than trusted: the install is quiet, and its failure would otherwise
 # surface 30 pods later as one adapter that never scores anything.
-export PATH=/root/ns-venv/bin:$PATH
+export PATH=/root/nexussim-venv/bin:$PATH
 command -v ninja >/dev/null || { say "ninja not on PATH — sparsedrivev2 cannot JIT its CUDA extension"; exit 1; }
 # The exact path torch will pass as -isystem, asked of the interpreter that will
 # do the building rather than assumed from the apt package name.
@@ -239,7 +268,12 @@ start_serve || exit 1
 
 # ── 3. the sweep ─────────────────────────────────────────────────────────────
 export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=$PORT
-export NUREC_GRPC_CAM_RIG=navsim NUREC_GRPC_TIMEOUT_S=600
+# recon, not navsim: the reconstruction's own training camera, which is
+# what nurec_grpc.py already defaults to. The navsim rig rebuilds a
+# zero-distortion pinhole from seven scalars (utils/camera_utils.py at
+# 1920x1120) and renders rays the recon was never fit on. Set
+# NUREC_GRPC_CAM_RIG=navsim to get the old behaviour back.
+export NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600
 export PY123D_RECENTER=1
 export NUPLAN_MAP_VERSION=nuplan-maps-v1.0
 export NEXUSSIM_NO_CAM_MAP_LINES=1

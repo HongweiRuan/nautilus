@@ -43,7 +43,14 @@ SIDES = {
     # costs the eval its detail (10.9). These two rows are that ablation.
     "grpc_off":   ("/avl-west/fidelity_eval/grpc/hoff", (1920, 1080)),
     "grpc_on":    ("/avl-west/fidelity_eval/grpc/hon",  (1920, 1080)),
+    # What the EVAL renders, which is not what either of the four above do.
+    # `nre render` and `render-grpc` both walk the reconstruction's training
+    # trajectory; the eval walks its own pose chain, so a number measured on
+    # the other paths does not describe it.
+    "eval_off":   ("/avl-west/fidelity_eval/evalrender/hoff", (1920, 1080)),
+    "eval_on":    ("/avl-west/fidelity_eval/evalrender/hon",  (1920, 1080)),
 }
+CORPUS = Path("/avl-west/navsafe_5s_500")
 # Where the offline render lives; used only to translate the gRPC path's
 # contiguous frame index back into the timestamp the manifest keys on.
 OFFLINE_ROOT = RQE / "render_raw/nurec_native"
@@ -70,6 +77,32 @@ def _grpc_index_to_ts(sid):
     return table
 
 
+def _eval_ts_to_index(root, sid):
+    """{ts: step} for one scenario, read off what the eval RECORDED.
+
+    Frame index is not a key into the log: under a handoff the eval derives
+    each frame's timestamp from the ego's POSITION, so which moment frame k
+    shows is a property of the run, not of k. `nurec_grpc` writes
+    NUREC_GRPC_TS_LOG per frame precisely so this does not have to be
+    inferred.
+
+    No file means the run predates it, and the scenario is skipped rather than
+    paired by index -- a wrong pairing does not show up in the FID number.
+    """
+    p = Path(root) / sid / "render_timestamps.tsv"
+    if not p.exists():
+        return {}
+    out = {}
+    for line in p.read_text().splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2:
+            try:
+                out.setdefault(int(parts[1]), int(parts[0]))
+            except ValueError:
+                continue
+    return out
+
+
 def resolve(side, man):
     """manifest frame -> the file that side actually wrote, keyed by data_path.
 
@@ -84,6 +117,28 @@ def resolve(side, man):
     spec = SIDES[side][0]
     root = Path(spec) if str(spec).startswith("/") else RQE / spec
     out = {}
+    if side.startswith("eval_"):
+        # <root>/<sid>/frames/<step>/cam_f0.jpg, step being the Arrow row the
+        # eval rendered. Scoped per scenario for the same reason the gRPC
+        # branch is: 47 timestamps in this manifest are claimed by more than
+        # one scenario, and a global table would hand one another's frames.
+        missing = 0
+        for sc in man:
+            where = _eval_ts_to_index(root, sc["sid"])
+            if not where:
+                missing += 1
+                continue
+            for f in sc["frames"]:
+                i = where.get(f["ts"])
+                if i is None:
+                    continue
+                p = root / sc["sid"] / "frames" / f"{i:05d}" / "cam_f0.jpg"
+                if p.exists():
+                    out[f["data_path"]] = p
+        if missing:
+            print(f"  {side}: {missing} scenario(s) had no render_timestamps.tsv "
+                  f"and were skipped (rerun them; do not pair by frame index)")
+        return out
     if side.startswith("grpc_"):
         # Scoped PER SCENARIO on purpose. 47 timestamps in this manifest are
         # claimed by more than one scenario (overlapping windows), so a global
@@ -132,7 +187,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sides", nargs="*", default=["nurec", "drivearena"])
     ap.add_argument("--fid-only", action="store_true")
+    # Everything this writes is named after the tag. It used to be the literal
+    # "cmp" everywhere, so a second run silently overwrote the first: the 8.58
+    # FVD of the 2026-08-28 nurec/drivearena run was lost that way and survives
+    # only in RESULTS.md. A run on a different frame set is a different
+    # measurement and gets a different name.
+    ap.add_argument("--tag", default="cmp")
     a = ap.parse_args()
+    TAG = a.tag
 
     man = json.load(open(RQE / "manifest.json"))["scenarios"]
     n_man = sum(len(s["frames"]) for s in man)
@@ -148,7 +210,7 @@ def main():
 
     # symlink farms, pruned of anything outside the current intersection
     for k in a.sides:
-        out = RENDER / f"{k}_cmp_navtest_frame"
+        out = RENDER / f"{k}_{TAG}_navtest_frame"
         for root, _, files in os.walk(out):
             for f in files:
                 p = Path(root) / f
@@ -169,7 +231,7 @@ def main():
         s["frames"] = [f for f in s["frames"] if f["data_path"] in common]
         s["n_frames"] = len(s["frames"])
         s["n_navtest"] = sum(f["is_navtest"] for f in s["frames"])
-    cm = RQE / "manifest_common.json"
+    cm = RQE / f"manifest_{TAG}.json"
     # key is "scenes": compute_fvd_navsim.py's load_manifest reads that, not the
     # "scenarios" the pinned manifest uses
     json.dump({"scenes": man}, open(cm, "w"))
@@ -207,22 +269,22 @@ def main():
                        if f["is_navtest"] and f["data_path"] in common})
         sf = dict(base, tokens=toks)
         yaml.safe_dump({"data_split": "test",
-                        "world_model_input_path": str(RENDER / f"{k}_cmp_navtest_frame"),
+                        "world_model_input_path": str(RENDER / f"{k}_{TAG}_navtest_frame"),
                         "scene_filter": sf},
-                       open(SPLITS / f"{k}_cmp.yaml", "w"), sort_keys=False)
-        print(f"  {k}_cmp.yaml: {len(toks)} navtest token(s) for FDpi^k")
+                       open(SPLITS / f"{k}_{TAG}.yaml", "w"), sort_keys=False)
+        print(f"  {k}_{TAG}.yaml: {len(toks)} navtest token(s) for FDpi^k")
 
     env = dict(os.environ, PYTHONPATH="")
     for k in a.sides:
         w, h = SIDES[k][1]
-        cache = UE / "dataset/render_fid_cache/gt_navtest_matched" / f"{k}_cmp_{w}x{h}"
+        cache = UE / "dataset/render_fid_cache/gt_navtest_matched" / f"{k}_{TAG}_{w}x{h}"
         marker = cache / ".token_set"
         if cache.exists() and (not marker.exists() or marker.read_text().strip() != stamp):
             print(f"  gt cache {cache.name}: built for a different frame set, rebuilding")
             shutil.rmtree(cache)
         subprocess.run([sys.executable, "scripts/compute_image_fid_navsim.py",
-                        "--gen-dir", f"dataset/render/{k}_cmp_navtest_frame",
-                        "--target-wh", str(w), str(h), "--tag", f"{k}_cmp",
+                        "--gen-dir", f"dataset/render/{k}_{TAG}_navtest_frame",
+                        "--target-wh", str(w), str(h), "--tag", f"{k}_{TAG}",
                         "--navsim-test-root", str(UE / "dataset/navsim/sensor_blobs/test"),
                         "--gt-cache-root", "dataset/render_fid_cache/gt_navtest_matched"],
                        cwd=UE, env=env, check=True)
@@ -230,9 +292,9 @@ def main():
         marker.write_text(stamp)
     if not a.fid_only:
         subprocess.run([sys.executable, "scripts/compute_fvd_navsim.py",
-                        "--variations", ",".join(f"{k}_cmp_navtest_frame" for k in a.sides),
+                        "--variations", ",".join(f"{k}_{TAG}_navtest_frame" for k in a.sides),
                         "--manifest", str(cm),
-                        "--out", str(RENDER / "fvd_cmp.json")], cwd=UE, env=env, check=True)
+                        "--out", str(RENDER / f"fvd_{TAG}.json")], cwd=UE, env=env, check=True)
 
 
 if __name__ == "__main__":

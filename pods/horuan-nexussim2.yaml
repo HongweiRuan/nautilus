@@ -23,8 +23,10 @@ spec:
           # (pinned in uv.lock). IsaacLab 3.0 is source-installed separately
           # (it is NOT in uv.lock). This replaces the old conda/isaacsim-5.1
           # flow. The venv lives on ephemeral /root, so it rebuilds on pod
-          # (re)start (~15 min). Verified working: torch 2.10.0+cu128 (cuda
-          # True), numpy 2.3.1, isaaclab 4.5.22, isaacsim 6.0.0.
+          # (re)start. Measured 2026-08-31 from an empty uv cache: 92 s for the
+          # sync, 114 s for the whole block below. Verified working: torch
+          # 2.10.0+cu128 (cuda True), numpy 2.3.1, isaaclab 4.5.22,
+          # isaacsim 6.0.0.
 
           export PATH=$HOME/.local/bin:$PATH
           export UV_CACHE_DIR=/root/.cache/uv
@@ -96,6 +98,40 @@ spec:
           # else
           #   echo "=== Arrow-conversion venv already usable; skipping ==="
           # fi
+
+          # ── warm Omniverse Kit shader/material cache ─────────────────
+          # The ten minutes an eval used to spend before evaluating anything
+          # were NOT this venv — they were Kit compiling materials
+          # (omni.ujitso) and ray-tracing pipelines (RtPso) inside AppLauncher,
+          # on an EMPTY stage, writing the results to caches that die with the
+          # pod. Measured 2026-08-31: AppLauncher returned after 467 s cold,
+          # 10.5 s with these restored. The compile finishes before the
+          # scenario is read, so one cache serves every scenario.
+          #
+          # The tar is keyed on driver version (OptiX and Vulkan pipeline
+          # caches are), and its members are venv-agnostic: `kit/` unpacks
+          # into whichever isaacsim package this venv has, `var/` and `root/`
+          # into /. A miss is not a failure — Kit just recompiles — so nothing
+          # here aborts. To refresh after an IsaacSim upgrade, a driver
+          # change or a new GPU model, run one eval to completion in a pod and
+          # repack from that pod:
+          #   KITPKG=$(/root/nexussim-venv/bin/python -c \
+          #     "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))")
+          #   DRV=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | tr -d ' ')
+          #   tar -cf /avl-west/navsafe_dev/kitcache/kitcache-3090-$DRV.tar \
+          #       -C "$KITPKG" kit \
+          #       -C / var/tmp/OptixCache_root root/.cache/ov root/.cache/warp root/.nv
+          KITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | tr -d ' ').tar
+          if [ -f "$KITCACHE" ]; then
+            KITPKG=$(/root/nexussim-venv/bin/python -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))" 2>/dev/null)
+            if [ -n "$KITPKG" ] && tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
+              echo "=== Restored the Kit shader/material cache into $KITPKG ==="
+            else
+              echo "=== Kit cache restore failed; the first IsaacSim boot will recompile (~8 min) ==="
+            fi
+          else
+            echo "=== No Kit cache for this driver; the first IsaacSim boot will recompile (~8 min) ==="
+          fi
 
           echo "=== NexusSim env smoke check ==="
           /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"

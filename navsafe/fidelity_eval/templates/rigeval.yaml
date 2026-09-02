@@ -56,7 +56,7 @@ spec:
                 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 \
                 libice6 libgomp1 >/dev/null || { echo "apt FAILED"; exit 1; }
               export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
-              export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv
+              export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
               for i in 1 2 3 4; do
                 command -v uv >/dev/null && break
                 python -m pip install --quiet --user uv 2>/dev/null \
@@ -70,19 +70,49 @@ spec:
               git clone --quiet --no-hardlinks /hugsim-storage/NexusSim "$REPO" || { echo "clone FAILED"; exit 1; }
               echo "[rigeval] code at $(git -C "$REPO" log --oneline -1)"
               cd "$REPO"
-              if ! /root/ns-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+              if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
                 echo "[rigeval] uv sync (~15 min)"
                 uv sync --all-extras --python 3.12 || { echo "uv sync FAILED"; exit 1; }
                 [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta \
                   https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
                 for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
                   d=/root/IsaacLab/source/$ext
-                  [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d" >/dev/null
+                  [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d" >/dev/null
                 done
-                uv pip install --python /root/ns-venv/bin/python lazy_loader einops ninja >/dev/null
+                uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops ninja >/dev/null
               fi
-              PY=/root/ns-venv/bin/python
+              PY=/root/nexussim-venv/bin/python
               "$PY" -c "import nexussim, isaaclab" || { echo "venv unusable"; exit 1; }
+
+              # ── warm Omniverse Kit shader/material cache ────────────────
+              # Without this the eval spends ~7.7 min inside AppLauncher with
+              # an EMPTY stage, while Kit compiles materials (omni.ujitso) and
+              # ray-tracing pipelines (RtPso) into caches that die with the
+              # pod: 467 s cold vs 10.5 s restored, measured 2026-08-31. The
+              # compile finishes before the scenario is read, so one cache
+              # serves every token. The tar is keyed on driver version and its
+              # members are venv-agnostic (`kit/` goes into whichever isaacsim
+              # package $PY has), which is why it works here on /root/nexussim-venv
+              # and in the dev pod on /root/nexussim-venv. A miss only costs
+              # the old boot time, so nothing here aborts. To refresh the tar
+              # after an IsaacSim or driver upgrade, run one eval to completion
+              # and repack from that pod:
+              #   KITPKG=$("$PY" -c \
+              #     "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))")
+              #   tar -cf /avl-west/navsafe_dev/kitcache/kitcache-3090-$DRV.tar \
+              #       -C "$KITPKG" kit \
+              #       -C / var/tmp/OptixCache_root root/.cache/ov root/.cache/warp root/.nv
+              KITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | tr -d ' ').tar
+              if [ -f "$KITCACHE" ]; then
+                KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))" 2>/dev/null)
+                if [ -n "$KITPKG" ] && tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
+                  echo "[rigeval] Kit shader cache restored into $KITPKG"
+                else
+                  echo "[rigeval] Kit cache restore failed; IsaacSim will recompile (~8 min)"
+                fi
+              else
+                echo "[rigeval] no Kit cache for this driver; IsaacSim will recompile (~8 min)"
+              fi
 
               # ── renderer on GPU 0 ────────────────────────────────────────
               HARM_ARGS="--no-enable-harmonizer"

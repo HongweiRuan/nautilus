@@ -39,7 +39,7 @@ spec:
           /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default \
               --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache \
               --cache-size 4 \
-              --artifact-glob '/avl-west/navsafe_5s_500/13805e7752fe5685s*/output_5cam/*/artifacts/last.usdz'
+              --artifact-glob '/avl-west/navsafe_5s_500/f6ee61f4305d5564s*/output_5cam/*/artifacts/last.usdz'
       ports: [{ containerPort: 8080 }]
       env:
         - {

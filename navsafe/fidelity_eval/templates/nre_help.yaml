@@ -17,8 +17,7 @@ spec:
           command: ["/opt/nvidia/nvidia_entrypoint.sh","bash","-c"]
           args:
             - |
-              echo "===== RENDER-GRPC ====="; /app/run render-grpc --help 2>&1 | grep -v readobject | head -70
-              echo "===== SERVE-GRPC ====="; /app/run serve-grpc --help 2>&1 | grep -v readobject | grep -iE "harmon|renderer|artifact|cache" | head -20
+              echo "===== EXPORT-RIG-TRAJECTORIES ====="; /app/run export-rig-trajectories --help 2>&1 | grep -v readobject | tail -45
           env:
             - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
           # A GPU is REQUIRED even for --help: without a CUDA runtime the CLI

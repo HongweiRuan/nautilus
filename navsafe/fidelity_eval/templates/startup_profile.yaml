@@ -1,0 +1,227 @@
+# Startup profile of a NavSafe closed-loop eval run as a JOB (not in the warm
+# dev pod). Purpose: measure everything that happens between `kubectl apply`
+# and the first evaluated frame, split into named phases, so we can decide what
+# is worth baking into the image.
+#
+# It is the horuan-nexussim2 pod spec plus:
+#   * every line of output timestamped with wall clock and +seconds since start
+#   * PHASE markers around each install step and around the eval's own boot
+#   * py-spy stack dumps of the eval process every 20 s while it is starting,
+#     which is what tells us WHICH library is burning the pre-eval minutes
+#   * a snapshot of every cache directory the eval writes during boot, which is
+#     the concrete candidate list for pre-baking
+#
+# Renders against nurec-grpc2 (the dedicated server, glob narrowed to this
+# scenario's four windows) so the shared server's state is untouched.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-startupprof
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 10800
+  template:
+    metadata:
+      labels: { k8s-app: navsafe-startupprof }
+    spec:
+      restartPolicy: Never
+      containers:
+        - image: robinwangucsd/metabench:latest
+          name: nexussim-container
+          imagePullPolicy: Always
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -o pipefail
+              T0=$(date +%s)
+              exec > >(awk -v t0=$T0 '{ printf "[%s +%5ds] %s\n", strftime("%H:%M:%S"), systime()-t0, $0; fflush() }') 2>&1
+              mark() { echo "########## PHASE $* @ +$(( $(date +%s) - T0 ))s"; }
+
+              mark container_start
+              export PATH=$HOME/.local/bin:$PATH
+              export UV_CACHE_DIR=/root/.cache/uv
+              export UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
+              cd /hugsim-storage/NexusSim
+
+              mark install_uv begin
+              python -m pip install --quiet --user uv || pip install --quiet --user uv
+              mark install_uv end
+
+              if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+                mark uv_sync begin
+                uv sync --all-extras --python 3.12
+                mark uv_sync end
+                mark isaaclab_install begin
+                [ -d /root/IsaacLab/.git ] || \
+                  git clone --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+                for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+                  d=/root/IsaacLab/source/$ext
+                  [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d"
+                done
+                uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops
+                mark isaaclab_install end
+              else
+                mark venv_already_present
+              fi
+
+              if ! uv pip show --python /root/nexussim-venv/bin/python nvidia-ncore >/dev/null 2>&1; then
+                mark ncore_deps begin
+                uv pip install --python /root/nexussim-venv/bin/python nvidia-ncore
+                uv pip install --python /root/nexussim-venv/bin/python --no-deps nuplan-devkit
+                uv pip install --python /root/nexussim-venv/bin/python \
+                  "SQLAlchemy==1.4.27" rasterio aioboto3 retry cachetools
+                mark ncore_deps end
+              fi
+
+              mark smoke_import begin
+              /root/nexussim-venv/bin/python -c "import sys, nexussim, isaaclab, torch, numpy; print(sys.executable); print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), 'numpy', numpy.__version__, 'isaaclab', isaaclab.__version__)"
+              mark smoke_import end
+
+              mark pyspy_install begin
+              uv pip install --python /root/nexussim-venv/bin/python py-spy || echo "py-spy install FAILED (stack sampling disabled)"
+              mark pyspy_install end
+
+              echo "=== disk footprint of the freshly built env ==="
+              du -sh /root/nexussim-venv /root/.cache/uv 2>/dev/null
+              du -sh /root/.cache/* /root/.nv /root/.nvidia-omniverse /root/.local/share/ov 2>/dev/null
+
+              # ---------------------------------------------------------------
+              # the eval itself
+              # ---------------------------------------------------------------
+              T=f6ee61f4305d5564
+              C=/avl-west/navsafe_5s_500
+              cd /hugsim-storage/NexusSim
+
+              H=""
+              for k in 1 2 3 4; do
+                a=$((1621971061600098 + (k-1)*5000000)); b=$((1621971061600098 + k*5000000))
+                H="${H}${T}s${k},$C/${T}s${k}/clips/${T}s${k}/nurec_origin_offset.json,$a,$b;"
+              done
+              export NUREC_GRPC_HANDOFF="${H%;}"
+
+              export NUREC_GRPC_HOST=nurec-grpc2 NUREC_GRPC_PORT=8080
+              export NUREC_GRPC_CAM_RIG=recon NUREC_GRPC_TIMEOUT_S=600
+              export PY123D_RECENTER=1 NUPLAN_MAP_VERSION=nuplan-maps-v1.0 NEXUSSIM_NO_CAM_MAP_LINES=1
+              export PYTHONPATH=/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos
+              export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES
+              export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+              export PYTHONUNBUFFERED=1
+
+              OUT=/avl-west/fidelity_eval/rigeval/f6ee61f4-recon-replay
+              mkdir -p $OUT
+
+              touch /root/.before_eval_marker
+              mark eval_launch
+              TE=$(date +%s)
+
+              /root/nexussim-venv/bin/python scripts/tools/eval_py123d.py \
+                --scenario-source py123d --py123d-data-root $C/${T}_20s/arrow \
+                --py123d-scene-index 0 --nurec-work-dir $C \
+                --render-backend nurec_grpc --cam-height navsim \
+                --model-type drivor --checkpoint /avl-west/navsafe_eval/model_zoo/drivor/drivor_Nav1_25epochs.pth \
+                --traffic-mode semi_reactive --ego-replay-frames 100 --terminate-on-collision \
+                --controller lqr --execution-mode controller --replan-rate 5 \
+                --camera-resolution-scale 1.0 --eval-frames 0 --eval-seed 1 \
+                --nurec-cameras CAM_F0 --enable-vis --vis-cameras CAM_F0 --log-level INFO \
+                --output-dir $OUT 2>&1 | awk -v te=$TE '{ printf "EVAL[+%5ds] %s\n", systime()-te, $0; fflush() }' &
+              EVALSH=$!
+
+              # the python process is a child of the pipeline; find it by cmdline
+              sleep 20
+              EPID=$(ps -eo pid,args | grep '[e]val_py123d.py' | awk '{print $1}' | head -1)
+              echo "eval pid = $EPID (job pid $EVALSH)"
+
+              (
+                for i in $(seq 1 90); do
+                  sleep 20
+                  kill -0 $EPID 2>/dev/null || { echo "SAMPLER: eval pid gone"; break; }
+                  now=$(( $(date +%s) - TE ))
+                  echo "----- SAMPLE t=+${now}s -----"
+                  ps -o pid,etimes,pcpu,rss=,stat -p $EPID 2>/dev/null
+                  echo "io: $(tr '\n' ' ' < /proc/$EPID/io 2>/dev/null)"
+                  echo "threads: $(ls /proc/$EPID/task 2>/dev/null | wc -l)"
+                  /root/nexussim-venv/bin/py-spy dump --pid $EPID --nonblocking 2>&1 | head -70
+                  if [ "$i" = "15" ] || [ "$i" = "45" ]; then
+                    echo "----- CACHE DIRS WRITTEN SINCE EVAL LAUNCH (t=+${now}s) -----"
+                    find /root /tmp /var/tmp -xdev \
+                         -path /root/nexussim-venv -prune -o -path /root/.cache/uv -prune -o \
+                         -newer /root/.before_eval_marker -type f -print 2>/dev/null \
+                      | awk -F/ 'NF>4 {print "/"$2"/"$3"/"$4} NF<=4 {print}' | sort | uniq -c | sort -rn | head -30
+                  fi
+                done
+              ) &
+              SAMPLER=$!
+
+              wait $EVALSH
+              RC=$?
+              mark eval_finished rc=$RC
+              kill $SAMPLER 2>/dev/null
+
+              echo "=== cache dirs written during the whole run ==="
+              find /root /tmp /var/tmp -xdev \
+                   -path /root/nexussim-venv -prune -o -path /root/.cache/uv -prune -o \
+                   -newer /root/.before_eval_marker -type d -print 2>/dev/null | head -60
+              du -sh /root/.cache/* /root/.nv /root/.nvidia-omniverse /root/.local/share/ov /tmp/* 2>/dev/null | sort -h | tail -25
+              sleep 5
+              exit $RC
+          env:
+            - name: PATH
+              value: /root/nexussim-venv/bin:/root/.local/bin:/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            - name: PYTHONPATH
+              value: /hugsim-storage/BridgeSim:/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos:/hugsim-storage/NexusSim/third_party
+            - name: NUPLAN_DATA_ROOT
+              value: /avl-west/nuplan
+            - name: NUPLAN_MAPS_ROOT
+              value: /avl-west/nuplan/maps
+            - name: NUPLAN_SENSOR_ROOT
+              value: /avl-west/nuplan/nuplan-v1.1/sensor_blobs
+            - name: OMNI_KIT_ACCEPT_EULA
+              value: "Y"
+            - name: ACCEPT_EULA
+              value: "Y"
+          resources:
+            requests:
+              cpu: "3"
+              memory: "20Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "3"
+              memory: "20Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: cogrob-avl-west-vol, mountPath: /cogrob-avl-west }
+            - { name: closed-loop-e2e, mountPath: /closed-loop-e2e }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: cogrob-avl-west-vol, persistentVolumeClaim: { claimName: cogrob-avl-west-vol } }
+        - { name: closed-loop-e2e, persistentVolumeClaim: { claimName: closed-loop-e2e } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: [us-west]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule }

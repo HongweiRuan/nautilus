@@ -58,21 +58,23 @@ spec:
               echo "=== venv setup ==="
               export DEBIAN_FRONTEND=noninteractive
               apt-get update -qq && apt-get install -y -qq git curl python3-venv libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null
-              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv VIRTUAL_ENV=/root/ns-venv
+              export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/nexussim-venv VIRTUAL_ENV=/root/nexussim-venv
               for i in 1 2 3 4; do command -v uv >/dev/null && break; python -m pip install --quiet --user uv 2>/dev/null || pip install --quiet --user uv 2>/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh; hash -r; command -v uv >/dev/null && break; sleep 15; done
               rm -rf /root/ns
               git clone --quiet --depth 1 https://github.com/VAIL-UCLA/NexusSim.git /root/ns
               cd /root/ns
               uv sync --all-extras --python 3.12
               [ -d /root/IsaacLab/.git ] || git clone --quiet --depth 1 --branch v3.0.0-beta https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
-              for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/ns-venv/bin/python --no-deps -e "$d"; done
-              uv pip install --python /root/ns-venv/bin/python lazy_loader einops
+              for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do d=/root/IsaacLab/source/$ext; [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d"; done
+              uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops
 
-              PY=/root/ns-venv/bin/python
+              PY=/root/nexussim-venv/bin/python
               export PYTHONPATH="/root/ns:/root/ns/third_party/nurec_protos"
               export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES
               export NUREC_GRPC_HOST=navsafe-eval-nurec NUREC_GRPC_PORT=8080
-              export NUREC_GRPC_CAM_RIG=navsim NUREC_GRPC_TIMEOUT_S=600 PY123D_RECENTER=1
+              # recon = the recon's own training camera (nurec_grpc.py's default);
+              # navsim rebuilds a synthetic pinhole the recon was never fit on.
+              export NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600 PY123D_RECENTER=1
               export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
               $PY - /config/leaf_tokens.json << 'PYEOF' > /tmp/leaf_token_pairs.tsv

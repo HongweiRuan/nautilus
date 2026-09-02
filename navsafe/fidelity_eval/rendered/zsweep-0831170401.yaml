@@ -1,0 +1,85 @@
+# How much lower is the eval camera than render-grpc's?
+#
+# Measure it by construction rather than by a proxy. render-grpc takes
+# --rig-translation-offset (tx,ty,tz in rig space), so render the same clip at
+# a range of vertical offsets and see which one lands on the eval frame. The
+# winning tz IS the discrepancy, in metres, with no horizon detector or
+# focal-length assumption in the chain.
+#
+# (An earlier attempt used "strongest horizontal edge in the upper half" as a
+# horizon proxy; on this scene it returned 381/525/532/383 across neighbouring
+# frames -- it was locking onto buildings, not the horizon. Discarded.)
+#
+# Placeholders: f6ee-0831170401 f6ee61f4305d5564s1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-zsweep-f6ee-0831170401, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: zsweep, shard: "f6ee-0831170401"}}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: zsweep, shard: "f6ee-0831170401"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -o pipefail
+              C=f6ee61f4305d5564s1
+              CORPUS=/avl-west/navsafe_5s_500
+              USDZ=$CORPUS/$C/output_5cam/$C/artifacts/last.usdz
+              ROOT=/avl-west/fidelity_eval/zsweep/$C
+              mkdir -p "$ROOT"
+              [ -f "$USDZ" ] || { echo "NO_USDZ $C"; exit 1; }
+
+              POOL=/tmp/pool; rm -rf $POOL; mkdir -p $POOL/$C/artifacts
+              ln -sf "$USDZ" $POOL/$C/artifacts/last.usdz
+              /app/run serve-grpc --host 0.0.0.0 --renderer default \
+                --no-enable-harmonizer --cache-size 2 \
+                --artifact-glob "$POOL/*/artifacts/last.usdz" > /tmp/serve.log 2>&1 &
+              SPID=$!
+              for _ in $(seq 1 150); do
+                kill -0 $SPID 2>/dev/null || { echo SERVE_DIED; tail -30 /tmp/serve.log; exit 1; }
+                grep -q "Available scenes" /tmp/serve.log && break
+                sleep 5
+              done
+              grep -q "Available scenes" /tmp/serve.log || { echo NO_SCENES; exit 1; }
+
+              # tz only; tx/ty stay 0 so the forward offset already identified
+              # (~1.4 m, fixed separately) is not re-introduced here.
+              for TZ in 0.0 -0.3 -0.6 -0.9 -1.2 -1.5; do
+                D=$ROOT/tz$TZ
+                if find "$D" -name '*.jp*g' 2>/dev/null | grep -q .; then echo "SKIP tz=$TZ"; continue; fi
+                mkdir -p "$D"
+                if /app/run render-grpc --artifact-path "$USDZ" --output-dir "$D" \
+                     --camera-id camera_pcam_f0 --height 1080 --image-format jpeg \
+                     --host localhost --port 8080 \
+                     --rig-translation-offset 0.0 0.0 $TZ > /tmp/r.log 2>&1; then
+                  echo "OK tz=$TZ  $(find $D -name '*.jp*g'|wc -l) frames"
+                else
+                  echo "FAIL tz=$TZ: $(grep -iE 'error|invalid' /tmp/r.log|tail -1|cut -c1-110)"
+                fi
+              done
+              kill $SPID 2>/dev/null
+              echo "ZSWEEP_DONE f6ee-0831170401"
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            requests: {cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "3", memory: "24Gi", nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 12Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

@@ -1,0 +1,50 @@
+# One shard of the fidelity render campaign. Four of these, one per node, two
+# GPUs each: serve-grpc on GPU 0, the eval rollout on GPU 1.
+#
+# Why two GPUs and not one: serve-grpc with the harmonizer and --cache-size 4
+# fills a 3090 on its own, leaving nothing for the policy. That is
+# run_worker_current.sh's finding, reused here unchanged.
+#
+# Pinned to ONE node per job (ry-gpu-06.sdsc.optiputer.net) because ry-gpu-07/08/11/12 each have
+# exactly two free GPUs while navsafe-final18 holds the rest; letting the
+# scheduler choose would stack two shards on one node and strand another.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-evalrender-w01
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 604800
+  template:
+    spec:
+      restartPolicy: Never
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-06.sdsc.optiputer.net"]}
+      containers:
+        - name: worker
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_evalrender_worker.sh"]
+          env:
+            - {name: WORKER_INDEX, value: "1"}
+            - {name: WORKERS, value: "7"}
+            - {name: OUTROOT, value: "/avl-west/fidelity_eval/evalrender"}
+          resources:
+            limits:   {cpu: "3", memory: 64Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "2"}
+            requests: {cpu: "3", memory: 64Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "2"}
+          volumeMounts:
+            - {mountPath: /dev/shm,        name: dshm}
+            - {mountPath: /cfg,            name: cfg}
+            - {mountPath: /avl-west,       name: avl-west-vol}
+            - {mountPath: /hugsim-storage, name: hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: cfg, configMap: {name: navsafe-evalrender-cfg, defaultMode: 420}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}

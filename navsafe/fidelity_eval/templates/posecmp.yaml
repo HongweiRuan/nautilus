@@ -1,0 +1,64 @@
+# Are the two camera trajectories the same?
+#
+# In principle they must be: the reconstruction was trained on a nuPlan log's
+# camera poses, and the eval drives from that same log's ego poses out of the
+# py123d arrow. Measured otherwise -- an eval frame and a render-grpc frame of
+# the same clip, same rig, same harmonizer, match at only 18-20 dB even after
+# removing a translation, and the best-matching frame index drifts (+1 at eval
+# frame 0, +6 by frame 19).
+#
+# So dump both trajectories as NUMBERS and compare, instead of inferring from
+# pixels:
+#   * the usdz's own training rig trajectory  -> `export-rig-trajectories`
+#   * what the eval backend actually requests -> NUREC_GRPC_CAMDUMP, which
+#     writes "<step> <cam_x> <cam_y> <cam_z> <rig_x> <rig_y>" per frame.
+#
+# Placeholders: __SHARD__ __TOKEN__
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {name: fid-posecmp-__SHARD__, namespace: cogrob,
+   labels: {app: fidelity_eval, stage: posecmp, shard: "__SHARD__"}}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata: {labels: {app: fidelity_eval, stage: posecmp, shard: "__SHARD__"}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -o pipefail
+              T=__TOKEN__
+              C=/avl-west/navsafe_5s_500
+              OUT=/avl-west/fidelity_eval/posecmp/$T
+              mkdir -p "$OUT"
+              for k in 1 2 3 4; do
+                U=$C/${T}s${k}/output_5cam/${T}s${k}/artifacts/last.usdz
+                [ -f "$U" ] || { echo "NO_USDZ ${T}s${k}"; continue; }
+                /app/run export-rig-trajectories --artifact-path "$U" \
+                  --output-dir "$OUT/rigtraj_s${k}" \
+                  && echo "OK rigtraj s$k" || echo "FAIL rigtraj s$k"
+              done
+              echo "POSECMP_DONE __SHARD__"
+              find "$OUT" -type f | head -20
+          env:
+            - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            requests: {cpu: "2", memory: "16Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+            limits:   {cpu: "2", memory: "16Gi", nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 8Gi}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
