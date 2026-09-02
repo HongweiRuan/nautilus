@@ -79,6 +79,28 @@ kubectl get pods -n cogrob -l app=illegal_turn_recon
 Every stage is idempotent: it asks CephFS what is already built, excludes what a live
 job already owns, and submits only the gap. Re-run it to pick up failures.
 
+## Reading the corpus does not depend on any one pod
+
+The Mac cannot read CephFS, so "what is already built" has to be listed from inside the
+cluster. That used to `kubectl exec` into `horuan-nexussim` **by name** — a bare pod with
+a 6 h `activeDeadlineSeconds`, so it kills itself, and when it did the gap-check failed
+and the pipeline refused to submit anything at all.
+
+`cephfs_ls()` now tries, in order:
+
+1. `$POD`, if you set one — a *preference*: if it is dead or does not mount the PVC, it
+   warns and keeps going rather than failing;
+2. any Running pod in the namespace that already mounts `$PVC` (default `avl-west-vol`),
+   reading the mountPath out of the pod spec rather than assuming `/avl-west`;
+3. a throwaway `busybox` pod that mounts `$PVC` purely to run the `ls` and exit.
+
+Step 3 is what makes it work in an empty namespace. It is also a bare Pod, not a Job, so
+the `job.nrp-nautilus.io` utilization webhook does not apply to it — the gap-check still
+works while job submission is being refused.
+
+    PVC=other-vol ./submit_stage.sh ncore     # corpus on a different claim
+    POD=my-pod    ./submit_stage.sh ncore     # prefer this pod if it is usable
+
 ## Known blocker: the Nautilus utilization policy
 
 At the time of writing every `kubectl apply` is rejected with
@@ -97,3 +119,10 @@ measured utilization falls under policy.
 It clears when that sweep drains, or sooner if those workers are re-submitted asking for
 1 GPU instead of 2. `chain.sh` retries until it is accepted, so nothing needs re-driving
 by hand.
+
+Submitting from a **different account** sidesteps it: the policy is scored per CILogon
+user, not per namespace. Pull this directory on that machine and run `chain.sh` there —
+everything it needs (kubectl context with `cogrob` access) travels with the kubeconfig,
+not with this repo. Do not run `chain.sh` on two machines at once: the in-flight check
+reads the live jobs from the cluster so it will mostly deconflict, but two renders
+landing in the same instant can still double-submit.

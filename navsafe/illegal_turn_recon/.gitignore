@@ -1,0 +1,6 @@
+# generated every run: submit_stage.sh re-renders the shard yamls from templates/
+# + scenes.tsv, and clears the previous render first. Tracking them means every
+# retry shows up as a diff — and chain.sh re-renders every 5 min while the Nautilus
+# utilization webhook is refusing jobs.
+rendered/
+chain.log

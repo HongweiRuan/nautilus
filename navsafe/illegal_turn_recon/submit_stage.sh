@@ -42,12 +42,15 @@ cd "$(dirname "$0")"
 
 STAGE="${1:-}"
 case "$STAGE" in ncore|aux|arrow|train) ;; *)
-  echo "usage: [SHARDS= POD= DRYRUN=1] $0 <ncore|aux|arrow|train>"; exit 1;; esac
+  echo "usage: [SHARDS= POD= PVC= DRYRUN=1] $0 <ncore|aux|arrow|train>"; exit 1;; esac
 
 NS="${NS:-cogrob}"
-POD="${POD:-horuan-nexussim}"
+POD="${POD:-}"                         # empty = auto-discover; see cephfs_ls()
+PVC="${PVC:-avl-west-vol}"             # the PVC the corpus lives on
 APP=illegal_turn_recon
-ROOT=/avl-west/navsafe_5s_500          # same corpus as navsafe_5s_500 — see header
+ROOT='@MNT@/navsafe_5s_500'            # same corpus as navsafe_5s_500 — see header.
+                                       # @MNT@ is filled in with wherever the pod we
+                                       # end up reading through mounts $PVC.
 TSV="${TSV:-scenes.tsv}"               # token \t log \t t0 \t t1 \t turn \t dyaw \t lanes \t city
 TPL="templates/${STAGE}.yaml"
 SHARDS="${SHARDS:-7}"
@@ -69,23 +72,139 @@ awk -F'\t' -v SEG="$SEG" -v STAGE="$STAGE" 'NF>=4 && $1!~/^#/ {
 NSCEN=$(cut -f5 "$UNITS" | sort -u | wc -l | tr -d ' ')
 NTOTAL=$(wc -l < "$UNITS" | tr -d ' ')
 
-# 2) which units already have this stage's output? (one pod exec)
+# 2) which units already have this stage's output?
+#
+# The Mac cannot read CephFS, so the corpus has to be listed from inside the cluster.
+# This used to exec into horuan-nexussim by name — a BARE pod with a 6 h
+# activeDeadlineSeconds that kills itself, so the gap-check died with it and the whole
+# pipeline refused to submit. Nothing here depends on that pod any more:
+#
+#   1. $POD if you set one explicitly,
+#   2. else any Running pod in the namespace that already mounts $PVC (read its
+#      mountPath out of the spec — do not assume /avl-west),
+#   3. else a throwaway busybox pod that mounts $PVC only to run the ls and exit.
+#
+# Step 3 means the check works in an empty namespace, which is the state that broke it.
 case "$STAGE" in
   ncore) GLOB="$ROOT/*/clips/*/pai_*.json";               SED='s#.*/clips/([^/]+)/pai_.*#\1#' ;;
   aux)   GLOB="$ROOT/*/clips/*/*.aux.*.zarr.itar";        SED='s#.*/clips/([^/]+)/[^/]+\.aux\..*#\1#' ;;
   arrow) GLOB="$ROOT/*_20s/arrow/maps";                   SED='s#.*/([^/]+)/arrow/maps$#\1#' ;;
   train) GLOB="$ROOT/*/output_5cam/*/artifacts/last.usdz"; SED='s#.*/output_5cam/([^/]+)/artifacts/.*#\1#' ;;
 esac
+
+# find_mounter -> "<pod> <container> <mountPath>" for a Running pod carrying $PVC
+find_mounter() {
+  kubectl get pods -n "$NS" -o json 2>/dev/null | PVC="$PVC" python3 -c '
+import json, os, sys
+pvc = os.environ["PVC"]
+try: d = json.load(sys.stdin)
+except Exception: sys.exit(1)
+for p in d.get("items", []):
+    if p.get("status", {}).get("phase") != "Running": continue
+    if any(cs.get("state", {}).get("terminated") for cs in p.get("status", {}).get("containerStatuses") or []):
+        continue
+    spec = p["spec"]
+    vols = {v["name"] for v in spec.get("volumes", [])
+            if (v.get("persistentVolumeClaim") or {}).get("claimName") == pvc}
+    if not vols: continue
+    for c in spec.get("containers", []):
+        for m in c.get("volumeMounts", []) or []:
+            if m["name"] in vols:
+                print(p["metadata"]["name"], c["name"], m["mountPath"]); sys.exit(0)
+sys.exit(1)
+'
+}
+
+# cephfs_ls <glob-with-@MNT@> -> matching paths on stdout, @MNT@ already resolved
+cephfs_ls() {
+  local glob=$1 pod ctr mnt line
+  if [ -n "$POD" ]; then
+    mnt=$(kubectl get pod -n "$NS" "$POD" -o json 2>/dev/null \
+          | PVC="$PVC" python3 -c '
+import json,os,sys
+d=json.load(sys.stdin); pvc=os.environ["PVC"]
+vols={v["name"] for v in d["spec"].get("volumes",[]) if (v.get("persistentVolumeClaim") or {}).get("claimName")==pvc}
+for c in d["spec"]["containers"]:
+    for m in c.get("volumeMounts",[]) or []:
+        if m["name"] in vols: print(c["name"], m["mountPath"]); sys.exit(0)
+sys.exit(1)')
+    if [ -n "$mnt" ]; then
+      ctr=${mnt%% *}; mnt=${mnt#* }
+      if kubectl exec -n "$NS" "$POD" -c "$ctr" -- sh -c "ls -d ${glob//@MNT@/$mnt} 2>/dev/null" \
+         | sed "s#^$mnt#@MNT@#"; then
+        return 0
+      fi
+    fi
+    # An explicit $POD is a PREFERENCE, not a requirement — hard-failing here is
+    # exactly the binding that took the pipeline down when horuan-nexussim expired.
+    echo "[$STAGE] pod '$POD' unusable ($PVC not mounted, or exec failed) — looking elsewhere" >&2
+  fi
+
+  if line=$(find_mounter); then
+    set -- $line; pod=$1; ctr=$2; mnt=$3
+    echo "[$STAGE] reading the corpus through running pod $pod ($mnt)" >&2
+    if kubectl exec -n "$NS" "$pod" -c "$ctr" -- sh -c "ls -d ${glob//@MNT@/$mnt} 2>/dev/null" \
+       | sed "s#^$mnt#@MNT@#"; then
+      return 0
+    fi
+    echo "[$STAGE] exec into $pod failed — falling back to a throwaway pod" >&2
+  fi
+
+  # last resort: a pod whose whole job is to run this one ls
+  local name="itr-gapcheck-$RUNID-$STAGE" y; y=$(mktemp)
+  cat > "$y" <<EOF
+apiVersion: v1
+kind: Pod
+metadata: { name: $name, namespace: $NS, labels: { app: $APP, stage: gapcheck } }
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 300
+  containers:
+    - name: ls
+      image: busybox:stable
+      command: ["sh", "-c", "ls -d ${glob//@MNT@//avl-west} 2>/dev/null; exit 0"]
+      resources:
+        requests: { cpu: "100m", memory: 128Mi }
+        limits:   { cpu: "500m", memory: 512Mi }
+      volumeMounts: [{ name: corpus, mountPath: /avl-west }]
+  volumes:
+    - { name: corpus, persistentVolumeClaim: { claimName: $PVC } }
+  tolerations:
+    - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+    - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+EOF
+  echo "[$STAGE] no pod mounts $PVC — starting throwaway pod $name" >&2
+  kubectl delete pod -n "$NS" "$name" --ignore-not-found --wait=false >/dev/null 2>&1
+  if ! kubectl apply -f "$y" >/dev/null 2>&1; then
+    echo "!! could not create the gap-check pod:" >&2
+    kubectl apply -f "$y" 2>&1 | tail -2 >&2
+    rm -f "$y"; return 1
+  fi
+  rm -f "$y"
+  local phase=""
+  for _ in $(seq 1 60); do
+    phase=$(kubectl get pod -n "$NS" "$name" -o jsonpath='{.status.phase}' 2>/dev/null)
+    case "$phase" in Succeeded|Failed) break ;; esac
+    sleep 5
+  done
+  if [ "$phase" != "Succeeded" ]; then
+    echo "!! gap-check pod ended in phase '${phase:-unknown}'" >&2
+    kubectl delete pod -n "$NS" "$name" --wait=false >/dev/null 2>&1
+    return 1
+  fi
+  kubectl logs -n "$NS" "$name" 2>/dev/null | sed "s#^/avl-west#@MNT@#"
+  kubectl delete pod -n "$NS" "$name" --wait=false >/dev/null 2>&1
+}
+
 DONE=$(mktemp)
-# This exec is the ONLY source of truth for "what is already built". A dead pod must
-# fail loudly: a silent done=0 resubmits the whole backlog.
-if ! kubectl exec -n "$NS" "$POD" -- bash -lc "ls -d $GLOB 2>/dev/null" > "$DONE".raw 2>"$DONE".err; then
-  echo "!! cannot read CephFS through pod '$POD' — gap-check impossible, refusing to submit."
-  echo "   $(head -1 "$DONE".err)"
-  echo "   fix: kubectl get pod -n $NS $POD    (recreate it, or pass POD=<another pod>)"
-  rm -f "$UNITS" "$DONE" "$DONE".raw "$DONE".err; exit 1
+# This listing is the ONLY source of truth for "what is already built". It must fail
+# loudly: a silent done=0 resubmits the whole backlog.
+if ! cephfs_ls "$GLOB" > "$DONE".raw; then
+  echo "!! cannot read the corpus on $PVC — gap-check impossible, refusing to submit."
+  echo "   tried: \${POD:-<none set>}, any Running pod mounting $PVC, a throwaway pod."
+  rm -f "$UNITS" "$DONE" "$DONE".raw; exit 1
 fi
-sed -E "$SED" < "$DONE".raw | sort -u > "$DONE"; rm -f "$DONE".raw "$DONE".err
+sed -E "$SED" < "$DONE".raw | sort -u > "$DONE"; rm -f "$DONE".raw
 
 # 3) units already in flight — read from each live job's embedded manifest, so a
 #    resubmit from another machine still sees the truth.
