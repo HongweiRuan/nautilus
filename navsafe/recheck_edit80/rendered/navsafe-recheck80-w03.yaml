@@ -1,0 +1,93 @@
+# One shard of the 80-scenario edited-scenario recheck.
+#
+# Two containers, one pod, one GPU each: `nre` serves the reconstructions,
+# `sim` drives DrivoR through them. Same pod means the same network namespace,
+# so the eval reaches the renderer on 127.0.0.1:8080 and neither container has
+# to discover where the other landed -- no Service, no cross-node hop for a
+# stream of rendered frames.
+#
+# Why not one GPU for both: they peak at different times but not disjointly --
+# four resident reconstructions in the server plus IsaacSim and the policy on
+# one 3090 leaves no headroom, and the failure mode is a CUDA OOM partway
+# through an episode rather than at start-up.
+#
+# Pinned to the cogrob reserved nodes; ry-gpu-13 and ry-gpu-14 are left out
+# deliberately. No per-shard hostname pin: six shards spread themselves over
+# the six nodes, and a full node delays one shard instead of stranding it.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-recheck80-w03
+  namespace: cogrob
+  labels:
+    app: navsafe-recheck80
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-recheck80-w03
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ngc-pull
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+      containers:
+        - name: nre
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_nre.sh"]
+          env:
+            - {name: WORKER_INDEX, value: "3"}
+            - {name: WORKERS,      value: "6"}
+            - {name: OUTROOT,      value: "/avl-west/runs/recheck-edit80"}
+          resources:
+            limits:   {cpu: "4", memory: 32Gi, ephemeral-storage: 40Gi, nvidia.com/gpu: "1"}
+            requests: {cpu: "4", memory: 32Gi, ephemeral-storage: 40Gi, nvidia.com/gpu: "1"}
+          volumeMounts:
+            - {mountPath: /dev/shm,        name: dshm}
+            - {mountPath: /cfg,            name: cfg}
+            - {mountPath: /avl-west,       name: avl-west-vol}
+            - {mountPath: /hugsim-storage, name: hugsim-storage}
+        - name: sim
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_sim.sh"]
+          env:
+            - {name: WORKER_INDEX,     value: "3"}
+            - {name: WORKERS,          value: "6"}
+            - {name: OUTROOT,          value: "/avl-west/runs/recheck-edit80"}
+            - {name: REPLAY_FRAMES,    value: "20"}
+            - {name: EVAL_FRAMES,      value: "200"}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            limits:   {cpu: "8", memory: 48Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: "1"}
+            requests: {cpu: "8", memory: 48Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: "1"}
+          volumeMounts:
+            - {mountPath: /dev/shm,        name: dshm}
+            - {mountPath: /cfg,            name: cfg}
+            - {mountPath: /avl-west,       name: avl-west-vol}
+            - {mountPath: /hugsim-storage, name: hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+        - {name: cfg, configMap: {name: navsafe-recheck80-cfg, defaultMode: 493}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}

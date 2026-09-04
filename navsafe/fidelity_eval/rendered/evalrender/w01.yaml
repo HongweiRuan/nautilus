@@ -5,15 +5,20 @@
 # fills a 3090 on its own, leaving nothing for the policy. That is
 # run_worker_current.sh's finding, reused here unchanged.
 #
-# Pinned to ONE node per job (ry-gpu-06.sdsc.optiputer.net) because ry-gpu-07/08/11/12 each have
-# exactly two free GPUs while navsafe-final18 holds the rest; letting the
-# scheduler choose would stack two shards on one node and strand another.
+# Scheduled on the cogrob reserved nodes. ry-gpu-13 is left out deliberately;
+# 14 is in. No per-worker hostname pin: the scheduler places shards across the
+# seven, so a node filling up delays one shard instead of stranding it, and a
+# shard left Pending starts by itself when a pair of cards frees.
+#
+# The GPU model constraint is not a preference: serve-grpc with the harmonizer
+# plus the eval process needs a 24 GB card, and a smaller one fails with
+# RESOURCE_EXHAUSTED partway through a pass rather than at start-up.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: navsafe-evalrender-w01
 spec:
-  backoffLimit: 2
+  backoffLimit: 4
   ttlSecondsAfterFinished: 604800
   template:
     spec:
@@ -26,18 +31,43 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - {key: kubernetes.io/hostname, operator: In, values: ["ry-gpu-06.sdsc.optiputer.net"]}
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
       containers:
         - name: worker
           image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
           command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_evalrender_worker.sh"]
           env:
             - {name: WORKER_INDEX, value: "1"}
-            - {name: WORKERS, value: "7"}
-            - {name: OUTROOT, value: "/avl-west/fidelity_eval/evalrender"}
+            - {name: WORKERS, value: "10"}
+            # A NEW tree. /avl-west/fidelity_eval/evalrender holds 392x2
+            # cells rendered before the actor-z fix (bbd27ad1), every one of
+            # them carrying a .done marker, so resuming into it would skip the
+            # whole campaign. The inputs are read from there unchanged --
+            # scenario list and step lists are what makes the two comparable.
+            - {name: OUTROOT,   value: "/avl-west/fidelity_eval/evalrender_zfix"}
+            - {name: SCENARIOS, value: "/avl-west/fidelity_eval/evalrender/scenarios.txt"}
+            - {name: STEPDIR,   value: "/avl-west/fidelity_eval/evalrender/steps"}
+            # Pinned, not "whatever HEAD is when the pod starts": the point of
+            # this re-run is the commit below, and a shard that restarts hours
+            # later must render the same code as its siblings.
+            - {name: NEXUSSIM_SHA, value: "bbd27ad1"}
+          # Sized down from 64Gi/100Gi: the pod holds the venv (~15 GB), the
+          # copied tree (~200 MB) and one eval process, and requesting more
+          # than it uses is what the utilisation admission policy counts
+          # against the account.
           resources:
-            limits:   {cpu: "3", memory: 64Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "2"}
-            requests: {cpu: "3", memory: 64Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "2"}
+            limits:   {cpu: "3", memory: 32Gi, ephemeral-storage: 60Gi, nvidia.com/gpu: "2"}
+            requests: {cpu: "3", memory: 32Gi, ephemeral-storage: 60Gi, nvidia.com/gpu: "2"}
           volumeMounts:
             - {mountPath: /dev/shm,        name: dshm}
             - {mountPath: /cfg,            name: cfg}

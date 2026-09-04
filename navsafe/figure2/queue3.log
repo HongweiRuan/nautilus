@@ -1,0 +1,34 @@
+[18:58:39] navsafe-fig2-c-10-06a1f481118057b2 already submitted
+[18:58:39] navsafe-fig2-c-10-07bf0601ad425977 already submitted
+[18:58:40] navsafe-fig2-c-7-0ebb578555b25ab2 already submitted
+[18:58:41] navsafe-fig2-c-7-54ae4b189e79541b already submitted
+[18:58:41] navsafe-fig2-i-3-050284885b2059e9 already submitted
+[18:58:42] navsafe-fig2-i-3-a43dbb1d34665f24 already submitted
+[18:58:43] navsafe-fig2-r-2-02b68b9cc51f506a already submitted
+[18:58:46] accepted navsafe-fig2-r-2-02f1ad081f41550e  (9 left including this)
+[18:59:10] accepted navsafe-fig2-r-3-02379e524f105926  (8 left including this)
+[18:59:31] navsafe-fig2-r-3-34489cf42e005e93 already submitted
+[18:59:32] navsafe-fig2-r-4-061e7e1700945b03 already submitted
+[18:59:36] accepted navsafe-fig2-r-4-173369dc059d5fe9  (5 left including this)
+[19:00:00] accepted navsafe-fig2-v-10-07846b829b3a575e  (4 left including this)
+[19:00:21] navsafe-fig2-v-10-13805e7752fe5685 already submitted
+[19:00:22] navsafe-fig2-v-11-0317b218061b5c4d already submitted
+[19:00:22] navsafe-fig2-v-11-18b5995484435fbe already submitted
+--- all 16 submitted ---
+NAME                                 STATUS     COMPLETIONS   DURATION   AGE
+navsafe-fig2-c-10-06a1f481118057b2   Complete   1/1           42m        75m
+navsafe-fig2-c-10-07bf0601ad425977   Complete   1/1           45m        74m
+navsafe-fig2-c-7-0ebb578555b25ab2    Complete   1/1           8m35s      74m
+navsafe-fig2-c-7-54ae4b189e79541b    Complete   1/1           14m        73m
+navsafe-fig2-i-3-050284885b2059e9    Complete   1/1           48m        73m
+navsafe-fig2-i-3-a43dbb1d34665f24    Complete   1/1           30m        73m
+navsafe-fig2-r-2-02b68b9cc51f506a    Complete   1/1           42m        72m
+navsafe-fig2-r-2-02f1ad081f41550e    Running    0/1           97s        97s
+navsafe-fig2-r-3-02379e524f105926    Running    0/1           72s        73s
+navsafe-fig2-r-3-34489cf42e005e93    Complete   1/1           43m        71m
+navsafe-fig2-r-4-061e7e1700945b03    Complete   1/1           39m        71m
+navsafe-fig2-r-4-173369dc059d5fe9    Running    0/1           47s        47s
+navsafe-fig2-v-10-07846b829b3a575e   Running    0/1           22s        23s
+navsafe-fig2-v-10-13805e7752fe5685   Complete   1/1           50m        69m
+navsafe-fig2-v-11-0317b218061b5c4d   Complete   1/1           49m        69m
+navsafe-fig2-v-11-18b5995484435fbe   Complete   1/1           45m        68m

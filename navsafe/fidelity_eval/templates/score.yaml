@@ -47,7 +47,10 @@ spec:
               # No `exit 0`: score.py raises on a failed FID/FVD subprocess, and
               # swallowing that reported a Completed job for a run whose FVD had
               # crashed. The job's status is the signal that the numbers exist.
-              python3 /avl-west/render_quality_eval/score.py || { echo "SCORE_FAILED"; exit 1; }
+              # Args come from SCORE_ARGS at submit time. Without them the
+              # defaults are --sides nurec drivearena --tag cmp, which is the
+              # two-way 2026-08-28 run, not whatever is being scored now.
+              python3 /avl-west/render_quality_eval/score.py __ARGS__ || { echo "SCORE_FAILED"; exit 1; }
               echo SCORE_DONE
           resources:
             # One pod doing image loading + two GPU feature extractors. cpu:8 /
@@ -77,5 +80,12 @@ spec:
                       - ry-gpu-08.sdsc.optiputer.net
                       - ry-gpu-11.sdsc.optiputer.net
                       - ry-gpu-12.sdsc.optiputer.net
+                      # 14 is in the reservation and ran the evalrender shards;
+                      # it holds 6 cards, which is where the FDpi^k matrix gets
+                      # most of its parallelism once the render campaign frees.
+                      - ry-gpu-14.sdsc.optiputer.net
       tolerations:
+        # Both, the same pair the evalrender shards carry: the reserved nodes do
+        # not all use the same taint key and one alone strands a cell.
         - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

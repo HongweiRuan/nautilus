@@ -47,9 +47,17 @@ SIDES = {
     # `nre render` and `render-grpc` both walk the reconstruction's training
     # trajectory; the eval walks its own pose chain, so a number measured on
     # the other paths does not describe it.
-    "eval_off":   ("/avl-west/fidelity_eval/evalrender/hoff", (1920, 1080)),
-    "eval_on":    ("/avl-west/fidelity_eval/evalrender/hon",  (1920, 1080)),
+    #
+    # Filled in from --eval-root below. Two trees exist and they are NOT
+    # interchangeable: `evalrender` was rendered before the actor-z fix
+    # (bbd27ad1), with every non-ego car sitting ~0.35 m above the surface its
+    # gaussians were fitted on, and `evalrender_zfix` after. The default is the
+    # fixed one; the flag exists so the pre-fix numbers stay reproducible
+    # rather than being a line in RESULTS.md nobody can re-derive.
+    "eval_off":   (None, (1920, 1080)),
+    "eval_on":    (None, (1920, 1080)),
 }
+EVALROOT_DEFAULT = "/avl-west/fidelity_eval/evalrender_zfix"
 CORPUS = Path("/avl-west/navsafe_5s_500")
 # Where the offline render lives; used only to translate the gRPC path's
 # contiguous frame index back into the timestamp the manifest keys on.
@@ -193,8 +201,13 @@ def main():
     # only in RESULTS.md. A run on a different frame set is a different
     # measurement and gets a different name.
     ap.add_argument("--tag", default="cmp")
+    ap.add_argument("--eval-root", default=EVALROOT_DEFAULT,
+                    help="tree holding the eval pipeline's hoff/ and hon/ "
+                         "(see the eval_off/eval_on note in SIDES)")
     a = ap.parse_args()
     TAG = a.tag
+    SIDES["eval_off"] = (str(Path(a.eval_root) / "hoff"), SIDES["eval_off"][1])
+    SIDES["eval_on"] = (str(Path(a.eval_root) / "hon"), SIDES["eval_on"][1])
 
     man = json.load(open(RQE / "manifest.json"))["scenarios"]
     n_man = sum(len(s["frames"]) for s in man)

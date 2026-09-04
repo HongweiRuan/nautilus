@@ -27,7 +27,9 @@ cd "$(dirname "$0")"
 
 STAGE="${1:-}"
 case "$STAGE" in infos|infos_merge|score|render_native|drivearena) ;; *)
-  echo "usage: [JOBS= PER_JOB= POD= DRYRUN=1] $0 <infos|infos_merge|render_native|drivearena|score>"; exit 1;; esac
+  echo "usage: [JOBS= PER_JOB= POD= DRYRUN=1 SCORE_ARGS=] $0 <infos|infos_merge|render_native|drivearena|score>"
+  echo "  SCORE_ARGS is passed verbatim to score.py, e.g."
+  echo "    SCORE_ARGS='--sides nurec drivearena eval_off eval_on --tag zfix' $0 score"; exit 1;; esac
 
 NS="${NS:-cogrob}"
 POD="${POD:-horuan-nexussim}"
@@ -57,7 +59,7 @@ if [ "$STAGE" = "infos_merge" ] || [ "$STAGE" = "score" ]; then
     # The sharded stages already dodge this the same way.
     RENDERED="rendered/${STAGE}-${RUNID}.yaml"
     mkdir -p rendered
-    sed "s/__RUNID__/$RUNID/g" "$TPL" > "$RENDERED"
+    sed -e "s/__RUNID__/$RUNID/g" -e "s|__ARGS__|${SCORE_ARGS:-}|g" "$TPL" > "$RENDERED"
     if kubectl apply -f "$RENDERED"; then
       echo "[$STAGE] submitted.  watch: ./status.sh"
     else

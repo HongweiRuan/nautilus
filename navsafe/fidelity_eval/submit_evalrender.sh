@@ -14,5 +14,5 @@ for i in $(seq 0 $((N-1))); do
       -e "s/__IDX__/$i/" -e "s/__N__/$N/" templates/evalrender.yaml > "$f"
   kubectl apply -f "$f"
 done
-echo "--- $N shards submitted to the public pool ---"
+echo "--- $N shards submitted ---"
 kubectl get jobs -n cogrob | grep evalrender

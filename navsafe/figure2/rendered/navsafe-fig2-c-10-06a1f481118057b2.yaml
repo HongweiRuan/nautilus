@@ -1,0 +1,75 @@
+# One scenario of the Figure 2 campaign. Sixteen of these, one GPU each.
+#
+# One GPU, not two: serve-grpc and the IsaacSim rollout share a 3090 at ~6.7 GB
+# together with the harmonizer off, which is how the benchmark's own renders
+# were made. Sixteen jobs is therefore sixteen GPUs, inside the twenty this
+# account may hold.
+#
+# Pinned to the cogrob reserved nodes; ry-gpu-13 and ry-gpu-14 are left out
+# deliberately. No per-job hostname pin -- the scheduler spreads sixteen jobs
+# over the six nodes, so a full node delays one job instead of stranding it.
+#
+# The GPU model is a constraint, not a preference: the renderer plus the policy
+# needs a 24 GB card, and a smaller one dies with RESOURCE_EXHAUSTED partway
+# through the episode rather than at start-up.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-fig2-c-10-06a1f481118057b2
+  namespace: cogrob
+  labels:
+    app: navsafe-figure2
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels:
+        k8s-app: navsafe-fig2-c-10-06a1f481118057b2
+    spec:
+      restartPolicy: Never
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                  - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+      containers:
+        - name: worker
+          # The NRE image carries `/app/run serve-grpc`; the venv on the PVC
+          # carries NexusSim. Same digest the editing90 campaign rendered with,
+          # pinned so a re-tag cannot change what the figure shows.
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_figure2_worker.sh"]
+          env:
+            - {name: TARGET,           value: "C-10.06a1f481118057b2"}
+            - {name: OUTROOT,          value: "/avl-west/runs/20260902-paper-figure2-drivor"}
+            - {name: REPLAY_FRAMES,    value: "20"}
+            - {name: EVAL_FRAMES,      value: "180"}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+          resources:
+            limits:   {cpu: "8", memory: 48Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "1"}
+            requests: {cpu: "8", memory: 48Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "1"}
+          volumeMounts:
+            - {mountPath: /dev/shm,        name: dshm}
+            - {mountPath: /cfg,            name: cfg}
+            - {mountPath: /avl-west,       name: avl-west-vol}
+            - {mountPath: /hugsim-storage, name: hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 8Gi}}
+        - {name: cfg, configMap: {name: navsafe-figure2-cfg, defaultMode: 493}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}

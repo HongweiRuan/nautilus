@@ -1,0 +1,672 @@
+===== 14:01:36 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 0 done of 80, 5 started | combined.gif 0, mp4 0
+gif2mp4: 0 converted, 0 up to date, 0 failed
+===== 14:06:39 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 1 done of 80, 6 started | combined.gif 1, mp4 0
+  !! /avl-west/runs/recheck-edit80/C-10.2c337eb368fb54ca/visualization/combined.gif: FileNotFoundError: [Errno 2] No such file or directory: '/avl-west/runs/recheck-edit80/C-10.2c337eb368fb54ca/visualization/combined.mp4.part' -> '/avl-west/runs/recheck-edit80/C-10.2c337eb368fb54ca/visualization/combined.mp4'
+gif2mp4: 0 converted, 0 up to date, 1 failed
+===== 14:11:45 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 5 done of 80, 10 started | combined.gif 6, mp4 1
+  C-10.06a1f481118057b2: 176 frames @ 10.0 fps -> 19.5 MB
+  C-10.07bf0601ad425977: 208 frames @ 10.0 fps -> 18.4 MB
+  C-10.17cac31ef9135faf: 208 frames @ 10.0 fps -> 24.1 MB
+  C-10.2bd04a0902095129: 168 frames @ 10.0 fps -> 19.2 MB
+gif2mp4: 4 converted, 1 up to date, 1 still being written, 0 failed
+===== 14:17:12 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 9 done of 80, 15 started | combined.gif 9, mp4 5
+  C-10.42a20478abeb54d5: 152 frames @ 10.0 fps -> 16.2 MB
+  C-10.4d6456183bd056bc: 198 frames @ 10.0 fps -> 21.2 MB
+  C-7.05bcef7a11d65c6a: 208 frames @ 10.0 fps -> 21.8 MB
+gif2mp4: 3 converted, 5 up to date, 1 still being written, 0 failed
+===== 14:22:33 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 15 done of 80, 21 started | combined.gif 16, mp4 8
+  C-10.3067f3d3d5a75989: 208 frames @ 10.0 fps -> 35.8 MB
+  C-7.1bdfacbfcff75c27: 81 frames @ 10.0 fps -> 7.6 MB
+  C-7.1e9350ac2bc25f59: 142 frames @ 10.0 fps -> 11.7 MB
+  C-7.54ae4b189e79541b: 56 frames @ 10.0 fps -> 3.4 MB
+  I-3.03b66343e1ac5d68: 39 frames @ 10.0 fps -> 4.7 MB
+gif2mp4: 6 converted, 8 up to date, 2 still being written, 0 failed
+===== 14:27:59 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 21 done of 80, 27 started | combined.gif 23, mp4 14
+  C-7.0ebb578555b25ab2: 208 frames @ 10.0 fps -> 13.4 MB
+  C-7.112db94505025ec5: 208 frames @ 10.0 fps -> 21.3 MB
+  I-3.131a036a111e54f3: 110 frames @ 10.0 fps -> 13.3 MB
+  I-3.89e02236312d5038: 33 frames @ 10.0 fps -> 4.2 MB
+  I-3.a6b9a83019915658: 52 frames @ 10.0 fps -> 4.2 MB
+gif2mp4: 7 converted, 14 up to date, 2 still being written, 0 failed
+===== 14:33:31 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 27 done of 80, 33 started | combined.gif 29, mp4 21
+  C-7.6b7c5199f84e5aac: 122 frames @ 10.0 fps -> 14.0 MB
+  I-3.050284885b2059e9: 208 frames @ 10.0 fps -> 18.1 MB
+  I-3.84acc78da95f56d3: 44 frames @ 10.0 fps -> 4.5 MB
+  I-3.a43dbb1d34665f24: 99 frames @ 10.0 fps -> 17.0 MB
+  R-2.02b68b9cc51f506a: 208 frames @ 10.0 fps -> 26.0 MB
+gif2mp4: 6 converted, 21 up to date, 2 still being written, 0 failed
+===== 14:59:36 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 42 done of 80, 48 started | combined.gif 42, mp4 27
+  R-2.99a98a7ffb075389: 183 frames @ 10.0 fps -> 21.9 MB
+  R-3.02379e524f105926: 49 frames @ 10.0 fps -> 4.9 MB
+  R-3.0a51eb8adf8e5391: 178 frames @ 10.0 fps -> 16.1 MB
+  R-3.17b0992157365222: 123 frames @ 10.0 fps -> 12.2 MB
+  R-4.0371700bf65b51e0: 42 frames @ 10.0 fps -> 3.4 MB
+gif2mp4: 15 converted, 27 up to date, 0 still being written, 0 failed
+===== 16:47:26 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 42
+  V-11.2b7bf25209dd5705: 208 frames @ 10.0 fps -> 24.0 MB
+  V-11.32d85d373126537e: 54 frames @ 10.0 fps -> 5.7 MB
+  V-11.a18d2b32f8415373: 105 frames @ 10.0 fps -> 9.2 MB
+  V-11.a4581d8af5f755a9: 208 frames @ 10.0 fps -> 13.1 MB
+  V-11.bf896d504b4356c7: 170 frames @ 10.0 fps -> 18.6 MB
+gif2mp4: 38 converted, 42 up to date, 0 still being written, 0 failed
+===== 17:02:31 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:07:35 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:12:40 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:17:44 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:22:49 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:27:53 =====
+navsafe-recheck80-w00   <none>   1     <none>
+navsafe-recheck80-w01   <none>   1     <none>
+navsafe-recheck80-w02   <none>   1     <none>
+navsafe-recheck80-w03   <none>   1     <none>
+navsafe-recheck80-w04   <none>   1     <none>
+navsafe-recheck80-w05   <none>   1     <none>
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:32:57 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:38:00 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:43:04 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 17:48:07 =====
+===== 17:53:17 =====
+===== 17:58:19 =====
+===== 18:03:21 =====
+===== 18:08:23 =====
+===== 18:13:25 =====
+===== 18:18:28 =====
+===== 18:23:30 =====
+===== 18:28:33 =====
+===== 18:33:35 =====
+===== 18:38:37 =====
+===== 18:43:40 =====
+===== 18:48:42 =====
+===== 18:53:44 =====
+===== 18:58:47 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:03:52 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:08:55 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:13:58 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:19:01 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:26:41 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:31:44 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:36:48 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:41:52 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:46:55 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:51:59 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 19:57:02 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:02:06 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:07:10 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:12:13 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:17:16 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:22:20 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:27:23 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:32:26 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:37:30 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:42:33 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:47:36 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:52:40 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 20:57:43 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:02:46 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:07:50 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:12:54 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:17:57 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:23:00 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:28:04 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:33:11 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:38:15 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:43:18 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:48:21 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:53:25 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 21:58:28 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:03:32 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:08:35 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:13:38 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:18:42 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:23:46 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:28:50 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:33:53 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:38:57 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:44:00 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:49:03 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:54:06 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 22:59:11 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:04:14 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:09:18 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:14:21 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:19:25 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:24:29 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:29:31 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:34:32 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:39:34 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:44:35 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:49:36 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:54:38 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 23:59:39 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:04:40 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:09:42 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:14:43 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:19:45 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:24:46 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:29:47 =====
+  scenarios: 80 done of 80, 80 started | combined.gif 80, mp4 80
+gif2mp4: 0 converted, 80 up to date, 0 still being written, 0 failed
+===== 00:34:48 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 00:39:52 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 00:44:53 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 00:49:55 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 00:54:56 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 00:59:58 =====
+===== 01:04:59 =====
+===== 01:10:01 =====
+===== 01:15:02 =====
+===== 01:20:03 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:25:06 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:30:07 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:35:08 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:40:10 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:45:12 =====
+===== 01:50:12 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 01:55:16 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:00:20 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:05:24 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:10:27 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:15:31 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:20:35 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:25:39 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:30:42 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:35:46 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:40:50 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:45:53 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:50:57 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 02:56:01 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:01:05 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:06:06 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:11:10 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:16:13 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:21:16 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:26:20 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:31:23 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:36:26 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:41:30 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:46:33 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:51:36 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 03:56:40 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:01:43 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:06:46 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:11:50 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:16:53 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:21:56 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:27:00 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:32:03 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:37:06 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:42:09 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:47:13 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:52:16 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 04:57:19 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:02:22 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:07:26 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:12:29 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:17:32 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:22:35 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:27:39 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:32:42 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:37:46 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:42:49 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:47:52 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:52:55 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 05:57:58 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:03:01 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:08:05 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:13:08 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:18:11 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:23:15 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:28:18 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:33:21 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:38:25 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:43:28 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:48:31 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:53:35 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 06:58:42 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 07:03:45 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 07:08:49 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 07:13:53 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed
+===== 07:18:56 =====
+===== 07:23:59 =====
+===== 07:29:01 =====
+===== 07:34:04 =====
+===== 07:39:06 =====
+===== 07:44:08 =====
+===== 07:49:11 =====
+===== 07:54:13 =====
+===== 07:59:16 =====
+===== 08:04:18 =====
+===== 08:09:21 =====
+===== 08:14:23 =====
+===== 08:19:25 =====
+===== 08:24:27 =====
+===== 08:29:30 =====
+===== 08:34:32 =====
+===== 08:39:35 =====
+===== 08:44:37 =====
+===== 08:49:39 =====
+===== 08:54:42 =====
+===== 08:59:44 =====
+===== 09:04:47 =====
+===== 09:09:49 =====
+===== 09:14:51 =====
+===== 09:19:54 =====
+===== 09:24:56 =====
+===== 09:29:59 =====
+===== 09:35:01 =====
+===== 09:40:03 =====
+===== 09:45:06 =====
+===== 09:50:08 =====
+===== 09:55:11 =====
+===== 10:00:13 =====
+===== 10:05:15 =====
+===== 10:10:18 =====
+===== 10:15:20 =====
+===== 10:20:22 =====
+===== 10:25:25 =====
+===== 10:30:27 =====
+===== 10:35:30 =====
+===== 10:40:32 =====
+===== 10:45:35 =====
+===== 10:50:37 =====
+===== 10:55:39 =====
+===== 11:00:42 =====
+===== 11:05:44 =====
+===== 11:10:47 =====
+===== 11:15:49 =====
+===== 11:20:52 =====
+===== 11:25:54 =====
+===== 11:30:56 =====
+===== 11:35:59 =====
+===== 11:41:01 =====
+===== 11:46:03 =====
+===== 11:51:06 =====
+===== 11:56:08 =====
+===== 12:01:10 =====
+  scenarios: 79 done of 80, 79 started | combined.gif 79, mp4 79
+gif2mp4: 0 converted, 79 up to date, 0 still being written, 0 failed

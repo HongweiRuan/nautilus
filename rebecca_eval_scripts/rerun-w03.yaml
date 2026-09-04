@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-rerun-s1-w03
+  namespace: cogrob
+  labels: {app: navsafe-rerun, seed: "1", worker: w03}
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: {app: navsafe-rerun, seed: "1", worker: w03}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [ry-gpu-05.sdsc.optiputer.net, ry-gpu-06.sdsc.optiputer.net,
+                  ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net,
+                  ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]
+              - key: nvidia.com/gpu.product
+                operator: In
+                values: [NVIDIA-GeForce-RTX-3090]
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, /cfg/run_worker.sh]
+        env:
+        - {name: WORKER_INDEX, value: "3"}
+        - {name: WORKERS, value: "7"}
+        - {name: SEEDS, value: "1"}
+        - {name: OUTROOT, value: /avl-west/navsafe_eval/rerun_outputs}
+        - {name: DATASET, value: /avl-west/navsafe_dev/full_test_mirror}
+        - {name: NEXUSSIM_SHA, value: "597f084"}
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {key: NGC_API_KEY, name: ngc-api-key}}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {key: HF_TOKEN, name: hf-token}}
+        - {name: HYDRA_FULL_ERROR, value: "1"}
+        - {name: ACCEPT_EULA, value: "Y"}
+        - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+        resources:
+          limits: {cpu: "3", ephemeral-storage: 100Gi, memory: 48Gi, nvidia.com/gpu: "2"}
+          requests: {cpu: "3", ephemeral-storage: 100Gi, memory: 48Gi, nvidia.com/gpu: "2"}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /cfg, name: cfg}
+        - {mountPath: /avl-west, name: avl-west-vol}
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+      imagePullSecrets: [{name: ngc-pull}]
+      restartPolicy: Never
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 24Gi}
+      - name: cfg
+        configMap: {name: navsafe-rerun-cfg}
+      - name: avl-west-vol
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}

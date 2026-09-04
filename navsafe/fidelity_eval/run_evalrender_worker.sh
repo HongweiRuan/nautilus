@@ -4,8 +4,7 @@
 #
 # Why not `nre render` / `render-grpc`: both walk the reconstruction's training
 # trajectory. What we need to characterise is what the EVAL renders -- its own
-# pose chain, its recon rig with the -1.25/+0.3 correction, its harmonizer
-# setting. Measured 2026-09-01, an eval frame and a render-grpc frame of the
+# pose chain, its recon rig, its harmonizer setting. Measured 2026-09-01, an eval frame and a render-grpc frame of the
 # same clip are 30-37 dB apart after alignment, so the two are not
 # interchangeable and the published FID/FVD/FDpi^k came from the wrong one.
 #
@@ -13,7 +12,13 @@
 # on GPU 0 while the eval runs on GPU 1. Nothing else differs between them.
 #
 # Env: WORKER_INDEX, WORKERS, OUTROOT, SCENARIOS (file of sids), STEPDIR.
-set -eo pipefail
+# `set -uo pipefail`, NOT -e -- the same as navsafe_eval/run_worker_current.sh.
+# Under -e any unguarded failure kills the shell with no message, and three
+# separate silent deaths were chased through this bootstrap before that was
+# the answer each time. Every failure that should stop the worker says so
+# and exits explicitly; the ERR trap below reports the rest without
+# aborting.
+set -uo pipefail
 
 CORPUS=${CORPUS:-/avl-west/navsafe_5s_500}
 OUTROOT=${OUTROOT:-/avl-west/fidelity_eval/evalrender}
@@ -23,6 +28,13 @@ HARMONIZER_CACHE=${HARMONIZER_CACHE:-/avl-west/navsafe_dev/.harmonizer-cache}
 PORT=8080
 
 say() { echo "[w$(printf %02d "$WORKER_INDEX") $(date +%H:%M:%S)] $*"; }
+# Three separate silent exits have been chased through this bootstrap: a
+# variable deleted by an over-broad edit, a tar option in the wrong place,
+# and a command substitution with its stderr sent to /dev/null. Each left a
+# log that simply stopped. `set -e` kills the shell without saying why, so
+# say why.
+set -E
+trap 'rc=$?; say "FAILED rc=$rc at line $LINENO: $BASH_COMMAND"' ERR
 
 mapfile -t ALL < "$SCENARIOS"
 MY=()
@@ -36,12 +48,6 @@ say "shard: ${#MY[@]} of ${#ALL[@]} scenarios"
 # script is mid-campaign (navsafe-final18) and factoring its preamble out would
 # mean editing a live worker; fold the two together once that campaign ends.
 #
-# Two deliberate differences from it:
-#  * the tree is COPIED, not `git clone`d at a pinned sha. This campaign runs
-#    uncommitted work (NUREC_GRPC_RENDER_STEPS in nexussim/render/nurec_grpc.py),
-#    and a clone would silently drop it — every step would render and the shard
-#    would take 5x as long for no visible reason.
-#  * no ninja: the only policy loaded here is DrivoR, which JIT-builds nothing.
 export DEBIAN_FRONTEND=noninteractive
 say "apt: GL/X libs the renderer and IsaacSim need"
 apt-get update -qq && apt-get install -y -qq git curl python3-venv python3-dev \
@@ -62,13 +68,23 @@ command -v uv >/dev/null || { say "uv unavailable"; exit 1; }
 
 SRC=${SRC:-/hugsim-storage/NexusSim}
 REPO=/root/ns
-say "copying the working tree (sha $(git -C "$SRC" rev-parse --short HEAD 2>/dev/null), \
-$(git -C "$SRC" status --porcelain 2>/dev/null | wc -l) files modified)"
-rm -rf "$REPO"; mkdir -p "$REPO"
-tar -C "$SRC" --exclude=.git --exclude='*.pyc' --exclude=__pycache__ -cf - . \
-  | tar -C "$REPO" -xf - || { say "tree copy FAILED"; exit 1; }
+# `git clone`, like run_worker_current.sh, not a copy of the working tree: a
+# clone carries only tracked files, so the 15 GB in-tree .venv never enters the
+# pod, and the campaign can name the commit its numbers came from.
+NEXUSSIM_SHA=${NEXUSSIM_SHA:-$(git -C "$SRC" rev-parse HEAD)}
+rm -rf "$REPO"
+git clone --quiet --no-hardlinks "$SRC" "$REPO" || { say "clone FAILED"; exit 1; }
+git -C "$REPO" checkout --quiet "$NEXUSSIM_SHA" || { say "checkout $NEXUSSIM_SHA FAILED"; exit 1; }
+say "code at $(git -C "$REPO" log --oneline -1)"
 grep -q "NUREC_GRPC_RENDER_STEPS" "$REPO/nexussim/render/nurec_grpc.py" \
-  || { say "the copied tree has no NUREC_GRPC_RENDER_STEPS — wrong source"; exit 1; }
+  || { say "$NEXUSSIM_SHA has no NUREC_GRPC_RENDER_STEPS — wrong commit"; exit 1; }
+# The actor-z fix (bbd27ad1). Before it every non-ego car rendered ~0.35 m
+# high, which is the whole reason this campaign is being re-run; a shard that
+# quietly picked up an older commit would put defective frames in the same
+# tree as good ones and there is no way to tell them apart afterwards.
+if grep -qF "pos[2] = 0.0" "$REPO/nexussim/env/nexussim_env.py"; then
+  say "$NEXUSSIM_SHA still clamps actor z — pre-bbd27ad1 commit"; exit 1
+fi
 
 cd "$REPO"
 if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
@@ -81,6 +97,9 @@ if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/
     [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d" >/dev/null
   done
   uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops >/dev/null
+  # Kept even though this campaign only loads DrivoR: torch looks for ninja
+  # by shelling out, and its absence surfaces as a frame-0 infra_failure.
+  uv pip install --python /root/nexussim-venv/bin/python ninja >/dev/null
 fi
 PY=/root/nexussim-venv/bin/python
 # Announced before it runs: `import isaaclab` is the slowest thing in the
@@ -89,11 +108,19 @@ PY=/root/nexussim-venv/bin/python
 say "checking the venv (import nexussim, isaaclab)"
 "$PY" -c "import nexussim, isaaclab" || { say "venv unusable"; exit 1; }
 
+# Before the Kit cache, because locating it is the FIRST `import isaacsim` in
+# this script and that import blocks on an interactive EULA prompt without
+# these. Set further down, the lookup exited non-zero, the cache was skipped
+# with "cannot locate the isaacsim package", and every pod paid the ~8 min
+# recompile the cache exists to avoid.
+export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES
+
 # Warm Kit shader cache: without it every eval spends ~7.7 min inside
 # AppLauncher compiling materials and RT pipelines that die with the pod.
 KITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1 | tr -d ' ').tar
 if [ -f "$KITCACHE" ]; then
-  KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))" 2>/dev/null)
+  KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))") \
+    || { say "cannot locate the isaacsim package; skipping the Kit cache"; KITPKG=""; }
   if [ -n "$KITPKG" ] && tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
     say "Kit shader cache restored"
   else
@@ -123,6 +150,7 @@ say "artifact pool: ${#MY_SCENES[@]} reconstructions"
 mkdir -p "$HARMONIZER_CACHE"
 
 SERVE_PID=""
+SERVE_PAT="serve-grpc --host"   # matches the wrapper AND the binary it launches
 start_serve() {                      # $1 = on|off
   # --cache-size 1 with the harmonizer, 4 without. The harmonizer's weights sit
   # on the same GPU as the scene cache, and four resident scenes alongside them
@@ -131,6 +159,12 @@ start_serve() {                      # $1 = on|off
   local harm=() cache=4
   if [ "$1" = on ]; then
     harm=(--enable-harmonizer --harmonizer-cache "$HARMONIZER_CACHE"); cache=1
+  fi
+  # A leftover from the previous pass owns the memory this one needs, so clear
+  # it before starting rather than discovering it as an OOM 40 cells in.
+  if pgrep -f "$SERVE_PAT" >/dev/null; then
+    say "a serve-grpc is already running; stopping it before starting the $1 pass"
+    kill_servers
   fi
   say "serve-grpc starting on GPU 0 (harmonizer=$1, cache-size=$cache)"
   CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \
@@ -160,8 +194,35 @@ start_serve() {                      # $1 = on|off
   done
   say "renderer up"
 }
-stop_serve() { [ -n "$SERVE_PID" ] && kill $SERVE_PID 2>/dev/null; wait $SERVE_PID 2>/dev/null || true; SERVE_PID=""; sleep 10; }
-trap 'say exiting; kill $SERVE_PID 2>/dev/null' EXIT
+# `kill $SERVE_PID` alone does NOT stop the renderer. /app/run is a bash
+# wrapper; the pycena binary it launches is a CHILD, so killing the wrapper
+# orphans it to init and it keeps its ~19 GiB of scene cache on GPU 0. The next
+# pass's server then starts ALONGSIDE it and the pass dies piecemeal with
+# RESOURCE_EXHAUSTED -- cells failing at frame 0, and a server that "never bound
+# its port" because there was no memory left to bind with. Measured on the
+# 2026-09-04 run: six of ten shards carried an off-pass orphan into the on pass.
+#
+# So kill by pattern, then WAIT for the process to actually be gone rather than
+# sleeping a fixed 10 s: the driver releases an allocation asynchronously and a
+# fixed sleep is what made this look like a harmonizer memory problem.
+kill_servers() {
+  pkill -f "$SERVE_PAT" 2>/dev/null
+  for _ in $(seq 1 30); do
+    pgrep -f "$SERVE_PAT" >/dev/null || return 0
+    sleep 2
+  done
+  say "server still up after SIGTERM; SIGKILL"
+  pkill -9 -f "$SERVE_PAT" 2>/dev/null
+  sleep 5
+}
+stop_serve() {
+  [ -n "$SERVE_PID" ] && kill $SERVE_PID 2>/dev/null
+  wait $SERVE_PID 2>/dev/null || true
+  kill_servers
+  SERVE_PID=""
+  sleep 10
+}
+trap 'say exiting; kill $SERVE_PID 2>/dev/null; pkill -f "$SERVE_PAT" 2>/dev/null' EXIT
 
 export PATH=/root/nexussim-venv/bin:$PATH
 export PYTHONPATH="$REPO:$REPO/third_party:$REPO/third_party/nurec_protos"
@@ -171,7 +232,9 @@ export NEXUSSIM_NO_OVERLAY=1           # cam_f0.jpg = the renderer's own frame.
                                        # would score annotations, not pixels.
 export PY123D_RECENTER=1 NEXUSSIM_NO_CAM_MAP_LINES=1
 export NUPLAN_MAP_VERSION=nuplan-maps-v1.0
-export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
+export UV_NO_SYNC=1                     # ACCEPT_EULA is set above, before the
+                                       # kitcache lookup imports isaacsim.
+
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
 

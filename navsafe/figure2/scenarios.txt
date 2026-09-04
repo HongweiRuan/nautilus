@@ -1,0 +1,31 @@
+# Figure 2 of the paper: two scenarios per taxonomy leaf, sixteen in all.
+#
+# One <leaf>.<token> per line; blank lines and #-comments are ignored. Each
+# line becomes one Job. Swap a line and re-submit that one Job -- nothing here
+# is order-dependent.
+#
+# How these sixteen were chosen: of the eighty frozen recipes, these are the
+# two per leaf whose 20260827-editing90 run reached the full episode. That is
+# a proxy for "this host renders end to end", not an aesthetic judgement --
+# the pick is meant to be edited once you have looked at the frames.
+#
+# The four that failed on 2026-09-02 are back: the eval now reads the PUBLISHED
+# Arrow (/avl-west/navsafe_release/<token>/arrow), which is what the frozen
+# recipes were cut to. All 80 recipes verify against it exactly, so any of them
+# can go in this list.
+C-10.06a1f481118057b2
+C-10.07bf0601ad425977
+C-7.0ebb578555b25ab2
+C-7.54ae4b189e79541b
+I-3.050284885b2059e9
+I-3.a43dbb1d34665f24
+R-2.02b68b9cc51f506a
+R-2.02f1ad081f41550e
+R-3.02379e524f105926
+R-3.34489cf42e005e93
+R-4.061e7e1700945b03
+R-4.173369dc059d5fe9
+V-10.07846b829b3a575e
+V-10.13805e7752fe5685
+V-11.0317b218061b5c4d
+V-11.18b5995484435fbe

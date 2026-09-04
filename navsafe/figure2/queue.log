@@ -1,0 +1,36 @@
+[17:35:15] refused (utilisation policy); retrying navsafe-fig2-c-10-06a1f481118057b2 in 300s
+[17:40:19] refused (utilisation policy); retrying navsafe-fig2-c-10-06a1f481118057b2 in 300s
+[17:45:22] accepted navsafe-fig2-c-10-06a1f481118057b2  (16 left including this)
+[17:45:46] accepted navsafe-fig2-c-10-07bf0601ad425977  (15 left including this)
+[17:46:10] accepted navsafe-fig2-c-7-0ebb578555b25ab2  (14 left including this)
+[17:46:34] accepted navsafe-fig2-c-7-54ae4b189e79541b  (13 left including this)
+[17:46:58] accepted navsafe-fig2-i-3-050284885b2059e9  (12 left including this)
+[17:47:22] accepted navsafe-fig2-i-3-a43dbb1d34665f24  (11 left including this)
+[17:47:46] accepted navsafe-fig2-r-2-02b68b9cc51f506a  (10 left including this)
+[17:48:10] accepted navsafe-fig2-r-2-02f1ad081f41550e  (9 left including this)
+[17:48:34] accepted navsafe-fig2-r-3-02379e524f105926  (8 left including this)
+[17:48:59] accepted navsafe-fig2-r-3-34489cf42e005e93  (7 left including this)
+[17:49:23] accepted navsafe-fig2-r-4-061e7e1700945b03  (6 left including this)
+[17:49:49] accepted navsafe-fig2-r-4-173369dc059d5fe9  (5 left including this)
+[17:50:14] accepted navsafe-fig2-v-10-07846b829b3a575e  (4 left including this)
+[17:50:38] accepted navsafe-fig2-v-10-13805e7752fe5685  (3 left including this)
+[17:51:02] accepted navsafe-fig2-v-11-0317b218061b5c4d  (2 left including this)
+[17:51:26] accepted navsafe-fig2-v-11-18b5995484435fbe  (1 left including this)
+--- all 16 submitted ---
+NAME                                 STATUS    COMPLETIONS   DURATION   AGE
+navsafe-fig2-c-10-06a1f481118057b2   Running   0/1           6m25s      6m25s
+navsafe-fig2-c-10-07bf0601ad425977   Running   0/1           6m1s       6m1s
+navsafe-fig2-c-7-0ebb578555b25ab2    Running   0/1           5m37s      5m37s
+navsafe-fig2-c-7-54ae4b189e79541b    Running   0/1           5m12s      5m13s
+navsafe-fig2-i-3-050284885b2059e9    Running   0/1           4m49s      4m49s
+navsafe-fig2-i-3-a43dbb1d34665f24    Running   0/1           4m25s      4m25s
+navsafe-fig2-r-2-02b68b9cc51f506a    Running   0/1           4m1s       4m1s
+navsafe-fig2-r-2-02f1ad081f41550e    Running   0/1           3m37s      3m37s
+navsafe-fig2-r-3-02379e524f105926    Running   0/1           3m13s      3m13s
+navsafe-fig2-r-3-34489cf42e005e93    Running   0/1           2m48s      2m48s
+navsafe-fig2-r-4-061e7e1700945b03    Running   0/1           2m24s      2m24s
+navsafe-fig2-r-4-173369dc059d5fe9    Running   0/1           118s       118s
+navsafe-fig2-v-10-07846b829b3a575e   Running   0/1           93s        94s
+navsafe-fig2-v-10-13805e7752fe5685   Running   0/1           69s        69s
+navsafe-fig2-v-11-0317b218061b5c4d   Running   0/1           45s        45s
+navsafe-fig2-v-11-18b5995484435fbe   Running   0/1           21s        21s

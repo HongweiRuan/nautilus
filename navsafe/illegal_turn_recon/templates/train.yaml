@@ -16,9 +16,15 @@ metadata:
   }
 spec:
   backoffLimit:
-    6 # evictions/admission errors are external events, not code
-    # failures; finished clips are skipped so a retry is cheap
-  ttlSecondsAfterFinished: 7200 # 2h: finished jobs must release the namespace quota
+    12 # evictions/admission errors are external events, not code
+    # failures; finished clips are skipped so a retry is cheap. 12, not 6: a node
+    # whose GPUs go unhealthy rejects the pod at ADMISSION, in milliseconds and
+    # without doing any work, so a bad node burns the whole allowance in seconds.
+    # That is how itr-train-sh003 died on 2026-09-02 while ry-gpu-07 was sick.
+  ttlSecondsAfterFinished: 172800 # 48h. Was 7200, which deleted FAILED jobs two hours
+    # after they died — sh003 vanished before anyone could look at it, taking its
+    # events with it. Terminal pods do not count against the namespace pod cap, so
+    # keeping the record costs nothing but a Job object.
   template:
     metadata: { labels: { app: illegal_turn_recon, stage: train, shard: "__SHARD__" } }
     spec:
