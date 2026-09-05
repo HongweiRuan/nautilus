@@ -1,0 +1,63 @@
+# A renderer for ONE scenario, for looking at a single recipe from the
+# workspace pod.
+#
+# Not `serve-grpc.yaml`: that one globs the whole 1632-artifact corpus, takes
+# ~4 minutes to publish its scene list, and is the shared service other people
+# reach through the `nurec-grpc` Service. Driving six scenarios through it
+# OOM-killed it on 2026-09-04 (exit 137) and left it down for everyone. This
+# serves four sub-clips, starts in under a minute, carries no Service, and is
+# deleted when the look is over.
+#
+# `__TOKEN__` is substituted at submit time.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nurec-one
+  namespace: cogrob
+  labels: {k8s-app: nurec-one}
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+    - name: nre
+      image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+      command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+      args:
+        - |
+          set -uo pipefail
+          # --enable-editing-actors is what makes the edit_assets RPC available.
+          # Without it the insert is refused after the PLY has loaded and the
+          # episode renders an empty road while sim state still scores the actor.
+          exec /app/run serve-grpc --host 0.0.0.0 --port 8080 \
+            --enable-editing-actors --renderer default --cache-size 4 \
+            --artifact-glob '/avl-west/navsafe_dev/full_test_mirror/__TOKEN__/*.usdz'
+      env:
+        - {name: NGC_API_KEY, valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}}
+      ports: [{containerPort: 8080}]
+      resources:
+        limits:   {cpu: "4", memory: 32Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+        requests: {cpu: "4", memory: 32Gi, nvidia.com/gpu: "1", ephemeral-storage: 40Gi}
+      volumeMounts:
+        - {name: dshm, mountPath: /dev/shm}
+        - {name: avl-west-vol, mountPath: /avl-west}
+  volumes:
+    - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+    - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+  tolerations:
+    - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+    - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - ry-gpu-05.sdsc.optiputer.net
+                  - ry-gpu-06.sdsc.optiputer.net
+                  - ry-gpu-07.sdsc.optiputer.net
+                  - ry-gpu-08.sdsc.optiputer.net
+                  - ry-gpu-11.sdsc.optiputer.net
+                  - ry-gpu-12.sdsc.optiputer.net

@@ -23,14 +23,22 @@ DATASET=${DATASET:-/avl-west/navsafe_dev/full_test_mirror}
 PORT=${PORT:-8080}
 OUTROOT=${OUTROOT:-/avl-west/runs/recheck-edit80}
 LOGDIR=$OUTROOT/logs; mkdir -p "$LOGDIR"
+WORKER_INDEX=${WORKER_INDEX:-0}; WORKERS=${WORKERS:-1}
 say() { echo "[nre w$WORKER_INDEX $(date +%H:%M:%S)] $*"; }
 
-mapfile -t ALL < <(cd "$BENCH" && ls *.yaml | sed 's/\.yaml$//' | sort)
-MY=()
-for i in "${!ALL[@]}"; do
-  [ $(( i % WORKERS )) -eq "$WORKER_INDEX" ] && MY+=("${ALL[$i]}")
-done
-say "shard: ${#MY[@]} of ${#ALL[@]} scenarios"
+# ONLY names the scenarios directly, for a one-off over a handful of them; the
+# shard split is for the 80-way campaign.
+if [ -n "${ONLY:-}" ]; then
+  read -r -a MY <<< "$ONLY"
+  say "explicit list: ${#MY[@]} scenarios"
+else
+  mapfile -t ALL < <(cd "$BENCH" && ls *.yaml | sed 's/\.yaml$//' | sort)
+  MY=()
+  for i in "${!ALL[@]}"; do
+    [ $(( i % WORKERS )) -eq "$WORKER_INDEX" ] && MY+=("${ALL[$i]}")
+  done
+  say "shard: ${#MY[@]} of ${#ALL[@]} scenarios"
+fi
 
 POOL=/root/pool; mkdir -p "$POOL"
 n=0
@@ -63,7 +71,8 @@ SERVE_PID=$!
 # A Job pod completes only when EVERY container has exited -- without this the
 # Job stays active on two GPUs after the eval is long done.
 SENTINEL=${SENTINEL:-/sentinel/sim-done}
-while [ ! -f "$SENTINEL" ]; do
+SENTINEL_PVC=${SENTINEL_PVC:-$OUTROOT/logs/sim-done-w${WORKER_INDEX}}
+while [ ! -f "$SENTINEL" ] && [ ! -f "$SENTINEL_PVC" ]; do
   kill -0 $SERVE_PID 2>/dev/null || { say "serve-grpc exited on its own"; wait $SERVE_PID; exit $?; }
   sleep 10
 done

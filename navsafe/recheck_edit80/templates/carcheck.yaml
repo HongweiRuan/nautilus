@@ -1,4 +1,9 @@
-# One shard of the 80-scenario edited-scenario recheck.
+# The six re-calibrated cars, one C-7 each, with their OWN renderer.
+#
+# Not the shared nurec-grpc-server: driving six scenarios (24 sub-clips)
+# through it OOM-killed it on 2026-09-04 (exit 137) and left it down for
+# everyone. A one-off pod that serves only these six costs two GPUs for half
+# an hour and takes nothing else down with it.
 #
 # Two containers, one pod, one GPU each: `nre` serves the reconstructions,
 # `sim` drives DrivoR through them. Same pod means the same network namespace,
@@ -17,10 +22,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: __NAME__
+  name: navsafe-carcheck
   namespace: cogrob
   labels:
-    app: navsafe-recheck80
+    app: navsafe-carcheck
 spec:
   backoffLimit: 2
   # A backstop, not a schedule. Nothing here should take 8 h -- the longest
@@ -33,7 +38,7 @@ spec:
   template:
     metadata:
       labels:
-        k8s-app: __NAME__
+        k8s-app: navsafe-carcheck
     spec:
       restartPolicy: Never
       imagePullSecrets:
@@ -62,9 +67,8 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_nre.sh"]
           env:
-            - {name: WORKER_INDEX, value: "__IDX__"}
-            - {name: WORKERS,      value: "__N__"}
-            - {name: OUTROOT,      value: "__OUTROOT__"}
+            - {name: ONLY,    value: "C-7.599c8b2bc9b252a7 C-7.0dd3256035e75770 C-7.112db94505025ec5 C-7.0ebb578555b25ab2 C-7.1bdfacbfcff75c27 C-7.1e9350ac2bc25f59"}
+            - {name: OUTROOT, value: "/avl-west/runs/20260904-car-rescale-check"}
           # 2 cores, not 4. These nodes have 24 CPUs and 8 GPUs, so a pod
           # asking 12 cores strands GPUs behind a CPU limit -- ry-gpu-12 had
           # four cards free and no cores left, and w05 sat Pending on it. The
@@ -83,11 +87,10 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_sim.sh"]
           env:
-            - {name: WORKER_INDEX,     value: "__IDX__"}
-            - {name: WORKERS,          value: "__N__"}
-            - {name: OUTROOT,          value: "__OUTROOT__"}
-            - {name: REPLAY_FRAMES,    value: "__REPLAY__"}
-            - {name: EVAL_FRAMES,      value: "__EVALF__"}
+            - {name: ONLY,            value: "C-7.599c8b2bc9b252a7 C-7.0dd3256035e75770 C-7.112db94505025ec5 C-7.0ebb578555b25ab2 C-7.1bdfacbfcff75c27 C-7.1e9350ac2bc25f59"}
+            - {name: OUTROOT,         value: "/avl-west/runs/20260904-car-rescale-check"}
+            - {name: REPLAY_FRAMES,   value: "20"}
+            - {name: EVAL_FRAMES,     value: "80"}
             - {name: HYDRA_FULL_ERROR, value: "1"}
           # 4 cores: 6 per pod with the renderer, so four shards fit a 24-core
           # node instead of two. The fidelity render campaign runs the same

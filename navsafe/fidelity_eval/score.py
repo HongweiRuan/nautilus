@@ -191,6 +191,61 @@ def resolve(side, man):
     return out
 
 
+def fvd_windows(man):
+    """How many 16-frame windows at stride 8 the trimmed manifest yields.
+
+    Counted per CONTIGUOUS run, not per scenario: the common set can have holes
+    where one side dropped a frame, and FVD cannot span one.
+    """
+    wins = 0
+    for s in man:
+        idx = [f["i"] for f in s["frames"]]
+        if not idx:
+            continue
+        runs, run = [], [idx[0]]
+        for x, y in zip(idx, idx[1:]):
+            if y == x + 1:
+                run.append(y)
+            else:                     # rebind, never clear: runs holds this list
+                runs.append(run); run = [y]
+        runs.append(run)
+        wins += sum(max(0, (len(r) - 16) // 8 + 1) for r in runs)
+    return wins
+
+
+def write_overlap(man, common, sides, TAG, wins):
+    """The navsim tokens the metrics run on, and nothing else.
+
+    Two lists, because the two metric families evaluate at different points:
+    every common frame for FID and FVD, navsim scene anchors only for FDpi^k
+    (a policy needs the anchor's 4 history frames, 10 future frames and route),
+    so the second is a subset of the first.
+
+    Navsim tokens only. The CAM_F0 filename stem is what actually names the
+    files -- ours, DriveArena's and navsim's own sensor blobs -- and is the key
+    this script joins the render sides on, but it is an artifact of the layout:
+    anything reading this file indexes by token, and the token -> image mapping
+    is in the navsim log metadata already. Both ids live in manifest_<TAG>.json.
+
+    Deliberately flat and unannotated -- this is the input set, not a report.
+    """
+    out = RQE / f"overlap_{TAG}.yaml"
+    frame_toks = sorted({f["scene_token"] for sc in man for f in sc["frames"]})
+    scene_toks = sorted({f["scene_token"] for sc in man for f in sc["frames"]
+                         if f["is_navtest"]})
+    assert len(frame_toks) == len(common), (
+        f"{len(frame_toks)} navsim tokens for {len(common)} frames -- a token is "
+        "shared between frames and the list would silently under-count")
+    assert set(scene_toks) <= set(frame_toks), \
+        "an FDpi^k anchor is not in the FID/FVD frame set"
+    with open(out, "w") as fh:
+        yaml.safe_dump({"fid_fvd_frame_tokens": frame_toks,
+                        "fdpik_scene_tokens": scene_toks},
+                       fh, sort_keys=False, default_flow_style=False)
+    print(f"  {out}: {len(frame_toks)} frame tokens, "
+          f"{len(scene_toks)} of them FDpi^k anchors")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sides", nargs="*", default=["nurec", "drivearena"])
@@ -201,6 +256,10 @@ def main():
     # only in RESULTS.md. A run on a different frame set is a different
     # measurement and gets a different name.
     ap.add_argument("--tag", default="cmp")
+    # Regenerate the provenance file for a run that already scored, without
+    # re-walking the render trees or touching a GPU: manifest_<TAG>.json is
+    # already the trimmed common set, so everything the record needs is in it.
+    ap.add_argument("--overlap-only", action="store_true")
     ap.add_argument("--eval-root", default=EVALROOT_DEFAULT,
                     help="tree holding the eval pipeline's hoff/ and hon/ "
                          "(see the eval_off/eval_on note in SIDES)")
@@ -208,6 +267,15 @@ def main():
     TAG = a.tag
     SIDES["eval_off"] = (str(Path(a.eval_root) / "hoff"), SIDES["eval_off"][1])
     SIDES["eval_on"] = (str(Path(a.eval_root) / "hon"), SIDES["eval_on"][1])
+
+    if a.overlap_only:
+        cm = RQE / f"manifest_{TAG}.json"
+        if not cm.exists():
+            sys.exit(f"{cm} does not exist — nothing was scored under tag '{TAG}'")
+        man = json.load(open(cm))["scenes"]
+        common = {f["data_path"] for sc in man for f in sc["frames"]}
+        write_overlap(man, common, a.sides, TAG, fvd_windows(man))
+        return
 
     man = json.load(open(RQE / "manifest.json"))["scenarios"]
     n_man = sum(len(s["frames"]) for s in man)
@@ -248,21 +316,10 @@ def main():
     # key is "scenes": compute_fvd_navsim.py's load_manifest reads that, not the
     # "scenarios" the pinned manifest uses
     json.dump({"scenes": man}, open(cm, "w"))
-    wins = 0
-    for s in man:
-        idx = [f["i"] for f in s["frames"]]
-        if not idx:
-            continue
-        runs, run = [], [idx[0]]
-        for x, y in zip(idx, idx[1:]):
-            if y == x + 1:
-                run.append(y)
-            else:                     # rebind, never clear: runs holds this list
-                runs.append(run); run = [y]
-        runs.append(run)
-        wins += sum(max(0, (len(r) - 16) // 8 + 1) for r in runs)
+    wins = fvd_windows(man)
     print(f"\ncommon set: {len(common)} frames, "
           f"{sum(s['n_navtest'] for s in man)} navtest tokens, ~{wins} FVD windows")
+    write_overlap(man, common, a.sides, TAG, wins)
 
     # The matched-GT cache is keyed only by <tag>_<WxH>, and build_gt_cache skips
     # files that are already there while FID scores the WHOLE cache dir. So a

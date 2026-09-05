@@ -30,22 +30,43 @@ CKPT=${CKPT:-/avl-west/navsafe_eval/model_zoo/drivor/drivor_Nav1_25epochs.pth}
 REPLAY_FRAMES=${REPLAY_FRAMES:-20}
 EVAL_FRAMES=${EVAL_FRAMES:-200}
 PORT=${PORT:-8080}
+WORKER_INDEX=${WORKER_INDEX:-0}; WORKERS=${WORKERS:-1}
 say() { echo "[sim w$WORKER_INDEX $(date +%H:%M:%S)] $*"; }
 
 # Tell the sibling renderer to stop when this container is done, however it
 # ends. Without it `serve-grpc` runs forever, the pod never completes even
 # though the eval exited 0, and the Job sits "active" holding two GPUs doing
 # nothing -- which is exactly what all six shards did on 2026-09-03.
+# TWO flags, and the second is on the PVC on purpose. The emptyDir one dies
+# with the pod, so when the renderer failed to notice it on 2026-09-04 -- both
+# jobs left `nre` running for five hours after `sim` exited 0, holding four
+# GPUs -- there was nothing left to inspect and no way to tell whether the
+# writer or the reader was at fault. The PVC copy survives the pod and is
+# visible from outside it.
 SENTINEL=${SENTINEL:-/sentinel/sim-done}
-trap 'mkdir -p "$(dirname "$SENTINEL")"; echo $? > "$SENTINEL"' EXIT
+SENTINEL_PVC=${SENTINEL_PVC:-$OUTROOT/logs/sim-done-w${WORKER_INDEX}}
+_flag() { rc=$?; mkdir -p "$(dirname "$SENTINEL")" "$(dirname "$SENTINEL_PVC")" 2>/dev/null
+          echo "$rc" > "$SENTINEL" 2>/dev/null
+          echo "$rc" > "$SENTINEL_PVC" 2>/dev/null; }
+trap _flag EXIT
 
 mkdir -p "$OUTROOT/logs"
-mapfile -t ALL < <(cd "$BENCH" && ls *.yaml | sed 's/\.yaml$//' | sort)
-MY=()
-for i in "${!ALL[@]}"; do
-  [ $(( i % WORKERS )) -eq "$WORKER_INDEX" ] && MY+=("${ALL[$i]}")
-done
-say "shard: ${#MY[@]} of ${#ALL[@]} scenarios"
+# ONLY names the scenarios directly -- for a one-off over a handful of them,
+# such as checking a re-calibrated asset. Without it this is shard
+# WORKER_INDEX of the 80-way campaign. Same script either way: the bootstrap,
+# the Kit cache, the scene-list check and the flags are what must not drift
+# between a campaign run and a spot check.
+if [ -n "${ONLY:-}" ]; then
+  read -r -a MY <<< "$ONLY"
+  say "explicit list: ${#MY[@]} scenarios"
+else
+  mapfile -t ALL < <(cd "$BENCH" && ls *.yaml | sed 's/\.yaml$//' | sort)
+  MY=()
+  for i in "${!ALL[@]}"; do
+    [ $(( i % WORKERS )) -eq "$WORKER_INDEX" ] && MY+=("${ALL[$i]}")
+  done
+  say "shard: ${#MY[@]} of ${#ALL[@]} scenarios"
+fi
 
 # ── 1. environment ───────────────────────────────────────────────────────────
 export DEBIAN_FRONTEND=noninteractive

@@ -240,13 +240,38 @@ export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
 
 gpu_is_gone() { grep -qE "cudaErrorInitializationError|CUDA driver initialization failed|no CUDA-capable device" "$1"; }
 
+# A cell is COMPLETE only when it logged one CAM_F0 row per requested step.
+#
+# The old test was `frames >= 1`, and that is how 148 harmonizer cells entered
+# the 2026-09-04 run truncated but marked done: the render server ran out of
+# memory at the first scene handoff (frame 50 of 201, the s1->s2 boundary), the
+# episode ended as an infra_failure, and 50 frames was "at least one". A resume
+# then skipped every one of them, so the defect survived a re-run that was
+# specifically meant to remove it and only surfaced as a shrunken FID/FVD
+# sample -- 15766 common frames down to 12620.
+cell_want() {                        # $1 = token -> how many steps were asked for
+  local f=$STEPDIR/$1.txt
+  [ -f "$f" ] || { echo 0; return; }
+  tr ',' '\n' < "$f" | grep -c '[0-9]'
+}
+cell_got() {                         # $1 = cell dir -> how many were rendered
+  local t=$1/render_timestamps.tsv
+  [ -f "$t" ] && grep -c . "$t" || echo 0
+}
+cell_complete() {                    # $1 = cell dir, $2 = token
+  [ -f "$1/.done" ] || return 1
+  local w; w=$(cell_want "$2")
+  [ "$w" -gt 0 ] || return 0         # no step list to check against: trust .done
+  [ "$(cell_got "$1")" -ge "$w" ]
+}
+
 run_pass() {                          # $1 = on|off
   local tag=$1 out=$OUTROOT/h$1
   mkdir -p "$out"
   # A resumed shard whose pass is already complete should not pay two minutes
   # of scene enumeration to then skip every cell.
   local todo=0
-  for T in "${MY[@]}"; do [ -f "$out/$T/.done" ] || todo=$((todo+1)); done
+  for T in "${MY[@]}"; do cell_complete "$out/$T" "$T" || todo=$((todo+1)); done
   if [ "$todo" -eq 0 ]; then say "pass $tag already complete (${#MY[@]} cells)"; return 0; fi
   say "pass $tag: $todo of ${#MY[@]} cells to do"
   start_serve "$tag" || exit 1
@@ -254,7 +279,7 @@ run_pass() {                          # $1 = on|off
   for T in "${MY[@]}"; do
     n=$((n+1))
     local D=$out/$T
-    if [ -f "$D/.done" ]; then skip=$((skip+1)); continue; fi
+    if cell_complete "$D" "$T"; then skip=$((skip+1)); continue; fi
     local STEPS=$STEPDIR/$T.txt
     [ -f "$STEPS" ] || { say "$T: no step list"; fail=$((fail+1)); continue; }
     local H; H=$($PY -m nexussim.navsafe handoff --token "$T" 2>>"$D.handoff.err" | tail -1) || true
@@ -285,11 +310,11 @@ PYX
       --camera-resolution-scale 1.0 \
       --nurec-cameras CAM_F0 --enable-vis \
       --log-level INFO --output-dir "$D" > "$D/eval.log" 2>&1 && rc=0 || rc=$?
-    local got; got=$(ls -1 "$D/frames" 2>/dev/null | wc -l)
-    if [ "$got" -ge 1 ]; then
-      touch "$D/.done"; ok=$((ok+1)); say "[$tag $n/${#MY[@]}] $T OK ($got frames)"
+    local got want; got=$(cell_got "$D"); want=$(cell_want "$T")
+    if [ "$got" -ge "$want" ] && [ "$want" -gt 0 ]; then
+      touch "$D/.done"; ok=$((ok+1)); say "[$tag $n/${#MY[@]}] $T OK ($got/$want steps)"
     else
-      fail=$((fail+1)); say "[$tag $n/${#MY[@]}] $T FAILED rc=$rc"
+      fail=$((fail+1)); say "[$tag $n/${#MY[@]}] $T FAILED rc=$rc ($got/$want steps)"
       gpu_is_gone "$D/eval.log" && { say "GPU is gone — failing the shard"; exit 3; }
     fi
   done
