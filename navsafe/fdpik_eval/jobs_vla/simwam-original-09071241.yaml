@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: simwam-original-09071213 simwam original 0
+# Placeholders: simwam-original-09071241 simwam original 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,7 +16,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-simwam-original-09071213
+  name: fdpik-simwam-original-09071241
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: simwam}
 spec:
@@ -45,8 +45,6 @@ spec:
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}
-            - {name: NAVSIM_DATA_ROOT,     value: "/avl-west/navsim/test_navsim_logs"}
-            - {name: OPENSCENE_DATA_ROOT,  value: "/avl-west/navsim/test_sensor_blobs"}
             - {name: ACCEPT_EULA, value: "Y"}
             - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
             - {name: HYDRA_FULL_ERROR, value: "1"}

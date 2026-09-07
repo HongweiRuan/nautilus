@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: simwam-eval-on-zfix2-09071213 simwam eval_on_zfix2 0
+# Placeholders: simwam-drivearena-zfix2-09071241 simwam drivearena_zfix2 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,7 +16,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-simwam-eval-on-zfix2-09071213
+  name: fdpik-simwam-drivearena-zfix2-09071241
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: simwam}
 spec:
@@ -41,12 +41,10 @@ spec:
           command: ["bash", "/cfg/vla_fdpik_worker.sh"]
           env:
             - {name: MODEL, value: "simwam"}
-            - {name: SIDE,  value: "eval_on_zfix2"}
+            - {name: SIDE,  value: "drivearena_zfix2"}
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}
-            - {name: NAVSIM_DATA_ROOT,     value: "/avl-west/navsim/test_navsim_logs"}
-            - {name: OPENSCENE_DATA_ROOT,  value: "/avl-west/navsim/test_sensor_blobs"}
             - {name: ACCEPT_EULA, value: "Y"}
             - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
             - {name: HYDRA_FULL_ERROR, value: "1"}

@@ -1,0 +1,40 @@
+# The 24 scenarios this campaign evaluates: two per edited leaf, and all ten
+# of V-10.
+#
+# V-10 gets all ten because it is the leaf that just changed -- its hand-off
+# moved 20 -> 8 and every one of its ten recipes was re-baked against the new
+# one (2026-09-06). The other seven leaves were already frozen at 8 and did not
+# move, so two apiece is a check that nothing else shifted, not a measurement.
+#
+# The two picked from each of those seven are the same pair the 2026-09-05
+# twelve-scenario batch used, so the numbers are comparable across the two
+# runs. Where the leaf has hosts that carry an inserted actor, both picks are
+# such hosts; C-10 and V-11 have none at all (all twenty of their recipes are
+# `mined`, the event is in the log), so their picks are simply the first two.
+#
+# Order matters: the shard split is round-robin over this file, so V-10's ten
+# spread two to a shard instead of stacking into one.
+C-7.0dd3256035e75770
+C-7.0ebb578555b25ab2
+C-10.06a1f481118057b2
+C-10.07bf0601ad425977
+I-3.03b66343e1ac5d68
+I-3.050284885b2059e9
+R-2.0057ce5b81c35a81
+R-2.00c1e4eb4a045f20
+R-3.02379e524f105926
+R-3.0777f5a7263758be
+R-4.005f87dd980253a5
+R-4.02015675e4585611
+V-11.0093ff0188ea5b90
+V-11.0317b218061b5c4d
+V-10.07846b829b3a575e
+V-10.13805e7752fe5685
+V-10.13c555e68671524f
+V-10.14d171fcb9295596
+V-10.34ac200e359653b5
+V-10.49a0d29c7058501c
+V-10.63c145828c3b5fd8
+V-10.6c9e40634f705f56
+V-10.bbee1ab465af50c2
+V-10.be36f75d360c502f

@@ -37,9 +37,16 @@ tokens_wanted = {f["scene_token"] for sc in man for f in sc["frames"] if f["is_n
 base.tokens = sorted(tokens_wanted)
 scene_filter: SceneFilter = instantiate(base)
 
+# Argument names and path layout copied from the evaluator's own caller
+# (navsim/planning/script/run_feature_dump_navsim.py), not guessed: an earlier
+# version passed `original_sensor_path` and died on a TypeError after eleven
+# minutes of container setup.
+from pathlib import Path                                       # noqa: E402
+_root = Path(os.environ["OPENSCENE_DATA_ROOT"])                # env.sh sets this
+_split = os.environ.get("NAVSIM_SPLIT", "test")
 loader = SceneLoader(
-    data_path=os.environ["NAVSIM_DATA_ROOT"],
-    original_sensor_path=os.environ["OPENSCENE_DATA_ROOT"],
+    data_path=_root / "navsim_logs" / _split,
+    sensor_blobs_path=_root / "sensor_blobs" / _split,
     scene_filter=scene_filter,
     sensor_config=SensorConfig.build_no_sensors(),   # status only; no image decode
 )
@@ -76,8 +83,16 @@ for sc in man:
         table[tok] = dict(image=f["data_path"], prev=prev,   # prev[0] = i-1
                           log=sc["log"], i=f["i"], **status[tok])
 
+# Written to a per-process temp file and renamed, because every side's job
+# builds this table for itself and all four start together: a plain
+# open(out, "w") truncates in place, so one job can read the file while
+# another is halfway through writing it. os.replace is atomic on the same
+# filesystem -- last writer wins, and a reader only ever sees a whole file.
 os.makedirs(os.path.dirname(a.out), exist_ok=True)
-json.dump(table, open(a.out, "w"))
+_tmp = f"{a.out}.{os.getpid()}"
+with open(_tmp, "w") as _fh:
+    json.dump(table, _fh)
+os.replace(_tmp, a.out)
 print(f"wrote {len(table)} anchors to {a.out}; "
       f"{missing_hist} have fewer than {a.history} predecessors in the common set",
       file=sys.stderr)

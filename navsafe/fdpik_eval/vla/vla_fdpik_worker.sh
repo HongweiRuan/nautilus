@@ -28,6 +28,28 @@ UEPY=$UE/../envs/ue/bin/python          # the evaluator's interpreter, on the PV
 SDIR=$(cd "$(dirname "$0")" && pwd)     # /cfg, resolved once
 mkdir -p "$OUT"
 
+# STAGE A FIRST, before apt/uv/clone. It needs nothing but the evaluator's
+# interpreter, which is already on the PVC, so running it here turns a bad
+# argument or a missing path into a failure in under a minute. Ordered after
+# the environment build it cost eleven minutes of container setup to discover
+# that SceneLoader takes `sensor_blobs_path`, not `original_sensor_path`.
+# ---- stage A: the token table, once for every model and every side ----------
+TABLE=$OUT/token_table.json
+if [ ! -s "$TABLE" ]; then
+  say "stage A: building the token table with the evaluator's interpreter"
+  # No `conda activate`. The env lives on the PVC, so its interpreter is
+  # enough with env.sh's exports set by hand -- and that keeps stage A working
+  # whichever base image the job runs on, which the nre-ga round proved is not
+  # a given: that image has no conda at all and the activate line killed it.
+  ( cd "$UE" && unset PYTHONPATH && set -a && . ./env.sh && set +a
+    "$UEPY" "$SDIR/token_table.py" --out "$TABLE" ) \
+    || { say "stage A FAILED"; exit 1; }
+fi
+# $UEPY, not python3: this runs before apt, so the base image's own
+# interpreter is not something to count on.
+say "token table: $("$UEPY" -c "import json;print(len(json.load(open('$TABLE'))))" 2>/dev/null) anchors"
+
+
 export DEBIAN_FRONTEND=noninteractive
 # The GL/X libs are not decoration: opencv and parts of the SimWAM stack link
 # them, and the base image no longer carries what nre-ga did. `|| true` on the
@@ -53,19 +75,6 @@ REPO=/root/ns
 }
 say "code at $(git -C "$REPO" log --oneline -1)"
 export NAVSAFE_VLA_SERVER_DIR="$REPO/nexussim/modelzoo/navsim/vla_server"
-
-# ---- stage A: the token table, once for every model and every side ----------
-TABLE=$OUT/token_table.json
-if [ ! -s "$TABLE" ]; then
-  say "stage A: building the token table with the evaluator's interpreter"
-  # No `conda activate`: this image (nre-ga) has no conda -- that is the
-  # metabench image the scoring jobs use. The env itself lives on the PVC, so
-  # its interpreter is enough, with env.sh's exports set by hand.
-  ( cd "$UE" && unset PYTHONPATH && set -a && . ./env.sh && set +a
-    "$UEPY" "$SDIR/token_table.py" --out "$TABLE" ) \
-    || { say "stage A FAILED"; exit 1; }
-fi
-say "token table: $(python3 -c "import json;print(len(json.load(open('$TABLE'))))" 2>/dev/null) anchors"
 
 # ---- the VLA venv, identical recipe to navsafe-rerun-cfg/run_worker.sh ------
 LOCK=/avl-west/navsafe_eval/env_kit/vla_requirements.lock.txt
