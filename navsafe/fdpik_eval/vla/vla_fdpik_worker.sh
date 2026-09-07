@@ -24,6 +24,8 @@ OUT=${OUT:-/avl-west/fidelity_eval/fdpik_vla}
 SRC=${SRC:-/hugsim-storage/NexusSim}
 NEXUSSIM_SHA=${NEXUSSIM_SHA:-}
 UE=/avl-west/drivearena_bench/unified_evaluator
+UEPY=$UE/../envs/ue/bin/python          # the evaluator's interpreter, on the PVC
+SDIR=$(cd "$(dirname "$0")" && pwd)     # /cfg, resolved once
 mkdir -p "$OUT"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -50,13 +52,13 @@ export NAVSAFE_VLA_SERVER_DIR="$REPO/nexussim/modelzoo/navsim/vla_server"
 # ---- stage A: the token table, once for every model and every side ----------
 TABLE=$OUT/token_table.json
 if [ ! -s "$TABLE" ]; then
-  say "stage A: building the token table in the evaluator's env"
-  source /opt/conda/etc/profile.d/conda.sh
-  conda activate /avl-west/drivearena_bench/envs/ue || { say "ue env FAILED"; exit 1; }
-  ( cd "$UE" && source env.sh && unset PYTHONPATH
-    python3 "$(dirname "$0")/token_table.py" --out "$TABLE" ) \
+  say "stage A: building the token table with the evaluator's interpreter"
+  # No `conda activate`: this image (nre-ga) has no conda -- that is the
+  # metabench image the scoring jobs use. The env itself lives on the PVC, so
+  # its interpreter is enough, with env.sh's exports set by hand.
+  ( cd "$UE" && unset PYTHONPATH && set -a && . ./env.sh && set +a
+    "$UEPY" "$SDIR/token_table.py" --out "$TABLE" ) \
     || { say "stage A FAILED"; exit 1; }
-  conda deactivate
 fi
 say "token table: $(python3 -c "import json;print(len(json.load(open('$TABLE'))))" 2>/dev/null) anchors"
 
@@ -84,7 +86,7 @@ if [ -s "$NPZ" ] && [ "$LIMIT" = 0 ]; then
   say "stage B: $NPZ already exists — skipping"
 else
   say "stage B: $MODEL on side '$SIDE'${LIMIT:+ (limit $LIMIT)}"
-  "$PY" "$(dirname "$0")/feature_dump_vla.py" \
+  "$PY" "$SDIR/feature_dump_vla.py" \
       --model "$MODEL" --variation "$SIDE" \
       --token-table "$TABLE" --out "$NPZ" --limit "$LIMIT" \
       || { say "stage B FAILED"; exit 1; }
@@ -111,10 +113,8 @@ if [ ! -s "$ORIG" ]; then
 fi
 [ -s "$ORIG" ] || { say "original side never appeared; features are written, FD not computed"; exit 0; }
 say "stage C: compute_fd"
-source /opt/conda/etc/profile.d/conda.sh
-conda activate /avl-west/drivearena_bench/envs/ue || { say "ue env FAILED"; exit 1; }
 ( cd "$UE" && unset PYTHONPATH
-  python3 scripts/compute_fd.py "$ORIG" "$NPZ" \
+  "$UEPY" scripts/compute_fd.py "$ORIG" "$NPZ" \
     --json "$OUT/$MODEL/fd_${MODEL}_${SIDE}_vs_original.json" ) \
   || { say "stage C FAILED"; exit 1; }
 say "ALL DONE"

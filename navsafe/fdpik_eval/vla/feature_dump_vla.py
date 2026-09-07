@@ -92,38 +92,21 @@ def _simwam(a, mod):
     (B, L, D): the model's own representation of the scene it was shown, which
     is the same kind of quantity `drivor_f0` contributes to the panel.
 
-    Construction mirrors simwam_server.main() exactly, through that module's own
-    helpers, so the resize, the prompt and the checkpoint load are the ones the
-    closed-loop eval runs rather than a second copy of them.
+    The model comes from the server's own `build()`. An earlier version of this
+    adapter repeated those forty lines instead, and was already wrong by the
+    time it first ran: 70a8d7ed had moved construction to the CPU because
+    building on the card overruns a 24 GB 3090, and the copy here still asked
+    the factory for cuda.
     """
+    import argparse as _ap
     import torch as _t
-    from pathlib import Path as _P
-    os.environ.setdefault("DIFFSYNTH_MODEL_BASE_PATH", a.model_base_path)
-    os.environ.setdefault("DIFFSYNTH_DOWNLOAD_SOURCE", "huggingface")
-    repo = _P(a.repo)
-    sys.path.insert(0, str(repo / "src"))
-    sys.path.insert(0, str(repo / "navsim"))
-    from hydra import compose, initialize_config_dir
-    from hydra.utils import instantiate
-
-    device = "cuda" if _t.cuda.is_available() else "cpu"
-    dtype = _t.bfloat16
-    with initialize_config_dir(config_dir=str((repo / "configs").resolve()),
-                               version_base=None):
-        cfg = compose(config_name=mod.CONFIG_NAME, overrides=[
-            f"task={a.task}",
-            "model.load_text_encoder=true",
-            "model.skip_dit_load_from_pretrain=true",
-            "model.redirect_common_files=false",
-        ])
-    model = instantiate(cfg.model, model_dtype=dtype, device=device)
-    mod._load_checkpoint(model, a.checkpoint)
-    model = model.to(device).eval()
-    with _t.no_grad():
-        ctx = mod._pad_context(*model.encode_prompt(mod._build_prompt()))
-    model.text_encoder = None
-    if device.startswith("cuda"):
-        _t.cuda.empty_cache()
+    ns = _ap.Namespace(
+        repo=a.repo, checkpoint=a.checkpoint, task=a.task,
+        num_inference_steps=a.num_inference_steps,
+        action_horizon=a.action_horizon, seed=a.seed,
+        device=None, model_base_path=a.model_base_path,
+    )
+    model, ctx = mod.build(ns)
 
     def run_one(row, paths):
         st = list(row["cmd_onehot"]) + list(row["vel"]) + list(row["acc"])

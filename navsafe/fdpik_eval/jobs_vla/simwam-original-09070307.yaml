@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: simwam-eval-on-zfix2-09070220 simwam eval_on_zfix2 0
+# Placeholders: simwam-original-09070307 simwam original 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,7 +16,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-simwam-eval-on-zfix2-09070220
+  name: fdpik-simwam-original-09070307
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: simwam}
 spec:
@@ -32,7 +32,7 @@ spec:
           command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/vla_fdpik_worker.sh"]
           env:
             - {name: MODEL, value: "simwam"}
-            - {name: SIDE,  value: "eval_on_zfix2"}
+            - {name: SIDE,  value: "original"}
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}
