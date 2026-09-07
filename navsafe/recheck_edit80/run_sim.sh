@@ -157,7 +157,11 @@ say "renderer up, all $(( ${#MY[@]} * 4 )) reconstructions present"
 # ── 4. the rollout ───────────────────────────────────────────────────────────
 export PYTHONPATH=$REPO:$REPO/third_party:$REPO/third_party/nurec_protos
 export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=$PORT NUREC_GRPC_TIMEOUT_S=600
-export NUREC_GRPC_CAM_RIG=navsim
+# NO CAM RIG OVERRIDE. `recon` is the renderer's default and the one that was
+# calibrated -- it reuses the reconstruction's own CameraSpec and rig_to_camera.
+# `navsim` rebuilds a synthetic pinhole and drops it 1.4 m, and was forced here
+# only because this worker's preamble was copied from the fidelity render
+# campaign, which wants the synthetic rig for a different comparison.
 export PY123D_RECENTER=1 NEXUSSIM_NO_CAM_MAP_LINES=1
 export NAVSAFE_WORK=/avl-west/navsafe_dev
 # The actor library, from the same published release as the scenarios. A recipe
@@ -194,7 +198,7 @@ for TGT in "${MY[@]}"; do
     --scenario-source py123d \
     --py123d-data-root "$DATASET/$T/arrow" --py123d-scene-index 0 \
     --nurec-work-dir "$DATASET" \
-    --render-backend nurec_grpc --cam-height navsim \
+    --render-backend nurec_grpc \
     --model-type drivor --checkpoint "$CKPT" \
     --recipe "$BENCH/$TGT.yaml" \
     --traffic-mode navsafe \

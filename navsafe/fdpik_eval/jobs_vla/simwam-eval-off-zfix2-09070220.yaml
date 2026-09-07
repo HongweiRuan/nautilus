@@ -1,0 +1,71 @@
+# One side of one VLA/world-model row's FDpi^k feature dump.
+# Placeholders: simwam-eval-off-zfix2-09070220 simwam eval_off_zfix2 0
+#
+# One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
+# it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
+# there is no renderer, and the card is the model's alone. The constraint that
+# rules it out of the sweep does not apply here.
+#
+# PUBLIC QUEUE: no reservation toleration and no hostname pin, so these sit in
+# the general pool. 3090 and A10 are both 24 GB and both plentiful outside
+# us-west (3090: 38 west / 6 central; A10: 18 central), and cpu is 2 because
+# in the public pool the CPU request is usually what a pod waits on, not the
+# GPU. The PVCs are `rook-cephfs`, the cluster-wide class rather than a
+# region-pinned one, so a us-central node can mount them -- reads just cross
+# regions, which mainly costs venv-build and checkpoint-load time.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fdpik-simwam-eval-off-zfix2-09070220
+  namespace: cogrob
+  labels: {app: fdpik_eval, stage: vla, model: simwam}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata: {labels: {app: fdpik_eval, stage: vla, model: simwam}}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: vlafd
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/vla_fdpik_worker.sh"]
+          env:
+            - {name: MODEL, value: "simwam"}
+            - {name: SIDE,  value: "eval_off_zfix2"}
+            - {name: LIMIT, value: "0"}
+            - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
+            - {name: SRC,   value: "/hugsim-storage/NexusSim"}
+            - {name: NAVSIM_DATA_ROOT,     value: "/avl-west/navsim/test_navsim_logs"}
+            - {name: OPENSCENE_DATA_ROOT,  value: "/avl-west/navsim/test_sensor_blobs"}
+            - {name: ACCEPT_EULA, value: "Y"}
+            - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: HF_HOME, value: "/avl-west/drivearena_bench/.hf_cache"}
+            - name: HF_TOKEN
+              valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+          # cpu 2 to schedule; memory stays at 48Gi because the SimWAM
+          # checkpoint alone is 12 GB and is read to CPU before it is placed,
+          # and an OOM-kill costs more than a slower queue.
+          resources:
+            requests: {cpu: "2", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "2", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          volumeMounts:
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: cfg, mountPath: /cfg}
+            - {name: avl-west-vol, mountPath: /avl-west}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 24Gi}}
+        - {name: cfg, configMap: {name: navsafe-fdpik-vla-cfg, defaultMode: 493}}
+        - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+      imagePullSecrets: [{name: ngc-pull}]
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: topology.kubernetes.io/region, operator: In, values: [us-west, us-central]}
+                  - {key: nvidia.com/gpu.product, operator: In,
+                     values: [NVIDIA-GeForce-RTX-3090, NVIDIA-A10]}

@@ -56,8 +56,16 @@ SIDES = {
     # rather than being a line in RESULTS.md nobody can re-derive.
     "eval_off":   (None, (1920, 1080)),
     "eval_on":    (None, (1920, 1080)),
+    # The SAME two arms from the PRE-fix tree, so a before/after lands in one
+    # intersection. Scoring them as separate runs does not answer the question:
+    # FID and FVD do not transfer across sample sizes, so two runs on two frame
+    # sets differ by the fix AND by the sample, with no way to separate them.
+    # Six sides, one common set, one comparison.
+    "eval_off_pre": (None, (1920, 1080)),
+    "eval_on_pre":  (None, (1920, 1080)),
 }
 EVALROOT_DEFAULT = "/avl-west/fidelity_eval/evalrender_zfix"
+EVALROOT_PRE = "/avl-west/fidelity_eval/evalrender"
 CORPUS = Path("/avl-west/navsafe_5s_500")
 # Where the offline render lives; used only to translate the gRPC path's
 # contiguous frame index back into the timestamp the manifest keys on.
@@ -125,7 +133,7 @@ def resolve(side, man):
     spec = SIDES[side][0]
     root = Path(spec) if str(spec).startswith("/") else RQE / spec
     out = {}
-    if side.startswith("eval_"):
+    if side.startswith("eval_"):        # covers the _pre variants too
         # <root>/<sid>/frames/<step>/cam_f0.jpg, step being the Arrow row the
         # eval rendered. Scoped per scenario for the same reason the gRPC
         # branch is: 47 timestamps in this manifest are claimed by more than
@@ -263,10 +271,14 @@ def main():
     ap.add_argument("--eval-root", default=EVALROOT_DEFAULT,
                     help="tree holding the eval pipeline's hoff/ and hon/ "
                          "(see the eval_off/eval_on note in SIDES)")
+    ap.add_argument("--eval-root-pre", default=EVALROOT_PRE,
+                    help="tree behind the eval_off_pre / eval_on_pre sides")
     a = ap.parse_args()
     TAG = a.tag
     SIDES["eval_off"] = (str(Path(a.eval_root) / "hoff"), SIDES["eval_off"][1])
     SIDES["eval_on"] = (str(Path(a.eval_root) / "hon"), SIDES["eval_on"][1])
+    SIDES["eval_off_pre"] = (str(Path(a.eval_root_pre) / "hoff"), SIDES["eval_off_pre"][1])
+    SIDES["eval_on_pre"] = (str(Path(a.eval_root_pre) / "hon"), SIDES["eval_on_pre"][1])
 
     if a.overlap_only:
         cm = RQE / f"manifest_{TAG}.json"

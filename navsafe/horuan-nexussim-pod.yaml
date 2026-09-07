@@ -1,5 +1,11 @@
 # horuan-nexussim, captured from the live pod on 2026-08-25.
 #
+# NOT THE CANONICAL COPY. ../pods/horuan-nexussim.yaml is, and it is
+# fuller than this one -- this capture had lost the
+# nautilus.io/reservation=cogrob toleration, without which the pod
+# cannot land on any cogrob-reserved node and just sits Pending. That
+# toleration is restored at the bottom of this file; prefer ../pods/.
+#
 # It is a BARE pod -- no Deployment, no ownerReferences, so nothing
 # recreates it. The code lives on the /hugsim-storage PVC and survives;
 # the container does not. A restart is therefore:
@@ -131,6 +137,13 @@ spec:
       name: hugsim-storage
   restartPolicy: Never
   schedulerName: default-scheduler
+  # The capture on 2026-08-25 lost this one, and without it the pod cannot land
+  # on any cogrob-RESERVED node (ry-gpu-05..08, 11..14) -- which is where it has
+  # always run. The untainted 3090s (01..03) are usually full, so the symptom is
+  # a pod that sits Pending forever after a restart with no obvious reason.
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
   securityContext: {}
   terminationGracePeriodSeconds: 30
   volumes:

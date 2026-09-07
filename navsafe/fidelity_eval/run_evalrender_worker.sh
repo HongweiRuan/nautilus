@@ -222,7 +222,11 @@ stop_serve() {
   SERVE_PID=""
   sleep 10
 }
-trap 'say exiting; kill $SERVE_PID 2>/dev/null; pkill -f "$SERVE_PAT" 2>/dev/null' EXIT
+# `|| true` on both kills: on a clean exit there is nothing left to kill, and a
+# non-zero pkill made the ERR trap print two "FAILED rc=..." lines AFTER
+# "ALL DONE" -- a worker that had finished its shard perfectly looked like it
+# had crashed.
+trap 'say exiting; kill $SERVE_PID 2>/dev/null || true; pkill -f "$SERVE_PAT" 2>/dev/null || true' EXIT
 
 export PATH=/root/nexussim-venv/bin:$PATH
 export PYTHONPATH="$REPO:$REPO/third_party:$REPO/third_party/nurec_protos"
