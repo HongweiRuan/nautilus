@@ -20,7 +20,10 @@ metadata:
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: __MODEL__}
 spec:
-  backoffLimit: 2
+  # 6, not 2: each attempt pays ~10 min of venv build and ~17 min of loading a
+  # 12 GB checkpoint before it can fail, so a retry budget that small is spent
+  # on setup mistakes long before the model has been given a fair run.
+  backoffLimit: 6
   ttlSecondsAfterFinished: 604800
   template:
     metadata: {labels: {app: fdpik_eval, stage: vla, model: __MODEL__}}

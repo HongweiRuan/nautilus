@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: simwam-eval-off-zfix2-09071241 simwam eval_off_zfix2 0
+# Placeholders: simwam-original-09071414 simwam original 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,11 +16,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-simwam-eval-off-zfix2-09071241
+  name: fdpik-simwam-original-09071414
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: simwam}
 spec:
-  backoffLimit: 2
+  # 6, not 2: each attempt pays ~10 min of venv build and ~17 min of loading a
+  # 12 GB checkpoint before it can fail, so a retry budget that small is spent
+  # on setup mistakes long before the model has been given a fair run.
+  backoffLimit: 6
   ttlSecondsAfterFinished: 604800
   template:
     metadata: {labels: {app: fdpik_eval, stage: vla, model: simwam}}
@@ -41,7 +44,7 @@ spec:
           command: ["bash", "/cfg/vla_fdpik_worker.sh"]
           env:
             - {name: MODEL, value: "simwam"}
-            - {name: SIDE,  value: "eval_off_zfix2"}
+            - {name: SIDE,  value: "original"}
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}

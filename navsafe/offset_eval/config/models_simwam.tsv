@@ -1,0 +1,13 @@
+# The world-model row, run as its OWN fleet because it does not fit beside a
+# shared-card renderer: SimWAM needs 13.7 GiB of its own (measured 2026-09-06 on
+# an idle 3090), and renderer + IsaacSim + SimWAM overruns 24 GiB. These workers
+# therefore take two cards, which puts the renderer alone on GPU 0 at
+# --cache-size 4 and SimWAM plus IsaacSim on GPU 1 at about 18.7 GiB.
+#
+# It emits a single trajectory, so plan_records.json carries a null candidate
+# field rather than an absent one.
+#
+# The two env vars are paths the adapter would otherwise take from constants
+# pointing at /bigdata, which this cluster does not mount: the repo, and the
+# Wan2.2 VAE + umT5 base weights DiffSynth loads.
+simwam	simwam	simwam/weights/SimWAM-RL.pt	NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM,DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth

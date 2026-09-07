@@ -123,8 +123,9 @@ def _simwam(a, mod):
                 seed=int(a.seed),
             )
 
-    return (model, model.video_expert.pre_dit, "token",
-            "video_expert.pre_dit:output[tokens] (pre-diffusion scene tokens)",
+    # (object, attribute), not the module: pre_dit is a method on video_expert.
+    return (model, (model.video_expert, "pre_dit"), "token",
+            "video_expert.pre_dit:return[tokens] (pre-diffusion scene tokens)",
             run_one)
 
 
@@ -164,13 +165,39 @@ def main() -> int:
     model, target, pool, hook_desc, run_one = ADAPTERS[a.model](a, mod)
     cap = Capture(pool)
 
-    def _hook(_m, _args, out):
+    def _capture(out):
         t = out["tokens"] if isinstance(out, dict) and "tokens" in out else out
         if isinstance(t, (tuple, list)):
             t = t[0]
         cap.take(t)
 
-    handle = target.register_forward_hook(_hook)
+    # A tap is either an nn.Module (forward hook) or an (object, attribute)
+    # pair naming a METHOD to wrap. SimWAM's `pre_dit` is the latter: it is a
+    # method on video_expert, not a submodule, so register_forward_hook does
+    # not apply to it -- an earlier version assumed a module and died with
+    # "'function' object has no attribute 'register_forward_hook'".
+    # Wrapping is not a lesser substitute: the value wanted IS this call's
+    # return, and a wrapper sees exactly the calls the model makes.
+    if isinstance(target, tuple):
+        _obj, _attr = target
+        _orig = getattr(_obj, _attr)
+
+        def _wrapped(*args, **kwargs):
+            out = _orig(*args, **kwargs)
+            _capture(out)
+            return out
+
+        setattr(_obj, _attr, _wrapped)
+
+        class _H:
+            @staticmethod
+            def remove():
+                setattr(_obj, _attr, _orig)
+
+        handle = _H()
+    else:
+        handle = target.register_forward_hook(
+            lambda _m, _a, out: _capture(out))
 
     feats: List[np.ndarray] = []
     skips: List[str] = []
