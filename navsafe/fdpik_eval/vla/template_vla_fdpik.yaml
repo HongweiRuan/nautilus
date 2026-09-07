@@ -28,8 +28,17 @@ spec:
       restartPolicy: Never
       containers:
         - name: vlafd
-          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
-          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/vla_fdpik_worker.sh"]
+          # NOT the nre-ga image the closed-loop workers use. That one is the
+          # IsaacSim base, tens of GB, and on a public node with no cached
+          # layers the kubelet gave up mid-pull twice (`context canceled` after
+          # 8 min) -- it is only practical on the reserved nodes where it is
+          # already resident. Nothing here needs it: the worker builds its own
+          # venv and pip's torch ships the CUDA runtime, so the base image only
+          # has to provide a shell, apt and the driver mount. metabench is the
+          # image the FDpi^k cells in this namespace already run GPU work on,
+          # and it is public, so the NGC pull secret goes too.
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "/cfg/vla_fdpik_worker.sh"]
           env:
             - {name: MODEL, value: "__MODEL__"}
             - {name: SIDE,  value: "__SIDE__"}
@@ -60,7 +69,6 @@ spec:
         - {name: cfg, configMap: {name: navsafe-fdpik-vla-cfg, defaultMode: 493}}
         - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
         - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
-      imagePullSecrets: [{name: ngc-pull}]
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

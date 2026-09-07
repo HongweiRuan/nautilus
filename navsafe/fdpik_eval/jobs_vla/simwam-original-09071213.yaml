@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: simwam-drivearena-zfix2-09070307 simwam drivearena_zfix2 0
+# Placeholders: simwam-original-09071213 simwam original 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,7 +16,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-simwam-drivearena-zfix2-09070307
+  name: fdpik-simwam-original-09071213
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: simwam}
 spec:
@@ -28,11 +28,20 @@ spec:
       restartPolicy: Never
       containers:
         - name: vlafd
-          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
-          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/vla_fdpik_worker.sh"]
+          # NOT the nre-ga image the closed-loop workers use. That one is the
+          # IsaacSim base, tens of GB, and on a public node with no cached
+          # layers the kubelet gave up mid-pull twice (`context canceled` after
+          # 8 min) -- it is only practical on the reserved nodes where it is
+          # already resident. Nothing here needs it: the worker builds its own
+          # venv and pip's torch ships the CUDA runtime, so the base image only
+          # has to provide a shell, apt and the driver mount. metabench is the
+          # image the FDpi^k cells in this namespace already run GPU work on,
+          # and it is public, so the NGC pull secret goes too.
+          image: robinwangucsd/metabench:latest
+          command: ["bash", "/cfg/vla_fdpik_worker.sh"]
           env:
             - {name: MODEL, value: "simwam"}
-            - {name: SIDE,  value: "drivearena_zfix2"}
+            - {name: SIDE,  value: "original"}
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}
@@ -60,7 +69,6 @@ spec:
         - {name: cfg, configMap: {name: navsafe-fdpik-vla-cfg, defaultMode: 493}}
         - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
         - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
-      imagePullSecrets: [{name: ngc-pull}]
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

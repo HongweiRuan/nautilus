@@ -29,8 +29,13 @@ SDIR=$(cd "$(dirname "$0")" && pwd)     # /cfg, resolved once
 mkdir -p "$OUT"
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq && apt-get install -y -qq git curl python3-venv >/dev/null \
+# The GL/X libs are not decoration: opencv and parts of the SimWAM stack link
+# them, and the base image no longer carries what nre-ga did. `|| true` on the
+# libs alone -- a missing optional lib should not stop the run before it has
+# had a chance to say what it actually needs.
+apt-get update -qq && apt-get install -y -qq git curl python3-venv \
   || { say "apt FAILED"; exit 1; }
+apt-get install -y -qq libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 >/dev/null || true
 export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
 export UV_CACHE_DIR=/root/.cache/uv
 command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
