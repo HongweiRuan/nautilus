@@ -1,0 +1,21 @@
+# The models the first sweep did not run that need a CARD TO THEMSELVES, added
+# 2026-09-07 to complete the before/after-training pairs the paper's comparison
+# needs. recogdrive_il is the fourth and lives in models_il.tsv, because at 2B it
+# shares a card and this fleet's rows do not.
+#
+#   simwam_base      SimWAM before FlowGRPO. Pairs with simwam (= SimWAM-RL).
+#   mtdrive_sft      Qwen2.5-VL-7B text-out planner, the SFT stage.
+#   mtdrive_mtgrpo   the same after mtGRPO. The two pair with each other.
+#
+# (The fourth pair, DiffusionDrive vs DiffusionDrive+BeyondDrive, the first
+# sweep already has -- that one is augmentation rather than an RL stage.)
+#
+# simwam_base needs 12.6 GiB and each mtdrive stage ~15 GiB, so none of them
+# fits beside the renderer. Two cards, all 54 scenarios.
+#
+# The env vars are paths the adapters would otherwise take from constants under
+# /bigdata, which this cluster does not mount. mtdrive needs none: its
+# checkpoint is a stage DIRECTORY and it reads nothing from the environment.
+simwam_base	simwam	simwam/weights/SimWAM.pt	NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM,DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth
+mtdrive_sft	mtdrive	mtdrive/mtdrive_sft
+mtdrive_mtgrpo	mtdrive	mtdrive/mtdrive_rl_best

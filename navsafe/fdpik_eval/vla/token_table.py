@@ -15,7 +15,7 @@ import argparse, json, os, sys
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--manifest", default="/avl-west/render_quality_eval/manifest_zfix2.json")
-ap.add_argument("--out", default="/avl-west/fidelity_eval/fdpik_vla/token_table.json")
+ap.add_argument("--out", default="/avl-west/fidelity_eval/fdpik_vla/token_table_v2.json")
 ap.add_argument("--history", type=int, default=4,
                 help="how many earlier frames to record; the widest any model needs")
 a = ap.parse_args()
@@ -59,6 +59,11 @@ for tok in loader.tokens:
         "cmd_onehot": [float(x) for x in es.driving_command],
         "vel": [float(x) for x in es.ego_velocity],
         "acc": [float(x) for x in es.ego_acceleration],
+        # 4 poses [x, y, heading], oldest first, in the CURRENT ego frame --
+        # the same thing the closed-loop adapters' EgoPoseHistory.local_history()
+        # hands the servers, and navsim's ego_statuses are already expressed
+        # that way. SimWAM ignores this; MTDrive and ReCogDrive require it.
+        "history": [[float(v) for v in st.ego_pose] for st in ai.ego_statuses],
     }
 print(f"ego status for {len(status)} of {len(tokens_wanted)} anchors", file=sys.stderr)
 

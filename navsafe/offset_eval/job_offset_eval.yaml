@@ -1,0 +1,122 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-${FLEET}-w${IDX}
+  namespace: cogrob
+  labels:
+    app: navsafe-${FLEET}
+    worker: w${IDX}
+spec:
+  # 20, not 0: a worker exits 1 on purpose when 20 cells fail in a row ("this
+  # node looks unusable"), and the point of that is for the Job to reschedule
+  # somewhere else.
+  backoffLimit: 20
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels:
+        app: navsafe-${FLEET}
+        worker: w${IDX}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ngc-pull
+      containers:
+        - name: eval
+          # The renderer only ships in NVIDIA's NRE container, so everything
+          # runs inside it and the worker script comes off the PVC.
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              echo "=== offset_eval: fleet ${FLEET} worker w${IDX} of ${WORKERS} ==="
+              echo "=== models    ${MODELS_TSV} ==="
+              echo "=== scenarios ${SELECTION} ==="
+              # Paths spelled out, no shell variable of our own: this whole block
+              # goes through envsubst at submit time, which substitutes EVERY
+              # $VAR it sees. A variable defined here would be replaced by
+              # whatever (usually nothing) the SUBMITTING shell had.
+              ls /avl-west/runs/20260905-handoff-perturb-demo/tooling/run_worker.sh >/dev/null || {
+                echo "tooling not staged on the PVC — run bin/stage.sh first"; exit 1; }
+              exec bash /avl-west/runs/20260905-handoff-perturb-demo/tooling/run_worker.sh
+          env:
+            - {name: WORKER_INDEX, value: "${IDX_N}"}
+            - {name: WORKERS,      value: "${WORKERS}"}
+            - {name: SEEDS,        value: "0"}
+            - {name: OUTROOT,      value: "/avl-west/runs/20260905-handoff-perturb-demo/eval"}
+            # The workers `git clone` the cluster checkout and `git checkout`
+            # this SHA, so a code change has to be COMMITTED there to reach them.
+            - {name: NEXUSSIM_SHA, value: "70a8d7ed"}
+            # Which models and which scenarios this fleet runs. Both files live
+            # on the PVC beside run_worker.sh; bin/stage.sh puts them there.
+            - {name: MODELS_TSV,   value: "${MODELS_TSV}"}
+            - {name: SELECTION,    value: "${SELECTION}"}
+            - {name: HYDRA_FULL_ERROR, value: "1"}
+            - {name: ACCEPT_EULA,      value: "Y"}
+            - {name: OMNI_KIT_ACCEPT_EULA, value: "Y"}
+            - name: NGC_API_KEY
+              valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+            - name: HF_TOKEN
+              valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+          resources:
+            # GPUS is the whole configuration knob: the worker script reads
+            # `nvidia-smi -L` and lays itself out from the card count -- one card
+            # means renderer and rollout share it at --cache-size 2, two means
+            # the renderer gets a card to itself at --cache-size 4. So the
+            # manifest and the script cannot disagree.
+            #
+            # Nautilus caps the memory LIMIT at 1.2x the REQUEST, so the two move
+            # together and a small request with a generous limit is not an option.
+            requests:
+              cpu: "2500m"
+              memory: "${MEM_REQ}"
+              nvidia.com/gpu: "${GPUS}"
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: "3"
+              memory: "${MEM_LIM}"
+              nvidia.com/gpu: "${GPUS}"
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - {name: dshm,           mountPath: /dev/shm}
+            - {name: avl-west-vol,   mountPath: /avl-west}
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+        - name: dshm
+          emptyDir: {medium: Memory, sizeLimit: 24Gi}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      # ry-gpu-13 is out at the user's instruction.
+                      #
+                      # ry-gpu-08 serves ONE-card pods only. Its device plugin
+                      # fails GetPreferredAllocation for a multi-GPU request --
+                      # it queries the NVLink state between the two devices it
+                      # would hand out and one is gone (the node advertises 7
+                      # now, not 8) -- while the node stays Ready, so the
+                      # scheduler keeps placing two-card pods there and the
+                      # kubelet keeps rejecting them at admission, each rejection
+                      # burning one of the Job's 20 retries. submit.sh drops this
+                      # line for every two-card fleet.
+                      - ry-gpu-05.sdsc.optiputer.net
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net

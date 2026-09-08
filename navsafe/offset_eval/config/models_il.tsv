@@ -1,0 +1,10 @@
+# ReCogDrive-2B BEFORE the RL stage -- the other half of the pair whose RL side
+# the first sweep already ran as recogdrive_rl.
+#
+# On its own list because at 2B it SHARES a card with the renderer, and the
+# three models in models_addon.tsv do not. That matters here beyond tidiness:
+# ry-gpu-05 is NotReady and ry-gpu-08 serves one-card pods only, so a two-card
+# pod can reach 40 of the 48 GPUs and ry-gpu-08's are unreachable to it. Running
+# this row's non-inserting scenarios on one card uses capacity the two-card
+# fleet cannot touch at all.
+recogdrive_il	recogdrive	recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b

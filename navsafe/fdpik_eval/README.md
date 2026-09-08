@@ -86,9 +86,11 @@ Verified from source: the camera requirement, the anchor counts, that
 matches, and that every path the jobs reference exists on the PVC
 (`SimWAM-RL.pt` 12 GB, the diffsynth cache, the repo's `configs/src/navsim`).
 
-**Not verified — nothing has been run.** That a 12 GB bf16 checkpoint plus
-activations fits a 24 GB card; that `pre_dit`'s output pools to a stable
-(B, D); that the hook fires exactly once in practice.
+**All verified by running it**, 2026-09-07: the token table (4,163 anchors),
+the venv, `build()`, a 12 GB bf16 checkpoint loading onto a 24 GB card without
+OOM, the JPEG preprocessing path, and — past 200 anchors without the guard
+tripping — that the wrapped `pre_dit` fires exactly once per anchor and pools
+to a stable (B, D).
 
 There is no separate probe: the four sides go out together and whichever
 reaches the model first answers all three. That is safe because the dumper
@@ -101,8 +103,29 @@ the reference rather than exiting with its features written and no FD.
 `nurec_zfix2` is not among the sides: the four submitted are `original`,
 `eval_on_zfix2`, `eval_off_zfix2` and `drivearena_zfix2`.
 
-The other three viable models (MTDrive, ReCogDrive, DriveVLA-W0) are not
-implemented here. Their tap points are identified above and the stage A/C
-machinery is model-independent, so each is an adapter function in
-`feature_dump_vla.py` — but writing three more untested adapters before the
-first one has ever run would be three times the unverified surface.
+### The other three, and what each still needs
+
+Now that SimWAM has run the whole chain end to end, the remaining work is
+known rather than guessed. Stage A and stage C are model-independent; each
+model is one adapter function in `feature_dump_vla.py`.
+
+| model | server shape | tap | still needed |
+|---|---|---|---|
+| **MTDrive** | `MTDriveServer(model_path)` — already a class, `.infer(image: np.ndarray, history, status)` takes pixels directly | `model.visual` (Qwen2.5-VL vision tower) is an `nn.Module`, so the plain forward-hook path applies | the 4-pose ego history |
+| **ReCogDrive** | `ReCogDriveServer(...)` — also a class, `.infer(image: np.ndarray, ...)`, and `load_image_array` already takes an array | `vlm_hidden_state` — the VLM summary that conditions the diffusion planner, i.e. the planner-side bottleneck the published panel taps, not a vision encoder | the 4-pose ego history |
+| **DriveVLA-W0** | construction inline in `main()`, like SimWAM was | Emu3 VQ tokenizer, once per anchor | the same `build()` split SimWAM needed (`cf6b9bb6`), plus 2 frames @1 Hz |
+
+Neither MTDrive nor ReCogDrive needs the preprocessing split SimWAM needed
+(`b257b9a7`): both take a numpy frame directly.
+
+**The one shared gap is the ego history.** Both `infer()` signatures take a
+`history` alongside the status, and stage A currently records only
+`cmd_onehot`, `vel` and `acc` — the three SimWAM uses. Adding the 4 recent ego
+poses is a new field in `token_table.py`; it is backward compatible (SimWAM
+ignores it) but rebuilding the table pays the slow CephFS log scan again, so it
+is worth doing once for all three rather than per model.
+
+One detail to carry over when writing those adapters: the closed-loop adapters
+call `crop_to_navsim_aspect` on the renderer's frame before handing it over.
+The farm JPEGs are already navsim-shaped, so check whether that crop is a
+no-op here rather than assuming it either way.

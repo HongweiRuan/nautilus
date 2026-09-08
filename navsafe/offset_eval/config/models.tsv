@@ -5,10 +5,6 @@
 #   pdm_closed                  rule-based   (privileged, no checkpoint)
 #   diffusiondrive              IL
 #   recogdrive_rl               RLFT
-#   recogdrive_il               the SAME architecture BEFORE the RL stage --
-#                               the before/after pair the paper's comparison
-#                               needs, and cheap here because a 2B planner
-#                               shares a card with the renderer.
 #   diffusiondrive_beyonddrive  augmentation
 #
 # The world-model row is NOT here. It is simwam, and it lives in
@@ -25,5 +21,4 @@
 pdm_closed	pdm_closed	none
 diffusiondrive	diffusiondrive	diffusiondrive/diffusiondrive_navsim_88p1_PDMS
 recogdrive_rl	recogdrive	recogdrive/planner_rl/ReCogDrive_Diffusion_Planner_2B_RL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
-recogdrive_il	recogdrive	recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
 diffusiondrive_beyonddrive	diffusiondrive	/avl-west/navsafe_eval/aug_zoo/BeyondDrive/diffusiondrive_beyonddrive.pth

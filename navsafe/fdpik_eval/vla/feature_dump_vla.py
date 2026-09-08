@@ -113,10 +113,16 @@ def _simwam(a, mod):
         cmd, vel, acc = st[0:4], st[4:6], st[6:8]
         # SimWAM's own order: velocity, acceleration, command.
         proprio = _t.tensor(vel + acc + cmd, dtype=_t.float32)
+        # The farms hold JPEGs; the server's own entry point takes the .npy it
+        # is handed on the wire. Same preprocessing either way -- the array
+        # form is the shared half, so the antialiased 1920->672 resize is not
+        # reimplemented here.
+        from PIL import Image
+        _img = np.asarray(Image.open(paths[0]).convert("RGB"))
         with _t.no_grad():
             model.infer_action(
                 prompt=None, context=ctx[0], context_mask=ctx[1],
-                input_image=mod._image_tensor(str(paths[0])),
+                input_image=mod._image_tensor_from_array(_img, str(paths[0])),
                 action_horizon=int(a.action_horizon),
                 proprio=proprio,
                 num_inference_steps=int(a.num_inference_steps),
@@ -129,7 +135,52 @@ def _simwam(a, mod):
             run_one)
 
 
-ADAPTERS = {"simwam": _simwam}
+def _mtdrive(a, mod):
+    """MTDrive: Qwen2.5-VL-7B that writes the trajectory out as text.
+
+    Tap: `model.visual`, the vision tower. It runs ONCE in the prefill; the LM
+    then decodes token by token, so anything downstream of it would fire per
+    generated token and the feature would depend on how long the answer was.
+    It is an nn.Module, so the plain forward-hook path applies.
+
+    MTDriveServer is already a class and its `infer` takes a numpy frame, so
+    there is nothing to split out of the server the way SimWAM needed.
+    """
+    srv = mod.MTDriveServer(a.checkpoint)
+
+    def run_one(row, paths):
+        from PIL import Image
+        img = np.asarray(Image.open(paths[0]).convert("RGB"))
+        st = list(row["cmd_onehot"]) + list(row["vel"]) + list(row["acc"])
+        srv.infer(img, row["history"], st)
+
+    return (srv.model, srv.model.visual, "token",
+            "model.visual:output (Qwen2.5-VL vision tower, prefill)", run_one)
+
+
+def _recogdrive(a, mod):
+    """ReCogDrive: InternVL3 VLM conditioning a DiT diffusion planner.
+
+    Tap: `vlm_hidden_state` — the VLM summary the planner is conditioned on.
+    That is the planner-side bottleneck the published panel taps for its other
+    rows, and it is computed once before the 5 diffusion steps; a tap inside
+    the DiT would fire per step. It is a METHOD, so it is wrapped rather than
+    hooked, the same way SimWAM's pre_dit is.
+    """
+    srv = mod.ReCogDriveServer(a.vlm_path, a.checkpoint, a.dit_type, a.vlm_size)
+
+    def run_one(row, paths):
+        from PIL import Image
+        img = np.asarray(Image.open(paths[0]).convert("RGB"))
+        st = list(row["cmd_onehot"]) + list(row["vel"]) + list(row["acc"])
+        srv.infer(img, row["history"], st)
+
+    return (srv.model, (srv, "vlm_hidden_state"), "token",
+            "ReCogDriveServer.vlm_hidden_state:return (VLM state conditioning the planner)",
+            run_one)
+
+
+ADAPTERS = {"simwam": _simwam, "mtdrive": _mtdrive, "recogdrive": _recogdrive}
 
 
 def main() -> int:
@@ -144,13 +195,19 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="probe mode: first N anchors")
     # simwam
     ap.add_argument("--repo", default="/avl-west/navsafe_eval/vla_repos/SimWAM")
-    ap.add_argument("--checkpoint", default="/avl-west/navsafe_eval/model_zoo/simwam/weights/SimWAM-RL.pt")
+    # No default: three models share this flag and a silent fallback to
+    # SimWAM's weights would load the wrong model without saying so.
+    ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--task", default="navsim_uncond_front_384x672_1e-4")
     ap.add_argument("--num-inference-steps", type=int, default=10)
     ap.add_argument("--action-horizon", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--model-base-path",
                     default="/avl-west/navsafe_eval/model_zoo/_base/diffsynth")
+    # recogdrive
+    ap.add_argument("--vlm-path", default="/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b")
+    ap.add_argument("--dit-type", default="small")
+    ap.add_argument("--vlm-size", default="small")
     a = ap.parse_args()
 
     table: Dict[str, Any] = json.load(open(a.token_table))

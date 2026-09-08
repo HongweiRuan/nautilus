@@ -26,6 +26,19 @@ NEXUSSIM_SHA=${NEXUSSIM_SHA:-}
 UE=/avl-west/drivearena_bench/unified_evaluator
 UEPY=$UE/../envs/ue/bin/python          # the evaluator's interpreter, on the PVC
 SDIR=$(cd "$(dirname "$0")" && pwd)     # /cfg, resolved once
+ZOO=/avl-west/navsafe_eval/model_zoo
+
+# Per-model weights, from navsafe-recon-cfg/models.tsv so the FDpi^k row scores
+# the same checkpoint the closed-loop sweep runs. MTDrive uses the mtGRPO stage
+# and ReCogDrive the RL planner -- the better of each released pair, and the
+# ones the sweep reports.
+case "$MODEL" in
+  simwam)     CKPT=$ZOO/simwam/weights/SimWAM-RL.pt ;;
+  mtdrive)    CKPT=$ZOO/mtdrive/mtdrive_rl_best ;;
+  recogdrive) CKPT=$ZOO/recogdrive/planner_rl/ReCogDrive_Diffusion_Planner_2B_RL.ckpt ;;
+  *) say "no checkpoint mapping for MODEL=$MODEL"; exit 1 ;;
+esac
+[ -e "$CKPT" ] || { say "checkpoint missing: $CKPT"; exit 1; }
 mkdir -p "$OUT"
 
 # STAGE A FIRST, before apt/uv/clone. It needs nothing but the evaluator's
@@ -34,7 +47,11 @@ mkdir -p "$OUT"
 # the environment build it cost eleven minutes of container setup to discover
 # that SceneLoader takes `sensor_blobs_path`, not `original_sensor_path`.
 # ---- stage A: the token table, once for every model and every side ----------
-TABLE=$OUT/token_table.json
+# v2 carries the 4-pose ego history MTDrive and ReCogDrive need. SimWAM ignores
+# the extra field, so one table serves every model -- but v1 is left where it is
+# rather than overwritten, because it is what the 2026-09-07 SimWAM npz files
+# were built from and re-deriving them should not be forced by an unrelated add.
+TABLE=$OUT/token_table_v2.json
 if [ ! -s "$TABLE" ]; then
   say "stage A: building the token table with the evaluator's interpreter"
   # No `conda activate`. The env lives on the PVC, so its interpreter is
@@ -101,7 +118,7 @@ if [ -s "$NPZ" ] && [ "$LIMIT" = 0 ]; then
 else
   say "stage B: $MODEL on side '$SIDE'${LIMIT:+ (limit $LIMIT)}"
   "$PY" "$SDIR/feature_dump_vla.py" \
-      --model "$MODEL" --variation "$SIDE" \
+      --model "$MODEL" --variation "$SIDE" --checkpoint "$CKPT" \
       --token-table "$TABLE" --out "$NPZ" --limit "$LIMIT" \
       || { say "stage B FAILED"; exit 1; }
 fi
