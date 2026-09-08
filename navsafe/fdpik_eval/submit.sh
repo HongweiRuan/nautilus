@@ -28,8 +28,13 @@ cfg() {
 }
 case "${1:-ready}" in
   ready) apply jobs/*.yaml ;;
-  vla)   cfg; apply jobs_vla/*.yaml ;;
-  *) echo "usage: $0 <ready|vla>"; exit 2 ;;
+  vla)        cfg; kubectl apply -f jobs_vla/simwam/ || rc=1 ;;
+  mtdrive)    cfg; kubectl apply -f jobs_vla/mtdrive/ || rc=1 ;;
+  recogdrive) cfg; kubectl apply -f jobs_vla/recogdrive/ || rc=1 ;;
+  # `kubectl apply -f` takes ONE path per flag, so a glob spanning several
+  # files is silently truncated to the first. A directory per model is applied
+  # whole, which is also what makes "just this model" a natural request.
+  *) echo "usage: $0 <ready|vla|mtdrive|recogdrive>"; exit 2 ;;
 esac
 echo "--- submitted (${1:-ready}) ---"
 kubectl get jobs -n cogrob 2>/dev/null | grep -E "fdpik|NAME"
