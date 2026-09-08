@@ -1,7 +1,7 @@
 #!/bin/bash
 # Submit one fleet of the hand-off perturbation sweep.
 #
-#   ./bash_offset_eval.sh addon il il_edit   the four models the first sweep missed
+#   ./bash_offset_eval.sh addon il il-edit   the four models the first sweep missed
 #   ./bash_offset_eval.sh plain edit     the two four-model fleets
 #   ./bash_offset_eval.sh                all four
 #
@@ -35,7 +35,7 @@ TOOLING=/avl-west/runs/20260905-handoff-perturb-demo/tooling
 #         NotReady and ry-gpu-08 serves ONE-card pods only, so a two-card pod can
 #         reach 40 of the 48 GPUs and ry-gpu-08's are unreachable to it. This
 #         fleet runs on capacity the two-card fleets cannot use at all.
-# il_edit recogdrive_il on the 8 inserting scenarios, which need --cache-size 4
+# il-edit recogdrive_il on the 8 inserting scenarios, which need --cache-size 4
 #         and therefore a second card whatever the model.
 fleet_cfg() {
   case "$1" in
@@ -45,15 +45,15 @@ fleet_cfg() {
             MODELS_TSV=$TOOLING/models.tsv;        SELECTION=$TOOLING/selection_edit.json ;;
     simwam) WORKERS=12; GPUS=2; MEM_REQ=76Gi; MEM_LIM=91Gi
             MODELS_TSV=$TOOLING/models_simwam.tsv; SELECTION=$TOOLING/selection.json ;;
-    # addon + il_edit = 16x2 + 4x2 = 40 GPUs, which is every GPU a two-card pod
+    # addon + il-edit = 16x2 + 4x2 = 40 GPUs, which is every GPU a two-card pod
     # can reach. il takes the one-card-only capacity on top of that.
     addon)   WORKERS=16; GPUS=2; MEM_REQ=76Gi; MEM_LIM=91Gi
              MODELS_TSV=$TOOLING/models_addon.tsv; SELECTION=$TOOLING/selection.json ;;
     il)      WORKERS=8;  GPUS=1; MEM_REQ=36Gi; MEM_LIM=43Gi
              MODELS_TSV=$TOOLING/models_il.tsv;    SELECTION=$TOOLING/selection_plain.json ;;
-    il_edit) WORKERS=4;  GPUS=2; MEM_REQ=36Gi; MEM_LIM=43Gi
+    il-edit) WORKERS=4;  GPUS=2; MEM_REQ=36Gi; MEM_LIM=43Gi
              MODELS_TSV=$TOOLING/models_il.tsv;    SELECTION=$TOOLING/selection_edit.json ;;
-    *) echo "unknown fleet: $1 (plain|edit|simwam|addon|il|il_edit)" >&2; return 2 ;;
+    *) echo "unknown fleet: $1 (plain|edit|simwam|addon|il|il-edit)" >&2; return 2 ;;
   esac
 }
 
@@ -65,7 +65,7 @@ command -v envsubst >/dev/null || { echo "need envsubst (brew install gettext)";
 # first submission shipped `ls /run_worker.sh` and crash-looped 24 jobs.
 SUBST='${FLEET} ${IDX} ${IDX_N} ${WORKERS} ${GPUS} ${MEM_REQ} ${MEM_LIM} ${MODELS_TSV} ${SELECTION}'
 
-for FLEET in "${@:-plain edit simwam addon il il_edit}"; do
+for FLEET in "${@:-plain edit simwam addon il il-edit}"; do
   fleet_cfg "$FLEET" || exit 2
   export FLEET WORKERS GPUS MEM_REQ MEM_LIM MODELS_TSV SELECTION
   echo "=== $FLEET: $WORKERS workers x ${GPUS} GPU, $MODELS_TSV, $(basename $SELECTION) ==="

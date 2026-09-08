@@ -78,3 +78,11 @@ spec:
                   - {key: topology.kubernetes.io/region, operator: In, values: [us-west, us-central]}
                   - {key: nvidia.com/gpu.product, operator: In,
                      values: [NVIDIA-GeForce-RTX-3090, NVIDIA-A10]}
+                  # This node's device plugin answers "GPU is lost" to every
+                  # allocation, so the kubelet rejects the pod on admission --
+                  # but its GPUs still read as allocatable, so the scheduler
+                  # keeps sending pods back and each rejection burns a retry.
+                  # 24 of them went there in one batch on 2026-09-07. Drop the
+                  # exclusion once the node is repaired.
+                  - {key: kubernetes.io/hostname, operator: NotIn,
+                     values: [nautilus-ext-gpu01.fullerton.edu]}

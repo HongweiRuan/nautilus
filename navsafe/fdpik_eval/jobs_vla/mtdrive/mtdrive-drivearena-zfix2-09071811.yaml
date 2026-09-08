@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: recogdrive-original-09071749 recogdrive original 0
+# Placeholders: mtdrive-drivearena-zfix2-09071811 mtdrive drivearena_zfix2 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,9 +16,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-recogdrive-original-09071749
+  name: fdpik-mtdrive-drivearena-zfix2-09071811
   namespace: cogrob
-  labels: {app: fdpik_eval, stage: vla, model: recogdrive}
+  labels: {app: fdpik_eval, stage: vla, model: mtdrive}
 spec:
   # 6, not 2: each attempt pays ~10 min of venv build and ~17 min of loading a
   # 12 GB checkpoint before it can fail, so a retry budget that small is spent
@@ -26,7 +26,7 @@ spec:
   backoffLimit: 6
   ttlSecondsAfterFinished: 604800
   template:
-    metadata: {labels: {app: fdpik_eval, stage: vla, model: recogdrive}}
+    metadata: {labels: {app: fdpik_eval, stage: vla, model: mtdrive}}
     spec:
       restartPolicy: Never
       containers:
@@ -43,8 +43,8 @@ spec:
           image: robinwangucsd/metabench:latest
           command: ["bash", "/cfg/vla_fdpik_worker.sh"]
           env:
-            - {name: MODEL, value: "recogdrive"}
-            - {name: SIDE,  value: "original"}
+            - {name: MODEL, value: "mtdrive"}
+            - {name: SIDE,  value: "drivearena_zfix2"}
             - {name: LIMIT, value: "0"}
             - {name: OUT,   value: "/avl-west/fidelity_eval/fdpik_vla"}
             - {name: SRC,   value: "/hugsim-storage/NexusSim"}
@@ -78,3 +78,11 @@ spec:
                   - {key: topology.kubernetes.io/region, operator: In, values: [us-west, us-central]}
                   - {key: nvidia.com/gpu.product, operator: In,
                      values: [NVIDIA-GeForce-RTX-3090, NVIDIA-A10]}
+                  # This node's device plugin answers "GPU is lost" to every
+                  # allocation, so the kubelet rejects the pod on admission --
+                  # but its GPUs still read as allocatable, so the scheduler
+                  # keeps sending pods back and each rejection burns a retry.
+                  # 24 of them went there in one batch on 2026-09-07. Drop the
+                  # exclusion once the node is repaired.
+                  - {key: kubernetes.io/hostname, operator: NotIn,
+                     values: [nautilus-ext-gpu01.fullerton.edu]}
