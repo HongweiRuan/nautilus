@@ -93,11 +93,20 @@ for sc in man:
 # open(out, "w") truncates in place, so one job can read the file while
 # another is halfway through writing it. os.replace is atomic on the same
 # filesystem -- last writer wins, and a reader only ever sees a whole file.
+# mkstemp, not f"{out}.{getpid()}": container PIDs are per-namespace and start
+# low, so two pods on one node both wrote token_table_v2.json.57 and whichever
+# renamed first left the other with FileNotFoundError. The OS picks a name that
+# is unique on the filesystem, which is the property actually needed here.
 os.makedirs(os.path.dirname(a.out), exist_ok=True)
-_tmp = f"{a.out}.{os.getpid()}"
-with open(_tmp, "w") as _fh:
-    json.dump(table, _fh)
-os.replace(_tmp, a.out)
+import tempfile                                                  # noqa: E402
+_fd, _tmp = tempfile.mkstemp(dir=os.path.dirname(a.out), prefix=".tt-", suffix=".json")
+try:
+    with os.fdopen(_fd, "w") as _fh:
+        json.dump(table, _fh)
+    os.replace(_tmp, a.out)          # atomic; last writer wins, readers see whole files
+except BaseException:
+    os.unlink(_tmp)
+    raise
 print(f"wrote {len(table)} anchors to {a.out}; "
       f"{missing_hist} have fewer than {a.history} predecessors in the common set",
       file=sys.stderr)

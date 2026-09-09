@@ -1,0 +1,201 @@
+{
+  "namespace": "cogrob",
+  "revision": "20260909-model-layout-v1",
+  "nexussim_sha": "70a8d7ed",
+  "seed": 0,
+  "outroot": "/avl-west/runs/20260905-handoff-perturb-demo/eval",
+  "tooling_root": "/avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1",
+  "models": {
+    "autovla": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "diffusiondrive": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "diffusiondrive_beyonddrive": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "diffusiondrive_simscale": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "drivelaw": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "drivevla_w0": {
+      "profile": "dedicated-vla",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "drivor": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "ltf": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "mtdrive_mtgrpo": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "mtdrive_sft": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "pdm_closed": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "prioreye": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "rap": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    },
+    "recogdrive_il": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "recogdrive_rl": {
+      "profile": "shared-plain",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "resworld": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "simwam": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "simwam_base": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "previous-output"
+    },
+    "sparsedrivev2": {
+      "profile": "dedicated",
+      "workers": {
+        "plain": 8,
+        "edit": 2
+      },
+      "audit_status": "not-observed"
+    }
+  },
+  "profiles": {
+    "shared-plain": {
+      "plain": {
+        "gpus": 1,
+        "memory_request": "36Gi",
+        "memory_limit": "43Gi"
+      },
+      "edit": {
+        "gpus": 2,
+        "memory_request": "36Gi",
+        "memory_limit": "43Gi"
+      }
+    },
+    "dedicated": {
+      "plain": {
+        "gpus": 2,
+        "memory_request": "76Gi",
+        "memory_limit": "91Gi"
+      },
+      "edit": {
+        "gpus": 2,
+        "memory_request": "76Gi",
+        "memory_limit": "91Gi"
+      }
+    },
+    "dedicated-vla": {
+      "plain": {
+        "gpus": 3,
+        "memory_request": "96Gi",
+        "memory_limit": "115Gi"
+      },
+      "edit": {
+        "gpus": 3,
+        "memory_request": "96Gi",
+        "memory_limit": "115Gi"
+      }
+    }
+  },
+  "model_scope": "19 configured NavSafe benchmark variants; excludes retired transfuser and ego_status_mlp. simwam is SimWAM-RL; simwam_base is the base checkpoint."
+}

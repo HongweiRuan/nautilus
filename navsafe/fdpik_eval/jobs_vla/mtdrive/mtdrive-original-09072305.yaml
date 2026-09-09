@@ -1,5 +1,5 @@
 # One side of one VLA/world-model row's FDpi^k feature dump.
-# Placeholders: mtdrive-original-09071811 mtdrive original 0
+# Placeholders: mtdrive-original-09072305 mtdrive original 0
 #
 # One GPU, not two. The closed-loop sweep excludes SimWAM because it OOMs when
 # it shares a pod with the renderer -- but FDpi^k reads its frames off the PVC,
@@ -16,7 +16,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fdpik-mtdrive-original-09071811
+  name: fdpik-mtdrive-original-09072305
   namespace: cogrob
   labels: {app: fdpik_eval, stage: vla, model: mtdrive}
 spec:
@@ -54,12 +54,15 @@ spec:
             - {name: HF_HOME, value: "/avl-west/drivearena_bench/.hf_cache"}
             - name: HF_TOKEN
               valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
-          # cpu 2 to schedule; memory stays at 48Gi because the SimWAM
-          # checkpoint alone is 12 GB and is read to CPU before it is placed,
-          # and an OOM-kill costs more than a slower queue.
+          # cpu 2 to schedule; memory 96Gi because 48 was not enough for every
+          # row. SimWAM's 12 GB checkpoint is one mmap-able file, but MTDrive
+          # is Qwen2.5-VL-7B in four shards and its load peak OOM-killed two of
+          # four pods at 48Gi -- the two that survived simply landed on roomier
+          # nodes, which is luck, not headroom. An OOM-kill costs a whole
+          # 4-minute load plus a retry; the larger request costs queue time.
           resources:
-            requests: {cpu: "2", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
-            limits:   {cpu: "2", memory: 48Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            requests: {cpu: "2", memory: 96Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+            limits:   {cpu: "2", memory: 96Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
           volumeMounts:
             - {name: dshm, mountPath: /dev/shm}
             - {name: cfg, mountPath: /cfg}

@@ -1,0 +1,68 @@
+{
+  "root": "/avl-west/runs/20260905-handoff-perturb-demo/eval/seed0",
+  "utc": "2026-09-09T04:55:51.861598+00:00",
+  "expected_cells_per_model": 1021,
+  "scope": "All selected scenarios and configured arms; files counted, success not inferred from existence",
+  "models": {
+    "mtdrive_sft": {
+      "directories": 772,
+      "offset_directories": 724,
+      "metrics": 769,
+      "plans": 772
+    },
+    "mtdrive_mtgrpo": {
+      "directories": 769,
+      "offset_directories": 721,
+      "metrics": 766,
+      "plans": 766
+    },
+    "diffusiondrive": {
+      "directories": 1011,
+      "offset_directories": 957,
+      "metrics": 1011,
+      "plans": 1011
+    },
+    "pdm_closed": {
+      "directories": 1011,
+      "offset_directories": 957,
+      "metrics": 1009,
+      "plans": 1011
+    },
+    "diffusiondrive_beyonddrive": {
+      "directories": 1011,
+      "offset_directories": 957,
+      "metrics": 1009,
+      "plans": 1010
+    },
+    "recogdrive_rl": {
+      "directories": 1011,
+      "offset_directories": 957,
+      "metrics": 1011,
+      "plans": 1011
+    },
+    "simwam": {
+      "directories": 1005,
+      "offset_directories": 951,
+      "metrics": 1002,
+      "plans": 1003
+    },
+    "resworld": {
+      "directories": 220,
+      "offset_directories": 195,
+      "metrics": 216,
+      "plans": 219
+    },
+    "simwam_base": {
+      "directories": 781,
+      "offset_directories": 733,
+      "metrics": 772,
+      "plans": 773
+    },
+    "recogdrive_il": {
+      "directories": 1021,
+      "offset_directories": 967,
+      "metrics": 1021,
+      "plans": 1021
+    }
+  }
+}

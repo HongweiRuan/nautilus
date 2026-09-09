@@ -1,0 +1,36 @@
+# NavSafe final sweep — the 18 benchmark table rows.
+# label	model_type	checkpoint (relative to /avl-west/navsafe_eval/model_zoo/, or "none",
+#                     or an ABSOLUTE path for the augmentation rows, which are not in the zoo)	extra_env
+#
+# Row order follows the paper table: rule-based, IL, world-model, RLFT,
+# augmentation. `pdm_closed` is privileged and takes no checkpoint.
+#
+# The four augmentation rows are NOT in model_zoo/ — their weights are
+# third-party releases whose redistribution terms were never cleared, so they
+# live under /avl-west/navsafe_eval/aug_zoo/ instead, fetched from upstream:
+#   SimScale     HF dataset OpenDriveLab/SimScale (a DATASET repo, not a model repo)
+#   BeyondDrive  Google Drive, via github.com/wjl2244/BeyondDrive's Model Zoo
+#                (the `wjl2244/BeyondDrive` HF path in navsafe_eval.md does not exist)
+#   PriorEye     gdown folder 1kxL20MzLynbNuKvMzT64gcXsWxxIcK0y
+#   RAP          HF sethzhao506ucla/BridgeSim navsimv2/RAP_DINO/ (GATED)
+# Both DiffusionDrive variants need kmeans_navsim_traj_20.npy BESIDE the
+# checkpoint — the adapter resolves it from Path(checkpoint).resolve().parent.
+pdm_closed	pdm_closed	none
+ltf	ltf	ltf/ltf_seed_0.ckpt
+diffusiondrive	diffusiondrive	diffusiondrive/diffusiondrive_navsim_88p1_PDMS
+drivor	drivor	drivor/drivor_Nav1_25epochs.pth
+sparsedrivev2	sparsedrivev2	sparsedrivev2/sparsedrive_navsimv1_92p2.ckpt
+recogdrive_il	recogdrive	recogdrive/planner_il/ReCogDrive_Diffusion_Planner_2B_IL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
+mtdrive_sft	mtdrive	mtdrive/mtdrive_sft
+drivelaw	drivelaw	drivelaw/inference_front.yaml	NAVSAFE_DRIVELAW_REPO=/avl-west/navsafe_eval/vla_repos/drivelaw
+# simwam	simwam	simwam/weights/SimWAM.pt	DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth,DIFFSYNTH_DOWNLOAD_SOURCE=huggingface,NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM   # DROPPED: fills a whole 3090 (23.54 of 23.56 GiB) and still OOMs — needs a bigger card, not an exclusive one
+# simwam_rl	simwam	simwam/weights/SimWAM-RL.pt	DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth,DIFFSYNTH_DOWNLOAD_SOURCE=huggingface,NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM   # DROPPED: fills a whole 3090 (23.54 of 23.56 GiB) and still OOMs — needs a bigger card, not an exclusive one
+recogdrive_rl	recogdrive	recogdrive/planner_rl/ReCogDrive_Diffusion_Planner_2B_RL.ckpt	NAVSAFE_RECOGDRIVE_VLM=/avl-west/navsafe_eval/model_zoo/recogdrive/vlm2b
+mtdrive_mtgrpo	mtdrive	mtdrive/mtdrive_rl_best
+autovla	autovla	autovla/AutoVLA_PDMS_89.ckpt	NAVSAFE_AUTOVLA_BASE=/avl-west/navsafe_eval/model_zoo/_base/qwen2.5-vl-3b-instruct,NAVSAFE_AUTOVLA_REPO=/avl-west/navsafe_eval/vla_repos/AutoVLA
+# resworld	resworld	resworld/resworld_trained.pth	NAVSAFE_RESWORLD_REPO=/avl-west/navsafe_eval/vla_repos/ResWorld   # run separately: resworld needs its own py3.8 venv, drivevla_w0 a 3-GPU pod
+# drivevla_w0	drivevla_w0	drivevla_w0/Emu3_Flow_Matching_Action_Expert_PDMS_87.2	NAVSAFE_DRIVEVLA_W0_REPO=/avl-west/navsafe_eval/vla_repos/DriveVLA-W0,NAVSAFE_DRIVEVLA_W0_VLM=/avl-west/navsafe_eval/model_zoo/_base/emu3-stage1   # run separately: resworld needs its own py3.8 venv, drivevla_w0 a 3-GPU pod
+diffusiondrive_simscale	diffusiondrive	/avl-west/navsafe_eval/aug_zoo/SimScale/DiffusionDrive/diffusiondrive_sim_navhard.ckpt
+diffusiondrive_beyonddrive	diffusiondrive	/avl-west/navsafe_eval/aug_zoo/BeyondDrive/diffusiondrive_beyonddrive.pth
+prioreye	prioreye	/avl-west/navsafe_eval/aug_zoo/PriorEye/drivoR_prioreye.ckpt	NAVSAFE_PRIOREYE_EMBEDDING=/avl-west/navsafe_eval/aug_zoo/PriorEye/embedding/siglip2/siglip2_embedding_all.pkl
+rap	rap	/avl-west/navsafe_eval/aug_zoo/RAP_DINO/RAP_DINO_navsimv2.ckpt

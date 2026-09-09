@@ -1,130 +1,157 @@
-# offset_eval — hand-off perturbation sweep
+# Hand-off perturbation evaluation
 
-Displace the ego **once**, on the frame the policy takes over, and see what it
-plans instead. Same scenario, same traffic, same reconstruction, same seed — so
-whatever changes between two offsets is the policy's sensitivity to that pose.
+One model × one scenario × one allowed offset × one seed is a cell. The ego is
+perturbed once at the resolved hand-off frame. All cells preserve the original
+replay prefix. This directory prepares full perturbation sweeps, not the recent
+single-frame +1.5/+3/+5 m image requests.
 
-    output   /avl-west/runs/20260905-handoff-perturb-demo/eval/seed0/<leaf>/<token>/<arm>/<model>/
-    code     NexusSim @ 70a8d7ed  (workers `git clone` the cluster checkout and
-                                   `git checkout` this SHA, so a change has to be
-                                   COMMITTED there to reach them)
+## Directory structure
 
-## The grid
+```text
+config/
+  campaign.json                 model registry, resources, workers, seed, code SHA
+  models/<model>.tsv            one benchmark row per file
+  scenarios/{all,plain,edit}.json
+scripts/run_worker.sh           shared environment/renderer/eval implementation
+templates/job.yaml            one Job template (never submit directly)
+jobs/<model>/{plain,edit}/wXX.yaml
+bin/manage.py                  render / stage / submit / status
+bin/validate.py                local consistency and shell checks
+bin/export_*.py                existing demo/BEV exporters (unchanged)
+audit/                         cluster snapshot and configuration evidence
+archive/20260909-flat-layout/   old flat layout, preserved for reference
+```
 
-54 scenarios (2 per populated taxonomy leaf, fewest vehicles first) x 19 arms x
-5 models = 5105 cells.
+Models are always at the same level, including `simwam` and
+`diffusiondrive_simscale`. `plain` and `edit` are scenario partitions **inside
+each model**. GPU needs are a separate resource profile in `campaign.json`;
+there is no longer a `simwam` fleet beside `plain`/`edit`.
 
-| axis | arms |
-|---|---|
-| baseline | `base` |
-| lateral | `latp/latm 0.5, 1.0, 1.5` m |
-| longitudinal | `lonp/lonm 0.5, 1.0, 1.5` m |
-| yaw | `yawp/yawm 15, 30, 45` deg |
+- **plain:** 46 scenarios without inserted actors, 869 allowed cells/model.
+- **edit:** 8 scenarios with inserted actors, 152 allowed cells/model.
+- Total: 54 scenarios, 1021 cells/model; C-8 has a restricted arm list.
+- Grid: baseline; lateral and longitudinal ±0.5/1.0/1.5 m; yaw ±15/30/45°.
 
-Every offset was screened offline before it was simulated: the displaced ego had
-to stay on the drivable surface and keep 0.3 m from every other actor. A
-scenario that failed any arm was rejected and the next-fewest-vehicle scenario in
-that leaf took its place. `C-8` is capped at +/-1.0 m lateral, and
-`d5812df28c1558ba` cannot take +45 deg, so it carries an `arms_run` list.
+`all.json` is the reference union, not another launch partition. Workers split
+sorted scenarios modulo `WORKERS`; each model/partition covers every cell once.
+The checked-in defaults are eight plain workers and two edit workers per model.
+Change these in the registry and render again before launching a new fleet.
 
-Models — one per benchmark category:
+## What has not run
 
-| model | category |
-|---|---|
-| `pdm_closed` | rule-based (privileged) |
-| `diffusiondrive` | IL |
-| `recogdrive_rl` | RLFT |
-| `diffusiondrive_beyonddrive` | augmentation |
-| `simwam` (SimWAM-RL) | world-model |
+The [2026-09-09 cluster audit](audit/README.md) found no output for these nine rows
+in the hand-off campaign: `diffusiondrive_simscale`, `ltf`, `drivor`,
+`sparsedrivev2`, `autovla`, `drivelaw`, `drivevla_w0`, `prioreye`, `rap`.
+All nine have prepared Jobs (90 manifests). The full registry also provides
+Jobs for the ten previously observed models (190 manifests total).
 
-## Three fleets, and why
+ResWorld has 220 existing cell directories, so it is **partially run**, not
+missing. Existing directories/metrics are not a guarantee of successful scoring.
+`simwam` means SimWAM-RL; `simwam_base` means the base checkpoint. These names
+match the existing output layout and must not be silently renamed.
 
-`nvidia.com/gpu` and the node affinity live in the Job's pod template, which is
-immutable, so a change to either means delete-and-recreate. The worker script
-reads `nvidia-smi -L` and lays itself out from the card count, so the manifests
-and the script cannot disagree.
+## Generate and validate (local only)
 
-| fleet | workers | GPU | selection | models | renderer |
-|---|---|---|---|---|---|
-| `navsafe-perturb-w*` | 8 | 1 | `selection_plain.json` (46) | `models.tsv` (4) | `--cache-size 2` |
-| `navsafe-edit-w*` | 8 | 2 | `selection_edit.json` (8) | `models.tsv` (4) | `--cache-size 4` |
-| `navsafe-simwam-w*` | 12 | 2 | `selection.json` (54) | `models_simwam.tsv` | `--cache-size 4` |
+Requires Python 3 with PyYAML, Bash, and kubectl for cluster actions. No
+`envsubst` is needed. Run from this directory:
 
-= 48 GPUs.
+```bash
+python3 bin/manage.py render diffusiondrive_simscale
+python3 bin/manage.py render --missing
+python3 bin/validate.py
+```
 
-**Why the plain/edit split.** A scenario is FOUR 5 s reconstructions
-(`<token>s1..s4`), and a recipe's inserted actor is **not in the USDZ** — it is
-injected at eval setup by an `edit_assets` RPC that mutates the render server's
-*loaded copy* of each scene, with a snapshot kept so `close()` can undo it.
-Insert into all four with `--cache-size 2` and the third insert evicts the first,
-the fourth evicts the second, and each eviction takes its edit with it. Rendering
-then starts at frame 0, which needs the FIRST segment — the first one evicted —
-and the server, having reloaded it clean from disk, answers
+Generated manifests are reviewable ordinary YAML, with no unresolved shell
+placeholders. Edit the registry/template/model files, then regenerate; do not
+hand-edit generated Jobs. `--missing` uses the saved audit classification, not
+an automatic live scan. `--all` explicitly selects all 19 rows.
 
-    INVALID_ARGUMENT: 'navsafe_animal#ph0' is not in list
+## Stage and submit (only when ready to run)
 
-scored as `termination_reason=infra_failure`, `total_frames: 0`. So the cache
-must hold at least as many scenes as the scenario has segments; that is a
-correctness floor, not a speed knob. Measured over the same hours: 13/13 of R-4's
-cells scored on a `--cache-size 4` fleet while 40/40 failed on `--cache-size 2`.
+This refactor did not stage or submit anything to the cluster. The new worker
+uses a versioned tooling directory, leaving active legacy workers' files alone.
+Staging requires an explicit pod/container that mounts `/avl-west`:
 
-Only 8 of the 54 scenarios carry a recipe that inserts (`C-7` x1, `I-3` x2,
-`R-2` x1, `R-3` x2, `R-4` x2), so only those 8 pay for the second card. The
-other 46 insert nothing, an eviction there costs a reload and nothing else, and
-one card is correct.
+```bash
+bin/stage.sh --pod horuan-nexussim --container nexussim-container
+bin/submit.sh diffusiondrive_simscale                  # server dry-run only
+bin/submit.sh diffusiondrive_simscale --apply           # create reviewed Jobs
+# or select all nine rows absent in the saved snapshot:
+bin/submit.sh --missing                                # server dry-run only
+bin/submit.sh --missing --apply
+bin/status.sh
+```
 
-SimWAM is on two cards whatever the scenario: it needs 12.6 GiB of its own.
+Use `--partition plain` or `--partition edit` to select one partition. Bare
+submission selects nothing and fails with usage guidance. Failures are surfaced;
+there is no indefinite admission-retry loop. Submission uses `kubectl create`,
+so an existing Job is not patched, restarted, or deleted. There is no automatic
+cleanup of cluster resources. `bash_offset_eval.sh` forwards to this same entry
+point; its arguments are model names, not old fleet names.
 
-**Why `ry-gpu-08` is out of the two-card fleets.** Its device plugin fails
-`GetPreferredAllocation` for a multi-GPU request — it queries the NVLink state
-between the two devices it would hand out and one is gone (the node advertises 7
-now, not 8) — while the node stays Ready, so the scheduler keeps placing two-card
-pods there and the kubelet keeps rejecting them at admission. 38 rejections in
-20 minutes, each burning one of the Job's 20 retries. A one-card request never
-takes that path, so the plain fleet keeps the node.
+Staging refuses to overwrite its versioned destination and verifies SHA256 of
+all files. For a changed release, choose a new `revision` and `tooling_root` in
+`campaign.json`, regenerate, and stage it. Dry-run Jobs still require the
+referenced Secrets/PVCs and cluster admission capacity when actually launched.
 
-## Running it
+Do not run new and legacy workers over the same model/partition/output cells.
+In particular, `navsafe-addon-w*` was still active during inspection. The nine
+`--missing` models had no output in this campaign snapshot. Recheck if another
+operator has started them since the audit.
 
-    bin/submit.sh          bring all three fleets up, probing until every job is in
-    bin/exclude_node.sh    recreate the two-card fleets without a bad node
-    bin/admitprobe.py      rename a manifest so --dry-run=server tests the WEBHOOK
-                           and not an immutable-field patch
+## Resources and environment
 
-`bin/admitprobe.py` exists because probing a Job under its own name is useless
-once the Job exists: a Job spec is immutable, so the dry run fails on `field is
-immutable` whatever the utilisation webhook thinks, and a script that reads that
-as "refused" waits forever.
+- `shared-plain`: 1 GPU for plain (renderer cache 2), 2 GPUs for edit (cache 4).
+  Used for the existing small models and DD+SimScale, which uses the same DD adapter.
+- `dedicated`: 2 GPUs for both partitions; renderer on GPU 0, simulator/model on
+  GPU 1. Also used conservatively for newly added models without verified
+  shared-GPU memory measurements.
+- `dedicated-vla`: DriveVLA-W0 uses 3 GPUs: renderer 0, simulator 1, model 2.
+  Its tokenizer/Emu3 assets and additional VLA packages come from the working
+  multi-model evaluation configuration.
 
-Resuming is free and automatic. A cell counts as done only when eval's own
-`DONE.` line, `navsafe_metrics.json` **and** `plan_records.json` are all present
-(`run_worker.sh`), so a cell that failed or timed out is redone and a finished
-one is skipped. Nothing has to be tracked by hand.
+Edited scenes must retain four loaded reconstructions: eviction loses injected
+actors. SimWAM's extra GPU is a model memory requirement, not a scenario type.
+DriveLaW installs its extra dependencies in an isolated side directory;
+ResWorld checks its existing separate Python 3.8/MMCV environment rather than
+trying to use the Python 3.12 VLA environment. SparseDriveV2 needs ninja and
+Python development headers for its extension.
 
-## Config the workers read from the ConfigMap
+The existing allowed-node list and multi-GPU exclusion of `ry-gpu-08` are
+preserved as configuration constraints, not asserted as current node health.
+Requests equal limits for CPU/GPU; memory limits remain within 1.2× requests.
+Jobs have a seven-day deadline and two retries. No new resource configuration
+has been load-tested by this file-preparation task.
 
-    kubectl create configmap navsafe-perturb-cfg -n cogrob \
-      --from-file=run_worker.sh=config/run_worker.sh \
-      --from-file=models.tsv=config/models.tsv \
-      --from-file=models_simwam.tsv=config/models_simwam.tsv \
-      --from-file=selection.json=config/selection.json \
-      --from-file=selection_plain.json=config/selection_plain.json \
-      --from-file=selection_edit.json=config/selection_edit.json \
-      --dry-run=client -o yaml | kubectl apply -f -
+## DD + SimScale evaluation
 
-A pod reads `/cfg` once at startup, so a ConfigMap change reaches the fleet by
-deleting the PODS — the Job controller recreates them and the utilisation
-webhook is never consulted. Deleting the JOBS instead risks losing them for the
-length of a cooldown.
+It is an augmentation checkpoint of **`--model-type diffusiondrive`**:
 
-## Gotchas that cost time here
+```text
+--checkpoint /avl-west/navsafe_eval/aug_zoo/SimScale/DiffusionDrive/diffusiondrive_sim_navhard.ckpt
+```
 
-* `seq -w 0 7` pads to the width of its LARGEST argument and yields `0..7`, not
-  `00..07`. Use `printf %02d`.
-* Kubernetes parses YAML 1.1, where a bare `Y` is a **boolean**. `ACCEPT_EULA`'s
-  value must be quoted or the API rejects the object before the webhook sees it.
-* The utilisation webhook refuses on **GPU** utilisation, which measured 13.2%
-  across the fleet. Memory was never the violator (27-73% of request, inside the
-  20-150% band). Deleting everything does not reset the cooldown — measured: a
-  probe immediately after a full teardown was still refused.
-* Nautilus caps the memory *limit* at 1.2x the *request*, so a small request with
-  a generous limit is not an option.
+`kmeans_navsim_traj_20.npy` must be beside the resolved checkpoint; both files
+were verified on the cluster. The shared worker supplies the full command:
+`eval_py123d.py --scenario-source py123d --render-backend nurec_grpc
+--cam-height navsim --traffic-mode semi_reactive --controller lqr
+--execution-mode controller --replan-rate 5 --camera-resolution-scale 1.0
+--terminate-on-collision --eval-seed 0 --enable-vis
+--vis-cameras CAM_L0,CAM_R0,CAM_B0`, plus scenario data, auto-selected recipe,
+asset replacement manifest when present, resolved replay length, and each arm's
+`--ego-perturb-lateral/longitudinal/yaw`. The scored horizon is scenario length
+minus replay minus one, with the original minimum of 20 frames.
+
+Code stays pinned to the existing perturb SHA `70a8d7ed`; this is not a migration
+to the currently checked-out NexusSim revision. Overlay remains enabled to match
+the campaign. Output is unchanged:
+
+```text
+/avl-west/runs/20260905-handoff-perturb-demo/eval/seed0/<leaf>/<token>/<arm>/<model>/
+```
+
+The original worker's resume rule requires its DONE log plus metrics and plan
+records. Previously scored cells are skipped. The worker now returns nonzero
+when any cells remain failed; a Kubernetes Completed status should not hide
+failed cells. The existing demo exporters keep their historical model lists;
+adding new rows to those presentation exports is separate from evaluating them.
