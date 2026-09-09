@@ -22,6 +22,10 @@ for model,entry in m.CFG['models'].items():
   for i in range(workers):
    f=P/f'jobs/{model}/{partition}/w{i:02d}.yaml';d=yaml.safe_load(f.read_text())
    assert d==m.manifest(model,partition,i),f'Stale manifest: {f}'
+   # PyYAML round-trips bare Y as a string; Kubernetes parses it as a bool.
+   # Guard the emitted representation as well as Python's parsed values.
+   assert '\"value\": \"Y\"' in f.read_text(), f'Unquoted EULA env: {f}'
+
    name=d['metadata']['name'];assert name not in names and len(name)<=63;names.add(name)
    c=d['spec']['template']['spec']['containers'][0];env={x['name']:x['value'] for x in c['env'] if 'value' in x}
    assert all(isinstance(v,str) for v in env.values())

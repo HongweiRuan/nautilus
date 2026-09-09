@@ -1,123 +1,123 @@
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ns-offset-sparsedrivev2-plain-s0-w05
-  namespace: cogrob
-  labels: &id001
-    app: navsafe-offset
-    model: sparsedrivev2
-    partition: plain
-    worker: w05
-spec:
-  backoffLimit: 2
-  podReplacementPolicy: TerminatingOrFailed
-  ttlSecondsAfterFinished: 259200
-  template:
-    metadata:
-      labels: *id001
-    spec:
-      restartPolicy: Never
-      imagePullSecrets:
-      - name: ngc-pull
-      containers:
-      - name: eval
-        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
-        imagePullPolicy: IfNotPresent
-        command:
-        - /opt/nvidia/nvidia_entrypoint.sh
-        - bash
-        args:
-        - /avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/scripts/run_worker.sh
-        env:
-        - name: NGC_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: ngc-api-key
-              key: NGC_API_KEY
-        - name: HF_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: hf-token
-              key: HF_TOKEN
-        - name: WORKER_INDEX
-          value: '5'
-        - name: WORKERS
-          value: '8'
-        - name: SEEDS
-          value: '0'
-        - name: OUTROOT
-          value: /avl-west/runs/20260905-handoff-perturb-demo/eval
-        - name: NEXUSSIM_SHA
-          value: 70a8d7ed
-        - name: MODELS_TSV
-          value: /avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/config/models/sparsedrivev2.tsv
-        - name: SELECTION
-          value: /avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/config/scenarios/plain.json
-        - name: HYDRA_FULL_ERROR
-          value: '1'
-        - name: ACCEPT_EULA
-          value: Y
-        - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
-        - name: NAVSAFE_VLA_GPU
-          value: '1'
-        - name: NEXUSSIM_NO_OVERLAY
-          value: '0'
-        - name: CELL_TRIES
-          value: '3'
-        resources:
-          requests:
-            cpu: '3'
-            memory: 76Gi
-            nvidia.com/gpu: '2'
-            ephemeral-storage: 100Gi
-          limits:
-            cpu: '3'
-            memory: 91Gi
-            nvidia.com/gpu: '2'
-            ephemeral-storage: 100Gi
-        volumeMounts:
-        - name: dshm
-          mountPath: /dev/shm
-        - name: avl-west-vol
-          mountPath: /avl-west
-        - name: hugsim-storage
-          mountPath: /hugsim-storage
-      volumes:
-      - name: dshm
-        emptyDir:
-          medium: Memory
-          sizeLimit: 24Gi
-      - name: avl-west-vol
-        persistentVolumeClaim:
-          claimName: avl-west-vol
-      - name: hugsim-storage
-        persistentVolumeClaim:
-          claimName: horuan-hugsim-vol
-      tolerations:
-      - effect: NoSchedule
-        key: nautilus.io/reservation
-        operator: Equal
-        value: cogrob
-      - effect: NoSchedule
-        key: nautilus.io/cogrob
-        operator: Exists
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: In
-                values:
-                - ry-gpu-05.sdsc.optiputer.net
-                - ry-gpu-06.sdsc.optiputer.net
-                - ry-gpu-07.sdsc.optiputer.net
-                - ry-gpu-11.sdsc.optiputer.net
-                - ry-gpu-12.sdsc.optiputer.net
-                - ry-gpu-14.sdsc.optiputer.net
-              - key: nvidia.com/gpu.product
-                operator: In
-                values:
-                - NVIDIA-GeForce-RTX-3090
-  activeDeadlineSeconds: 604800
+"apiVersion": "batch/v1"
+"kind": "Job"
+"metadata":
+  "name": "ns-offset-sparsedrivev2-plain-s0-w05"
+  "namespace": "cogrob"
+  "labels": &id001
+    "app": "navsafe-offset"
+    "model": "sparsedrivev2"
+    "partition": "plain"
+    "worker": "w05"
+"spec":
+  "backoffLimit": !!int "2"
+  "podReplacementPolicy": "TerminatingOrFailed"
+  "ttlSecondsAfterFinished": !!int "259200"
+  "template":
+    "metadata":
+      "labels": *id001
+    "spec":
+      "restartPolicy": "Never"
+      "imagePullSecrets":
+      - "name": "ngc-pull"
+      "containers":
+      - "name": "eval"
+        "image": "nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90"
+        "imagePullPolicy": "IfNotPresent"
+        "command":
+        - "/opt/nvidia/nvidia_entrypoint.sh"
+        - "bash"
+        "args":
+        - "/avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/scripts/run_worker.sh"
+        "env":
+        - "name": "NGC_API_KEY"
+          "valueFrom":
+            "secretKeyRef":
+              "name": "ngc-api-key"
+              "key": "NGC_API_KEY"
+        - "name": "HF_TOKEN"
+          "valueFrom":
+            "secretKeyRef":
+              "name": "hf-token"
+              "key": "HF_TOKEN"
+        - "name": "WORKER_INDEX"
+          "value": "5"
+        - "name": "WORKERS"
+          "value": "8"
+        - "name": "SEEDS"
+          "value": "0"
+        - "name": "OUTROOT"
+          "value": "/avl-west/runs/20260905-handoff-perturb-demo/eval"
+        - "name": "NEXUSSIM_SHA"
+          "value": "70a8d7ed"
+        - "name": "MODELS_TSV"
+          "value": "/avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/config/models/sparsedrivev2.tsv"
+        - "name": "SELECTION"
+          "value": "/avl-west/runs/20260905-handoff-perturb-demo/tooling/20260909-model-layout-v1/config/scenarios/plain.json"
+        - "name": "HYDRA_FULL_ERROR"
+          "value": "1"
+        - "name": "ACCEPT_EULA"
+          "value": "Y"
+        - "name": "OMNI_KIT_ACCEPT_EULA"
+          "value": "Y"
+        - "name": "NAVSAFE_VLA_GPU"
+          "value": "1"
+        - "name": "NEXUSSIM_NO_OVERLAY"
+          "value": "0"
+        - "name": "CELL_TRIES"
+          "value": "3"
+        "resources":
+          "requests":
+            "cpu": "3"
+            "memory": "76Gi"
+            "nvidia.com/gpu": "2"
+            "ephemeral-storage": "100Gi"
+          "limits":
+            "cpu": "3"
+            "memory": "91Gi"
+            "nvidia.com/gpu": "2"
+            "ephemeral-storage": "100Gi"
+        "volumeMounts":
+        - "name": "dshm"
+          "mountPath": "/dev/shm"
+        - "name": "avl-west-vol"
+          "mountPath": "/avl-west"
+        - "name": "hugsim-storage"
+          "mountPath": "/hugsim-storage"
+      "volumes":
+      - "name": "dshm"
+        "emptyDir":
+          "medium": "Memory"
+          "sizeLimit": "24Gi"
+      - "name": "avl-west-vol"
+        "persistentVolumeClaim":
+          "claimName": "avl-west-vol"
+      - "name": "hugsim-storage"
+        "persistentVolumeClaim":
+          "claimName": "horuan-hugsim-vol"
+      "tolerations":
+      - "effect": "NoSchedule"
+        "key": "nautilus.io/reservation"
+        "operator": "Equal"
+        "value": "cogrob"
+      - "effect": "NoSchedule"
+        "key": "nautilus.io/cogrob"
+        "operator": "Exists"
+      "affinity":
+        "nodeAffinity":
+          "requiredDuringSchedulingIgnoredDuringExecution":
+            "nodeSelectorTerms":
+            - "matchExpressions":
+              - "key": "kubernetes.io/hostname"
+                "operator": "In"
+                "values":
+                - "ry-gpu-05.sdsc.optiputer.net"
+                - "ry-gpu-06.sdsc.optiputer.net"
+                - "ry-gpu-07.sdsc.optiputer.net"
+                - "ry-gpu-11.sdsc.optiputer.net"
+                - "ry-gpu-12.sdsc.optiputer.net"
+                - "ry-gpu-14.sdsc.optiputer.net"
+              - "key": "nvidia.com/gpu.product"
+                "operator": "In"
+                "values":
+                - "NVIDIA-GeForce-RTX-3090"
+  "activeDeadlineSeconds": !!int "604800"

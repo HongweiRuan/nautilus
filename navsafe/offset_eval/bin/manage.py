@@ -48,7 +48,7 @@ def render(models, partition):
         for part in (['plain','edit'] if partition=='all' else [partition]):
             for i in range(CFG['models'][m]['workers'][part]):
                 path=ROOT/'jobs'/m/part/f'w{i:02d}.yaml';path.parent.mkdir(parents=True,exist_ok=True)
-                path.write_text(yaml.safe_dump(manifest(m,part,i),sort_keys=False));result.append(path)
+                path.write_text(yaml.safe_dump(manifest(m,part,i),sort_keys=False,default_style='"'));result.append(path)
     return result
 
 def main():
@@ -61,6 +61,9 @@ def main():
     args=ap.parse_args()
     if args.action=='stage':
         if not args.pod or not args.container: ap.error('stage requires --pod and --container (must mount /avl-west)')
+        # Authenticate with the terminal still attached, before stdin becomes a tar stream.
+        print('Checking Kubernetes authentication and target pod before uploading...', flush=True)
+        run(['kubectl','get','pod',args.pod,'-n',CFG['namespace'],'-o','name'])
         dest=CFG['tooling_root']
         # Versioned staging: refuse overwrites; use a new revision to publish updates.
         files=[p for d in ['scripts','config'] for p in (ROOT/d).rglob('*') if p.is_file()]
@@ -89,5 +92,8 @@ def main():
             run(cmd)
 if __name__=='__main__':
     try:main()
+    except KeyboardInterrupt:
+        print('\nCanceled. If staging had started, verify the destination before retrying; no rollback was performed.', file=sys.stderr)
+        sys.exit(130)
     except (ValueError,subprocess.CalledProcessError) as e:
         print(e,file=sys.stderr);sys.exit(1)
