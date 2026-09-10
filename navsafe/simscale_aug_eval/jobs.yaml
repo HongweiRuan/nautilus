@@ -461,9 +461,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -592,9 +592,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -723,9 +723,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -854,9 +854,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -985,9 +985,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1116,9 +1116,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1247,9 +1247,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1378,9 +1378,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1509,9 +1509,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1640,9 +1640,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1771,9 +1771,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -1902,9 +1902,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2033,9 +2033,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2164,9 +2164,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2295,9 +2295,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2426,9 +2426,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2557,9 +2557,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2688,9 +2688,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2819,9 +2819,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
@@ -2950,9 +2950,9 @@ spec:
         - name: HYDRA_FULL_ERROR
           value: '1'
         - name: ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: OMNI_KIT_ACCEPT_EULA
-          value: Y
+          value: "Y"
         - name: NAVSAFE_ASSET_BANK
           value: /avl-west/navsafe_eval/asset
         resources:
