@@ -13,7 +13,8 @@ fi
 mkdir -p "$ROOT"/{LTF,DiffusionDrive,GTRS_Dense}
 
 fetch() {
-  local relative=$1 sha=$2 destination="$ROOT/$relative" partial
+  local relative=$1 sha=$2
+  local destination="$ROOT/$relative" partial
   partial="$destination.partial"
   mkdir -p "$(dirname "$destination")"
   if [ -f "$destination" ] && echo "$sha  $destination" | sha256sum -c - >/dev/null 2>&1; then
