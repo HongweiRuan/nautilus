@@ -1,0 +1,47 @@
+{
+  "metric_order": [
+    "DS",
+    "SR"
+  ],
+  "selection": "nearest full-leaf centroid among existing50 anchors, development models only",
+  "fixed_priority28_heldout_retrospective": {
+    "aggregate_mae_pp": [
+      1.5766421428571307,
+      2.4285714285714235
+    ],
+    "within_leaf_mae_pp": [
+      23.928349285714283,
+      34.285714285714285
+    ]
+  },
+  "fixed_priority28_all_descriptive": {
+    "aggregate_mae_pp": [
+      2.4010486607142836,
+      3.1249999999999987
+    ],
+    "within_leaf_mae_pp": [
+      19.62765044642857,
+      27.276785714285715
+    ]
+  },
+  "fixed_full50_heldout_retrospective": {
+    "aggregate_mae_pp": [
+      2.594346428571413,
+      2.3571428571428528
+    ],
+    "within_leaf_mae_pp": [
+      15.38671214285714,
+      21.214285714285715
+    ]
+  },
+  "original28_overlap": 17,
+  "checks": {
+    "priority28": 28,
+    "additional22": 22,
+    "priority_leaf_count": 28,
+    "disjoint": true,
+    "union_equals_original50": true,
+    "stage1_weight_sum": 1.0,
+    "full50_weight_sum": 1.0
+  }
+}

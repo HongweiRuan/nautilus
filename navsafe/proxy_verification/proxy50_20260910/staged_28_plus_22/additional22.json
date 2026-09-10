@@ -1,0 +1,367 @@
+[
+  {
+    "leaf": "C-1",
+    "token": "5bd2bc00e2d358e0",
+    "cluster_size": 6,
+    "leaf_size": 10,
+    "weight": 0.02142857142857143,
+    "leaf_weight": 0.6,
+    "members": [
+      "02902d180b405100",
+      "0334cae9f1ef56ae",
+      "081b5785002b5962",
+      "190c8d0cece45af1",
+      "5bd2bc00e2d358e0",
+      "9d791495c47e5061"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.02142857142857143
+  },
+  {
+    "leaf": "C-2",
+    "token": "3a0e2f53c9585e94",
+    "cluster_size": 5,
+    "leaf_size": 10,
+    "weight": 0.017857142857142856,
+    "leaf_weight": 0.5,
+    "members": [
+      "3a0e2f53c9585e94",
+      "4bb2fc18f5ee5dcb",
+      "854918c8b7665af0",
+      "888d1fb945ed5982",
+      "8d4c7214942e5619"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.017857142857142856
+  },
+  {
+    "leaf": "C-3",
+    "token": "01649900c5cc58c4",
+    "cluster_size": 2,
+    "leaf_size": 10,
+    "weight": 0.007142857142857143,
+    "leaf_weight": 0.2,
+    "members": [
+      "01649900c5cc58c4",
+      "48f603e3b4335b74"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.007142857142857143
+  },
+  {
+    "leaf": "C-4",
+    "token": "440a60430f4655de",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "440a60430f4655de",
+      "51ce5f94f83f576f",
+      "7403f892832b51d3",
+      "e3e0b3d6d5ae52a1"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "C-5",
+    "token": "9a6489254d5f5577",
+    "cluster_size": 2,
+    "leaf_size": 10,
+    "weight": 0.007142857142857143,
+    "leaf_weight": 0.2,
+    "members": [
+      "398326681cd7500a",
+      "9a6489254d5f5577"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.007142857142857143
+  },
+  {
+    "leaf": "C-5",
+    "token": "442b2cf63c6f570a",
+    "cluster_size": 3,
+    "leaf_size": 10,
+    "weight": 0.010714285714285714,
+    "leaf_weight": 0.3,
+    "members": [
+      "442b2cf63c6f570a",
+      "58f3f43098985e77",
+      "6e778c30490d5f50"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.010714285714285714
+  },
+  {
+    "leaf": "C-6",
+    "token": "6f75ee5c660855e7",
+    "cluster_size": 3,
+    "leaf_size": 10,
+    "weight": 0.010714285714285714,
+    "leaf_weight": 0.3,
+    "members": [
+      "07930113a85651b0",
+      "6f75ee5c660855e7",
+      "89912e0a307256fd"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.010714285714285714
+  },
+  {
+    "leaf": "C-8",
+    "token": "26119d956d46590e",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "0e6cae45fdd5536b",
+      "0fa9a7f8b7235bfd",
+      "26119d956d46590e",
+      "771c4e378bef58e4"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "C-9",
+    "token": "8c6c4c4b507c5eb1",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "029585f0509d52b0",
+      "3838eb184c9d5989",
+      "757c23c6819c589c",
+      "8c6c4c4b507c5eb1"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "I-1",
+    "token": "0bcae698fd905226",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "00185dab0ba153b9",
+      "09d33cf8b87c5ae3",
+      "0bcae698fd905226",
+      "71d14fc8ea3d5b5d"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "R-1",
+    "token": "0d2403a8031f540c",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "0b12ac5676875ade",
+      "0d2403a8031f540c",
+      "14d53f85ccc65f23",
+      "3b910accfc12560a"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "R-4",
+    "token": "061e7e1700945b03",
+    "cluster_size": 1,
+    "leaf_size": 10,
+    "weight": 0.0035714285714285713,
+    "leaf_weight": 0.1,
+    "members": [
+      "061e7e1700945b03"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.0035714285714285713
+  },
+  {
+    "leaf": "V-1",
+    "token": "67abcf0964415891",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "4c23b72459a55ad0",
+      "67abcf0964415891",
+      "9311d9a2409c5224",
+      "9e34c53444bd518c"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "V-1",
+    "token": "0ba54149d1575f95",
+    "cluster_size": 2,
+    "leaf_size": 10,
+    "weight": 0.007142857142857143,
+    "leaf_weight": 0.2,
+    "members": [
+      "0ba54149d1575f95",
+      "9157902936a456bf"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.007142857142857143
+  },
+  {
+    "leaf": "V-3",
+    "token": "cc108c5480345911",
+    "cluster_size": 5,
+    "leaf_size": 10,
+    "weight": 0.017857142857142856,
+    "leaf_weight": 0.5,
+    "members": [
+      "20fffc4aa17d5a12",
+      "262333f372975eef",
+      "4ee177f621f259da",
+      "c1c5dec6bab3598a",
+      "cc108c5480345911"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.017857142857142856
+  },
+  {
+    "leaf": "V-4",
+    "token": "2845a5483a0f57de",
+    "cluster_size": 5,
+    "leaf_size": 10,
+    "weight": 0.017857142857142856,
+    "leaf_weight": 0.5,
+    "members": [
+      "0eeeee655d415970",
+      "2845a5483a0f57de",
+      "467879c3d37054f5",
+      "53571ab149005b43",
+      "daf905a8d1255722"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.017857142857142856
+  },
+  {
+    "leaf": "V-5",
+    "token": "0b1250020ea95539",
+    "cluster_size": 3,
+    "leaf_size": 10,
+    "weight": 0.010714285714285714,
+    "leaf_weight": 0.3,
+    "members": [
+      "0b1250020ea95539",
+      "28a4a08f11a05407",
+      "ac019d81388056be"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.010714285714285714
+  },
+  {
+    "leaf": "V-6",
+    "token": "39d1f561e06054c5",
+    "cluster_size": 5,
+    "leaf_size": 10,
+    "weight": 0.017857142857142856,
+    "leaf_weight": 0.5,
+    "members": [
+      "09a803ee2cb65992",
+      "1b2b430e151a50ae",
+      "3239cd8874425d73",
+      "39d1f561e06054c5",
+      "53f49b4480de528c"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.017857142857142856
+  },
+  {
+    "leaf": "V-7",
+    "token": "0ce170237acd51c2",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "0ce170237acd51c2",
+      "184c11a8cc875403",
+      "39a1ca97dca75beb",
+      "689abfdd66235378"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "V-9",
+    "token": "01a58976a2e45a3d",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "01a58976a2e45a3d",
+      "04aa69f18d255c96",
+      "7cdcf11e211759cf",
+      "9869278b0f8f5061"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "V-10",
+    "token": "14d171fcb9295596",
+    "cluster_size": 4,
+    "leaf_size": 10,
+    "weight": 0.014285714285714285,
+    "leaf_weight": 0.4,
+    "members": [
+      "13805e7752fe5685",
+      "14d171fcb9295596",
+      "bbee1ab465af50c2",
+      "be36f75d360c502f"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.014285714285714285
+  },
+  {
+    "leaf": "V-11",
+    "token": "0317b218061b5c4d",
+    "cluster_size": 1,
+    "leaf_size": 10,
+    "weight": 0.0035714285714285713,
+    "leaf_weight": 0.1,
+    "members": [
+      "0317b218061b5c4d"
+    ],
+    "stage": 2,
+    "stage1_weight": null,
+    "full50_weight": 0.0035714285714285713
+  }
+]
