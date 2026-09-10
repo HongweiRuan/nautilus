@@ -1,0 +1,2987 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: navsafe-simscale-aug-cfg
+  namespace: cogrob
+data:
+  run_worker.sh: "#!/usr/bin/env bash\n# One NavSafe eval worker: a renderer and a sequential eval loop over this\n# worker's\
+    \ slice of the scenario set, inside one pod on two 3090s.\n#\n# Why it is shaped like this, since none of it is arbitrary:\n\
+    #\n#  * `run_bundle_eval.sh` cannot be used here. It starts the renderer with\n#    `docker run` (the single-machine \"\
+    Mode B\" of docs/navsafe_eval.md); a pod\n#    has no docker daemon. This is Mode A \u2014 a long-lived serve-grpc the\
+    \ eval\n#    client reaches over the network \u2014 with server and client in the SAME pod, so\n#    the network is loopback\
+    \ and the renderer cannot outlive the work. Every\n#    eval FLAG below is copied from that wrapper verbatim, because\
+    \ the flags are\n#    what make a score comparable and this file is not the place to have an\n#    opinion about them.\n\
+    #\n#  * ONE renderer per worker, started once. serve-grpc costs 2-4 minutes to\n#    publish its scenes and bind, and\
+    \ the eval venv costs ~15 minutes to build;\n#    a pod that evaluated a single scenario would spend most of its life\
+    \ on\n#    that. Here both are paid once and amortised over ~25 cells.\n#\n#  * Two GPUs, not one. serve-grpc with the\
+    \ harmonizer and --cache-size 4 was\n#    measured at 21.8 GiB of a 3090's 23.6 GiB (see nexussim/nurec_serving/\n#  \
+    \  serve-grpc.yaml), which leaves nothing for a policy. GPU 0 renders, GPU 1\n#    runs the rollout.\n#\n#  * --cache-size\
+    \ 4 is a correctness floor, not a speed knob: a NavSafe scenario\n#    is FOUR 5 s reconstructions the episode renders\
+    \ in turn, and at a smaller\n#    cache they evict each other mid-episode.\n#\n#  * Token-outer, model-inner. All models\
+    \ run against one scenario before moving\n#    to the next, so the renderer keeps that scenario's four reconstructions\n\
+    #    resident across the whole model list instead of reloading ~8 GB per model.\n#\n#  * --eval-frames 600 states the\
+    \ episode bound instead of inheriting it.\n#    `eval_frames` counts SCORED frames, so the run lasts\n#    ego_replay_frames\
+    \ + eval_frames = 20 + 600 = 620 frames; leaving it unset\n#    stops at ego_replay_frames + round(SAFETY_CEILING_S /\
+    \ sim_dt) =\n#    20 + 60.0/0.1 = the same 620 (evaluator.py, \"safety ceiling\"). Same bound,\n#    now written down\
+    \ \u2014 which is what keeps cells scored before this flag was\n#    added comparable with the ones after.\n#\n#  * Resumable,\
+    \ per cell. A Job's pod is NOT time-capped here (verified: the\n#    6 h activeDeadlineSeconds cogrob injects lands on\
+    \ bare Pods, not on pods a\n#    Job owns), so a worker normally runs its slice to the end in one go. The\n#    resume\
+    \ exists for the other reasons a pod dies \u2014 a node drain, an evicted\n#    pod, a renderer that wedges \u2014 and\
+    \ it costs nothing when unused. A cell is\n#    skipped when its log carries eval_py123d's DONE line AND a\n#    navsafe_metrics.json\
+    \ exists \u2014 not on a frame count, which --enable-vis\n#    being off makes zero for finished and unfinished runs alike.\n\
+    #\n# Inputs, all from the Job manifest:\n#   WORKER_INDEX  this worker's index, 0-based\n#   WORKERS       how many workers\
+    \ share the scenario set\n#   SEEDS         space-separated --eval-seed values, e.g. \"1\" or \"1 2 3\"\n#   NEXUSSIM_SHA\
+    \  the commit every worker in the campaign evaluates\n#   CAMPAIGN      output subtree name under outputs/\nset -uo pipefail\n\
+    \n: \"${WORKER_INDEX:?}\" \"${WORKERS:?}\" \"${SEEDS:?}\" \"${NEXUSSIM_SHA:?}\"\nROOT=/avl-west/navsafe_eval\nSIMSCALE_ROOT=${SIMSCALE_ROOT:-$ROOT/aug_zoo/SimScale/source}\n\
+    [ -f \"$SIMSCALE_ROOT/traj_final/8192.npy\" ] || { echo \"SimScale assets missing; run prepare-assets.yaml first\"; exit\
+    \ 1; }\nDATASET=${DATASET:-$ROOT/dataset}\nOUTROOT=${OUTROOT:-$ROOT/outputs}\nMODELS_TSV=${MODELS_TSV:-/cfg/models.tsv}\n\
+    ZOO=$ROOT/model_zoo\nHARMONIZER_CACHE=${HARMONIZER_CACHE:-/avl-west/navsafe_dev/.harmonizer-cache}\nPORT=8080\nCELL_TIMEOUT=${CELL_TIMEOUT:-45m}\n\
+    W=$(printf 'w%02d' \"$WORKER_INDEX\")\n\nsay() { echo \"[$W $(date -u +%H:%M:%S)] $*\"; }\n\n# \u2500\u2500 0. which scenarios\
+    \ are mine \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Deterministic stride, computed identically by every worker from the\
+    \ same\n# sorted list, so no worker needs to be told and two workers never collide.\n# Directories only, and only bundles\
+    \ that can actually be served. An entry under\n# $DATASET that is not an evaluatable scenario killed a whole worker: it\
+    \ became a\n# dangling symlink in the shard, serve-grpc died on FileNotFoundError before\n# publishing any scene list,\
+    \ and the slice went down with it. Two produced that\n# on 2026-08-26 \u2014 a stray top-level manifest.json (a FILE,\
+    \ which `ls` happily\n# returns; since moved to ../dataset_manifest.json) and 442b2cf63c6f570a, which\n# carries arrow/\
+    \ and offsets/ but no usdz at all. Screened here, where the cost\n# is one skipped scenario rather than one dead worker.\n\
+    # TOKENS_FILE: restrict this run to an explicit token list instead of\n# globbing the whole dataset. Used for targeted\
+    \ retries -- the 4 scenarios\n# that never got a directory in the seed-1 rerun -- where scanning all 270\n# would spend\
+    \ the renderer's start-up on scenarios already scored.\nif [ -n \"${TOKENS_FILE:-}\" ]; then\n  mapfile -t ALL_TOKENS\
+    \ < <(grep -vE '^[[:space:]]*(#|$)' \"$TOKENS_FILE\" | awk '{print $1}' | sort -u)\n  say \"TOKENS_FILE=$TOKENS_FILE ->\
+    \ ${#ALL_TOKENS[@]} token(s)\"\nelse\nmapfile -t ALL_TOKENS < <(\n  for d in \"$DATASET\"/*/; do\n    t=$(basename \"\
+    $d\")\n    [ -f \"$d/manifest.json\" ] && [ -d \"$d/arrow\" ] || continue\n    n=0; for f in \"$d\"/*.usdz; do [ -e \"\
+    $f\" ] && n=$((n+1)); done\n    [ \"$n\" -ge 1 ] && echo \"$t\"\n  done | sort\n)\nfi\nMY_TOKENS=()\nfor i in \"${!ALL_TOKENS[@]}\"\
+    ; do\n  [ $(( i % WORKERS )) -eq \"$WORKER_INDEX\" ] && MY_TOKENS+=(\"${ALL_TOKENS[$i]}\")\ndone\nsay \"scenarios ${#ALL_TOKENS[@]}\
+    \ evaluatable, ${#MY_TOKENS[@]} mine: ${MY_TOKENS[*]}\"\n[ ${#MY_TOKENS[@]} -gt 0 ] || { say \"nothing to do\"; exit 0;\
+    \ }\n\nmapfile -t ROWS < <(grep -v '^\\s*#' \"$MODELS_TSV\" | grep -v '^\\s*$')\nsay \"models: $(printf '%s ' \"${ROWS[@]%%\
+    \ *}\")\"\n\n# \u2500\u2500 1. environment \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\n# The venv is built here, on the pod's own ephemeral /root, every time. It is\n\
+    # NOT cached on the PVC: a shared interpreter tree on CephFS is not ours to\n# create. ~15 minutes, paid once per pod.\n\
+    export DEBIAN_FRONTEND=noninteractive\nsay \"apt: GL/X libs the renderer and IsaacSim need\"\n# python3-dev is not decoration:\
+    \ SparseDriveV2 JIT-builds a C++/CUDA extension,\n# `uv sync --python 3.12` resolves to this image's SYSTEM python (Ubuntu\
+    \ 24.04\n# ships 3.12.3), and torch hands the compiler `-isystem /usr/include/python3.12`.\n# Without the headers the\
+    \ C++ half of the build dies on `Python.h: No such file\n# or directory` while the CUDA half compiles fine \u2014 which\
+    \ reads as a broken\n# adapter rather than a missing apt package.\napt-get update -qq && apt-get install -y -qq git curl\
+    \ python3-venv python3-dev \\\n  libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 \\\n\
+    \  libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 \\\n  libice6 libgomp1 >/dev/null ||\
+    \ { say \"apt FAILED\"; exit 1; }\n\nexport PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH\nexport UV_CACHE_DIR=/root/.cache/uv\
+    \ UV_PROJECT_ENVIRONMENT=/root/ns-venv\nfor i in 1 2 3 4; do\n  command -v uv >/dev/null && break\n  python -m pip install\
+    \ --quiet --user uv 2>/dev/null \\\n    || pip install --quiet --user uv 2>/dev/null \\\n    || curl -LsSf https://astral.sh/uv/install.sh\
+    \ | sh\n  hash -r; sleep 5\ndone\ncommand -v uv >/dev/null || { say \"uv unavailable\"; exit 1; }\n\n# Pinned checkout,\
+    \ cloned locally: 30 workers importing .py straight off CephFS\n# would contend on __pycache__ writes, and a campaign\
+    \ has to be able to say\n# which commit produced its numbers.\nREPO=/root/ns\nrm -rf \"$REPO\"\ngit clone --quiet --no-hardlinks\
+    \ /hugsim-storage/NexusSim \"$REPO\" || { say \"clone FAILED\"; exit 1; }\ngit -C \"$REPO\" checkout --quiet \"$NEXUSSIM_SHA\"\
+    \ || { say \"checkout $NEXUSSIM_SHA FAILED\"; exit 1; }\ncp /cfg/gtrs_dense.py \"$REPO/nexussim/policy/sensor/gtrs_dense.py\"\
+    \nsed -i '/\"nexussim.policy.sensor.ltf\",/a\\    \"nexussim.policy.sensor.gtrs_dense\",' \"$REPO/nexussim/engine/registry.py\"\
+    \nsay \"code at $(git -C \"$REPO\" log --oneline -1)\"\n\ncd \"$REPO\"\nif ! /root/ns-venv/bin/python -c \"import isaacsim,\
+    \ isaaclab, nexussim\" 2>/dev/null; then\n  say \"uv sync (IsaacSim 6.0 + cu128 torch, ~15 min)\"\n  uv sync --all-extras\
+    \ --python 3.12 || { say \"uv sync FAILED\"; exit 1; }\n  [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta\
+    \ \\\n    https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab\n  for ext in isaaclab isaaclab_assets isaaclab_tasks\
+    \ isaaclab_rl isaaclab_mimic; do\n    d=/root/IsaacLab/source/$ext\n    [ -d \"$d\" ] && uv pip install --python /root/ns-venv/bin/python\
+    \ --no-deps -e \"$d\" >/dev/null\n  done\n  uv pip install --python /root/ns-venv/bin/python lazy_loader einops >/dev/null\n\
+    \  # SparseDriveV2 JIT-builds a CUDA extension (deformable attention) at its first\n  # forward pass, and torch.utils.cpp_extension\
+    \ refuses to without ninja:\n  # \"Ninja is required to load C++ extensions\". The NRE image ships nvcc 12.8 and\n  #\
+    \ g++ but not ninja, so the cell died at frame 0 with an infra_failure that\n  # reads like a broken adapter. Compiled\
+    \ once per pod into\n  # /root/.cache/torch_extensions.\n  uv pip install --python /root/ns-venv/bin/python ninja >/dev/null\n\
+    fi\nPY=/root/ns-venv/bin/python\n\"$PY\" -c \"import nexussim, isaaclab\" || { say \"venv unusable\"; exit 1; }\n# `uv\
+    \ sync` rewrites uv.lock in place \u2014 it normalises the environment markers for\n# this platform, same package versions\
+    \ \u2014 and every eval then records itself as\n# \"launched from a DIRTY tree ... this run corresponds to no commit\"\
+    . Restoring\n# the file is what lets run_meta.json name the commit these numbers came from;\n# the installed set is the\
+    \ locked one either way, which is why this is safe.\ngit -C \"$REPO\" checkout -- uv.lock 2>/dev/null || true\n\n# The\
+    \ venv's bin/ has to be on PATH, not just its interpreter. torch checks for\n# ninja by SHELLING OUT (`subprocess.run([\"\
+    ninja\", \"--version\"])` in\n# verify_ninja_availability), so installing ninja into the venv while invoking\n# only /root/ns-venv/bin/python\
+    \ leaves it invisible and SparseDriveV2 still dies\n# at frame 0 with \"Ninja is required to load C++ extensions\". Checked\
+    \ here\n# rather than trusted: the install is quiet, and its failure would otherwise\n# surface 30 pods later as one adapter\
+    \ that never scores anything.\nexport PATH=/root/ns-venv/bin:$PATH\ncommand -v ninja >/dev/null || { say \"ninja not on\
+    \ PATH \u2014 sparsedrivev2 cannot JIT its CUDA extension\"; exit 1; }\n# The exact path torch will pass as -isystem,\
+    \ asked of the interpreter that will\n# do the building rather than assumed from the apt package name.\nINC=$(\"$PY\"\
+    \ -c 'import sysconfig; print(sysconfig.get_paths()[\"include\"])')\n[ -f \"$INC/Python.h\" ] || { say \"no Python.h under\
+    \ $INC \u2014 sparsedrivev2's extension cannot build\"; exit 1; }\nsay \"venv ready ($(git -C \"$REPO\" status --porcelain\
+    \ | wc -l) tracked files modified, ninja $(ninja --version), headers $INC)\"\n\n# \u2500\u2500 1b. VLA venv \u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \n# The 6 subprocess-VLA rows in this sweep (recogdrive x2, mtdrive x2, autovla,\n# drivelaw) run their model in a persistent\
+    \ subprocess under ONE shared venv\n# (nexussim/policy/sensor/vla_client.py, NAVSAFE_VLA_PYTHON) built from the\n# proven\
+    \ lockfile in navsafe_env_kit/envs/vla/ (captured 2026-08-26 from\n# bolei-gpu07, where all these rows already ran successfully)\
+    \ \u2014 torch==2.10.0+\n# cu128, transformers==4.57.6, same torch as the host venv. Kept separate from\n# the host venv\
+    \ anyway because e.g. recogdrive/autovla need qwen_vl_utils and a\n# specific transformers/diffusers combination the sim\
+    \ stack doesn't otherwise\n# need. Built fresh on this pod's ephemeral /root, same as /root/ns-venv above\n# \u2014 not\
+    \ cached on the PVC, ~5 min, paid once per pod.\n#\n# SimWAM (simwam/simwam_rl) is EXCLUDED from this sweep by models.tsv:\
+    \ its\n# world-model load alone consumes the full ~23.5GB of a 3090 (confirmed via a\n# standalone 1-GPU/80Gi-RAM Job\
+    \ \u2014 CUDA OOM in simwam.runtime.create_simwam),\n# leaving nothing for this pod's second GPU (the renderer). The source\n\
+    # machine had 8 GPUs and dedicated a whole one to NAVSAFE_VLA_GPU; our pods\n# only get 2 total, so SimWAM does not fit\
+    \ here and is run elsewhere.\nif grep -qE '^(recogdrive_il|recogdrive_rl|mtdrive_sft|mtdrive_mtgrpo|autovla|drivelaw|simwam|simwam_rl|drivevla_w0)\\\
+    b' \"$MODELS_TSV\"; then\n  VLA_LOCK=/avl-west/navsafe_eval/env_kit/vla_requirements.lock.txt\n  VLA_EXTRA_LOCK=/avl-west/navsafe_eval/env_kit/vla_extra_site_requirements.lock.txt\n\
+    \  [ -f \"$VLA_LOCK\" ] || { say \"VLA lockfile missing at $VLA_LOCK\"; exit 1; }\n  if [ ! -x /root/vla-venv/bin/python\
+    \ ]; then\n    say \"building vla-venv (torch 2.10.0+cu128 + transformers 4.57.6, ~5 min)\"\n    uv venv --python 3.12\
+    \ /root/vla-venv >/dev/null || { say \"vla-venv create FAILED\"; exit 1; }\n    # omegaconf==2.4.0.dev14 (a real PyPI\
+    \ prerelease) conflicts with\n    # hydra-core==1.3.2's declared `omegaconf<2.4` under uv's strict resolver,\n    # even\
+    \ though this exact pairing is what SimWAM/DriveLaW's Hydra configs\n    # were proven against on the source machine \u2014\
+    \ install everything else via\n    # the resolver, then force this one package in after, same as the source\n    # env's\
+    \ own pip almost certainly did.\n    grep -v '^omegaconf==' \"$VLA_LOCK\" > /tmp/vla_reqs.txt\n    uv pip install --python\
+    \ /root/vla-venv/bin/python \\\n      --extra-index-url https://download.pytorch.org/whl/cu128 \\\n      --index-strategy\
+    \ unsafe-best-match \\\n      -r /tmp/vla_reqs.txt || { say \"vla-venv install FAILED\"; exit 1; }\n    uv pip install\
+    \ --python /root/vla-venv/bin/python --no-deps omegaconf==2.4.0.dev14 \\\n      || { say \"vla-venv omegaconf FAILED\"\
+    ; exit 1; }\n  fi\n  export NAVSAFE_VLA_PYTHON=/root/vla-venv/bin/python\nfi\nif grep -q '^drivevla_w0\\b' \"$MODELS_TSV\"\
+    ; then\n  /root/vla-venv/bin/python -c 'import tiktoken, scipy' 2>/dev/null || \\\n    uv pip install --python /root/vla-venv/bin/python\
+    \ tiktoken blobfile scipy \\\n      || { say \"drivevla_w0 deps FAILED\"; exit 1; }\nfi\n# RAP is BEVFormer + a DINO backbone,\
+    \ so it needs the OpenMMLab stack, which\n# the sim venv does not carry: without it every rap cell dies at load with\n\
+    # `ModuleNotFoundError: mmengine`. Three things this install has to get right,\n# each measured on this image:\n#\n# \
+    \ * --no-build-isolation. mmcv's setup.py imports pkg_resources without\n#    declaring setuptools as a build dependency,\
+    \ so an isolated build cannot\n#    even start. It also needs torch importable at build time, which isolation\n#    would\
+    \ hide.\n#  * mmcv PINNED to 2.1.0. 2.2.0 compiles and its CUDA ops load, but mmdet\n#    asserts `mmcv>=2.0.0rc4, <2.2.0`\
+    \ at import and refuses it.\n#  * a --target dir, not the venv. The build takes ~30 min of nvcc; keeping it\n#    out\
+    \ of ns-venv means a failed or half-finished build cannot break the\n#    other 14 rows, which import from ns-venv on\
+    \ every cell.\nif grep -q '^rap\\b' \"$MODELS_TSV\"; then\n  if [ ! -d /root/mm_site/mmcv ]; then\n    say \"building\
+    \ the mmcv/mmdet stack for rap (~30 min of nvcc, once per pod)\"\n    mkdir -p /root/mm_site\n    uv pip install --python\
+    \ /root/ns-venv/bin/python --target /root/mm_site \\\n      --no-build-isolation \\\n      --extra-index-url https://download.pytorch.org/whl/cu128\
+    \ \\\n      --index-strategy unsafe-best-match \\\n      mmengine \"mmcv==2.1.0\" \"mmdet>=3.0.0,<3.4\" \\\n      || {\
+    \ say \"mmcv stack FAILED \u2014 rap cells will fail, the rest are unaffected\"; }\n  fi\n  # Appended (not prepended)\
+    \ at the PYTHONPATH assignment further down, so\n  # ns-venv's own torch/numpy keep winning over anything mmdet pulled\
+    \ in.\n  export MM_SITE=/root/mm_site\n  if PYTHONPATH=/root/mm_site /root/ns-venv/bin/python -c \"from mmcv.ops.multi_scale_deform_attn\
+    \ import MultiScaleDeformableAttention\" 2>/dev/null; then\n    say \"mmcv stack ready (rap enabled)\"\n  else\n    say\
+    \ \"WARNING: mmcv stack did not import \u2014 rap cells will fail at load\"\n  fi\nfi\n\nif grep -q '^drivelaw\\b' \"\
+    $MODELS_TSV\"; then\n  # DriveLaW's navsim fork imports nuplan.common.actor_state beyond what\n  # drivelaw_server.py's\
+    \ own stub covers; the real devkit has to be\n  # importable. Installed --no-deps into a side site-dir (not into vla-venv\n\
+    \  # itself) so its own transitive deps never shadow vla-venv's torch/numpy for\n  # the other 5 VLA rows sharing that\
+    \ venv.\n  [ -d /root/vla_extra_site ] || {\n    mkdir -p /root/vla_extra_site\n    uv pip install --target /root/vla_extra_site\
+    \ --no-deps -r \"$VLA_EXTRA_LOCK\" \\\n      || { say \"vla_extra_site FAILED\"; exit 1; }\n  }\n  export NAVSAFE_VLA_EXTRA_PYTHONPATH=/root/vla_extra_site\n\
+    \  [ -f /avl-west/navsafe_eval/model_zoo/drivelaw/inference_front.yaml ] || \\\n    sed -e \"s|\\${DRIVELAW_ZOO}|/avl-west/navsafe_eval/model_zoo/drivelaw|g\"\
+    \ \\\n        -e \"s|\\${DRIVELAW_REPO}|/avl-west/navsafe_eval/vla_repos/drivelaw|g\" \\\n        /avl-west/navsafe_eval/model_zoo/drivelaw/inference_front.template.yaml\
+    \ \\\n        > /avl-west/navsafe_eval/model_zoo/drivelaw/inference_front.yaml\nfi\n\n# \u2500\u2500 2. the renderer \u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Its --artifact-glob\
+    \ covers only THIS worker's scenarios. serve-grpc scans the\n# glob at start-up and reads every artifact it finds; pointing\
+    \ all 30 workers at\n# all 508 reconstructions would make each of them scan half a terabyte of CephFS\n# to serve twenty\
+    \ scenes.\nSHARD=/root/shard\nmkdir -p \"$SHARD\"\nMY_SCENES=()\nfor T in \"${MY_TOKENS[@]}\"; do\n  for f in \"$DATASET/$T\"\
+    /*.usdz; do\n    [ -e \"$f\" ] || continue                     # a dangling link is not a scene\n    b=$(basename \"$f\"\
+    ); ln -sf \"$f\" \"$SHARD/$b\"; MY_SCENES+=(\"${b%.usdz}\")\n  done\ndone\nmkdir -p \"$HARMONIZER_CACHE\"\n\nSERVE_PID=\"\
+    \"\nstart_serve() {\n  say \"serve-grpc starting on GPU 0\"\n  CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0\
+    \ \\\n    --enable-editing-actors --renderer default --cache-size 4 \\\n    --enable-harmonizer --harmonizer-cache \"\
+    $HARMONIZER_CACHE\" \\\n    --artifact-glob \"$SHARD/*.usdz\" > /tmp/serve.log 2>&1 &\n  SERVE_PID=$!\n\n  # The scene\
+    \ list is CHECKED, never assumed: a renderer asked for a scene it\n  # does not hold falls back to raster silently, and\
+    \ the result reads as a\n  # reconstruction-quality problem rather than a configuration one.\n  for _ in $(seq 1 120);\
+    \ do\n    kill -0 $SERVE_PID 2>/dev/null || { say \"serve exited early\"; tail -40 /tmp/serve.log; return 1; }\n    grep\
+    \ -q \"Available scenes\" /tmp/serve.log && break\n    sleep 5\n  done\n  local scenes; scenes=$(grep \"Available scenes\"\
+    \ /tmp/serve.log | tail -1)\n  [ -n \"$scenes\" ] || { say \"no scene list published\"; tail -40 /tmp/serve.log; return\
+    \ 1; }\n  for SC in \"${MY_SCENES[@]}\"; do\n    echo \"$scenes\" | grep -q \"$SC\" || { say \"MISSING scene $SC \u2014\
+    \ would render raster\"; return 1; }\n  done\n  # The scene list is not readiness: serve-grpc prints it while still loading\n\
+    \  # the harmonizer weights and binds the port ~2 min later. Connecting in that\n  # gap dies with UNAVAILABLE from inside\
+    \ renderer setup.\n  for _ in $(seq 1 120); do grep -q \"Serving on\" /tmp/serve.log && break; sleep 5; done\n  grep -q\
+    \ \"Serving on\" /tmp/serve.log || { say \"never bound its port\"; tail -40 /tmp/serve.log; return 1; }\n  for _ in $(seq\
+    \ 1 60); do\n    (exec 3<>\"/dev/tcp/127.0.0.1/$PORT\") 2>/dev/null && { exec 3<&- 3>&-; break; }\n    sleep 2\n  done\n\
+    \  say \"renderer accepting connections ($(echo \"$scenes\" | wc -w) scene tokens)\"\n}\n\nserve_alive() {\n  [ -n \"\
+    $SERVE_PID\" ] && kill -0 \"$SERVE_PID\" 2>/dev/null || return 1\n  (exec 3<>\"/dev/tcp/127.0.0.1/$PORT\") 2>/dev/null\
+    \ && { exec 3<&- 3>&-; return 0; }\n  return 1\n}\n\ntrap 'say \"exiting\"; tail -40 /tmp/serve.log 2>/dev/null; kill\
+    \ $SERVE_PID 2>/dev/null' EXIT\nstart_serve || exit 1\n\n# \u2500\u2500 3. the sweep \u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nexport NUREC_GRPC_HOST=127.0.0.1\
+    \ NUREC_GRPC_PORT=$PORT\n# Seeds 0/1024 render under the RECON rig: the reconstruction's own\n# training CameraSpec and\
+    \ baked cam->rig, preserving calibrated\n# distortion, native extent and observed rays. `navsim` rebuilds a\n# zero-distortion\
+    \ pinhole the recon was never fit on; nurec_grpc.py\n# calls it a legacy compatibility path, not the quality default.\n\
+    # Overridable so the A/B stays available.\nexport NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600\n\
+    export PY123D_RECENTER=1\nexport NUPLAN_MAP_VERSION=nuplan-maps-v1.0\nexport NEXUSSIM_NO_CAM_MAP_LINES=1\n# NB: this REPLACES\
+    \ PYTHONPATH, so anything set earlier (the rap mm stack at\n# section 1c) has to be re-appended here rather than exported\
+    \ above -- an\n# export before this line is silently discarded.\nexport PYTHONPATH=\"$SIMSCALE_ROOT:$REPO:$REPO/third_party/nurec_protos${MM_SITE:+:$MM_SITE}\"\
+    \nexport ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1\nexport LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6\n\
+    export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1\n# vla_client.py defaults NAVSAFE_VLA_GPU to \"7\" (the source machine's\
+    \ 8th\n# GPU); this pod only has 2 (0=renderer, 1=main eval). Left unset, the VLA\n# subprocess's CUDA_VISIBLE_DEVICES=7\
+    \ resolves to no visible device at all --\n# \"RuntimeError: No CUDA GPUs are available\" on every VLA row, confirmed\n\
+    # 2026-08-27. Share GPU 1 with the main eval process, not GPU 0 (the\n# renderer) -- matches the smoke-tested models comfortably\
+    \ fitting a single\n# 3090 standalone.\n# SimWAM's world model alone fills a 3090 (~23.5GB), so it cannot share GPU 1\n\
+    # with the main eval process the way the smaller VLA rows do. This pod requests\n# a THIRD GPU for exactly that: 0 renderer,\
+    \ 1 eval, 2 the VLA server.\n# The six remaining VLA rows are small enough to share GPU 1 with the eval, as\n# they always\
+    \ did; the third card was only ever for SimWAM, which is dropped.\nif [ \"$(nvidia-smi -L 2>/dev/null | wc -l)\" -ge 3\
+    \ ]; then\n  export NAVSAFE_VLA_GPU=2\nelse\n  export NAVSAFE_VLA_GPU=1\nfi\n\ndone_n=0; skip_n=0; fail_n=0; consec_fail=0\n\
+    \n# A pod whose GPU has gone bad fails every remaining cell in ~10 s and then\n# exits 0, which tells the Job it SUCCEEDED\
+    \ and abandons the rest of the slice\n# silently. That is what happened on ry-gpu-06 on 2026-08-26: its driver went\n\
+    # bad at ~00:10, every eval started after that died in torch._C._cuda_init with\n# \"CUDA driver initialization failed,\
+    \ you might not have a CUDA gpu\", and two\n# workers reported themselves complete having scored 6 cells of 30. So: when\
+    \ the\n# environment is what failed, exit NON-ZERO, and let the Job put the slice on a\n# fresh pod \u2014 probably a\
+    \ different node.\ngpu_is_gone() {\n  grep -qE \"cudaErrorInitializationError|CUDA driver initialization failed|no CUDA-capable\
+    \ device|CUDA unknown error\" \"$1\"\n}\nfor T in \"${MY_TOKENS[@]}\"; do\n  B=\"$DATASET/$T\"\n  HANDOFF=$(\"$PY\" -m\
+    \ nexussim.navsafe.eval.bundle --handoff \"$B\" 2>/dev/null)\n  [ -n \"$HANDOFF\" ] || { say \"$T: no handoff, skipping\
+    \ scenario\"; fail_n=$((fail_n+1)); continue; }\n  export NUREC_GRPC_HANDOFF=\"$HANDOFF\"\n\n  # \u2500\u2500 which arrow\
+    \ does this scenario score against? \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  # An EDITED scenario is scored against the PUBLISHED\
+    \ window at\n  # /avl-west/navsafe_release/<token>/arrow. The recipes were rebaked to that\n  # window (816b710 set frames.T\
+    \ 216->200/201, 541f993 rebaked timestamps);\n  # replaying them on the corpus `<token>_20s` arrow (216 frames) now raises\n\
+    \  #   spawn_reactive_actor: ... baked for T=200 frames but this host has 216\n  # and killed shards w01/w02/w03/w11/w12\
+    \ on 2026-09-03. This mirrors\n  # run_figure2_worker.sh, which scored all 16 fig2 recipes this way.\n  #\n  # The reconstructions\
+    \ still come from the corpus (--nurec-work-dir): the\n  # published usdz are byte-identical, and the release dirs hold\
+    \ only arrow/\n  # and manifest.json. The asset-harvester replace manifest likewise stays in\n  # the corpus _20s dir.\
+    \ No recipe -> the published bundle, unchanged.\n  RECIPE_DIR=\"$REPO/nexussim/navsafe/recipes/benchmark\"\n  DATA_ROOT=\"\
+    $B/arrow\"\n  AH_BASE=\"$B\"\n  WORKDIR_ARGS=()\n  if compgen -G \"$RECIPE_DIR/*.$T.yaml\" > /dev/null; then\n    W20=\"\
+    /avl-west/navsafe_5s_500/${T}_20s\"\n    REL=\"/avl-west/navsafe_release/$T\"\n    if [ -d \"$REL/arrow\" ] && [ -d \"\
+    $W20\" ]; then\n      DATA_ROOT=\"$REL/arrow\"\n      AH_BASE=\"$W20\"\n      WORKDIR_ARGS=(--nurec-work-dir /avl-west/navsafe_5s_500)\n\
+    \      say \"$T: EDITED -> scoring against navsafe_release/$T/arrow (recon + ah_assets from ${T}_20s)\"\n    elif [ -d\
+    \ \"$B/arrow\" ] && [ -d \"$W20\" ]; then\n      # V-8 postdates the navsafe_release mirror, so its tokens have no\n \
+    \     # $REL/arrow. The bundle's own arrow/ is the SAME trimmed layout --\n      # verified byte-identical to the release\
+    \ copy on a token present in\n      # both (custom.scenario.arrow 40122 = 40122), unlike ${T}_20s/arrow\n      # which\
+    \ still carries the camera arrays. Use it, keeping ah_assets and\n      # the reconstructions where they always were.\n\
+    \      DATA_ROOT=\"$B/arrow\"\n      AH_BASE=\"$W20\"\n      WORKDIR_ARGS=(--nurec-work-dir /avl-west/navsafe_5s_500)\n\
+    \      say \"$T: EDITED -> scoring against dataset/$T/arrow (no release mirror; ah_assets from ${T}_20s)\"\n    else\n\
+    \      say \"$T: has a recipe but no $REL/arrow or $W20; skipping (a recipe cannot replay elsewhere)\"\n      fail_n=$((fail_n+1));\
+    \ continue\n    fi\n  fi\n\n  for ROW in \"${ROWS[@]}\"; do\n    IFS=$'\\t' read -r SLUG MT CK EXTRA_ENV <<< \"$ROW\"\n\
+    \    # The augmentation rows live outside the zoo (see models_final18.tsv), so\n    # an absolute checkpoint column is\
+    \ passed through unchanged.\n    case \"$CK\" in\n      none) CKPT=none ;;\n      /*)   CKPT=\"$CK\" ;;\n      *)    CKPT=\"\
+    $ZOO/$CK\" ;;\n    esac\n    # drivelaw's \"checkpoint\" column is the materialised inference config\n    # (--config),\
+    \ not a weights file \u2014 the adapter passes checkpoint_path\n    # straight through as --config (nexussim/policy/sensor/drivelaw.py).\n\
+    \n    # Row 4 (extra_env: comma-separated KEY=VAL pairs) carries per-model data\n    # paths (NAVSAFE_RECOGDRIVE_VLM,\
+    \ NAVSAFE_AUTOVLA_BASE/REPO,\n    # NAVSAFE_DRIVELAW_REPO). NAVSAFE_VLA_PYTHON/NAVSAFE_VLA_EXTRA_PYTHONPATH\n    # are\
+    \ NOT per-row: one shared vla-venv serves every VLA row, exported once\n    # in section 1b. Unset the per-row vars first\
+    \ so one VLA row's paths never\n    # leak into the next row or into a non-VLA row that follows it.\n    unset NAVSAFE_RECOGDRIVE_VLM\
+    \ NAVSAFE_AUTOVLA_BASE NAVSAFE_AUTOVLA_REPO \\\n          NAVSAFE_DRIVELAW_REPO NAVSAFE_SIMWAM_REPO NAVSAFE_RESWORLD_REPO\
+    \ \\\n          NAVSAFE_DRIVEVLA_W0_REPO NAVSAFE_DRIVEVLA_W0_VLM NAVSAFE_DRIVEVLA_W0_VQ \\\n          NAVSAFE_DRIVEVLA_W0_ACTION_TOKENIZER\
+    \ NAVSAFE_DRIVEVLA_W0_NORM_STATS \\\n          NAVSAFE_PRIOREYE_EMBEDDING \\\n          DIFFSYNTH_MODEL_BASE_PATH DIFFSYNTH_DOWNLOAD_SOURCE\n\
+    \    if [ -n \"$EXTRA_ENV\" ]; then\n      IFS=',' read -ra _KVS <<< \"$EXTRA_ENV\"\n      for _KV in \"${_KVS[@]}\";\
+    \ do export \"${_KV?}\"; done\n    fi\n\n    for SEED in $SEEDS; do\n      OUT=\"$OUTROOT/$SLUG/seed$SEED/$T\"\n     \
+    \ LOG=\"$OUTROOT/$SLUG/seed$SEED/$T.log\"\n      # Resume guard. The DONE line + a metrics file is NOT enough on its own:\n\
+    \      # an infra_failure cell writes both, with status \"excluded\" and a null\n      # driving_score, so a plain existence\
+    \ check treats a renderer OOM as\n      # finished work and the retry silently skips every cell it was launched\n    \
+    \  # for (measured: ok=0 skipped=6). RETRY_EXCLUDED=1 additionally requires\n      # a non-null driving_score, so only\
+    \ genuinely scored cells are skipped.\n      if grep -qs '^\\[eval_py123d\\] DONE\\.' \"$LOG\" && [ -f \"$OUT/navsafe_metrics.json\"\
+    \ ]; then\n        _scored=1\n        if [ \"${RETRY_EXCLUDED:-0}\" = \"1\" ]; then\n          grep -q '\"driving_score\"\
+    [[:space:]]*:[[:space:]]*[0-9]' \"$OUT/navsafe_metrics.json\" || _scored=0\n        fi\n        if [ \"$_scored\" = \"\
+    1\" ]; then\n          skip_n=$((skip_n+1)); continue\n        fi\n        say \"  $T: previous run was excluded (null\
+    \ score) -- retrying\"\n      fi\n      serve_alive || { say \"renderer died \u2014 restarting\"; kill $SERVE_PID 2>/dev/null;\
+    \ start_serve || exit 1; }\n\n      mkdir -p \"$OUT\"\n      say \"$SLUG seed$SEED $T\"\n      # --asset-harvester-replace\
+    \ is PER SCENARIO: 248 of the 270 published\n      # bundles carry ah_assets/replace_manifest.json and 22 do not (they\
+    \ have\n      # none on the Hub either -- scenarios with no inserted actors). The bare\n      # flag resolves the bank\
+    \ beside the data root and ap.error()s when it is\n      # absent, so passing it unconditionally would kill a fifth of\
+    \ the sweep\n      # at argument parsing.\n      # Pass the manifest PATH, never the bare flag. With no value the eval\n\
+    \      # resolves the bank from --py123d-data-root's parent, which for an\n      # edited scenario is the corpus dir and\
+    \ not the bundle -- it then\n      # ap.error()s on a path that was never going to exist, killing the cell\n      # at\
+    \ argument parsing and, after seven in a row, the whole shard.\n      AH=()\n      _ahm=\"$AH_BASE/ah_assets/replace_manifest.json\"\
+    \n      [ -f \"$_ahm\" ] && AH=(--asset-harvester-replace \"$_ahm\")\n      # Up to CELL_TRIES attempts per cell. On a\
+    \ 24 GB 3090 the renderer sits\n      # a few hundred MB under the ceiling, so a scene occasionally fails to\n      #\
+    \ build (infra_failure at frame 0) or CUDA context creation returns\n      # error 999 -- both are transient, both clear\
+    \ on a retry once the\n      # previous process has released its memory. Measured 2026-09-04: of the\n      # 14 tokens\
+    \ that ever hit infra_failure, 12 had already scored 29-30 of\n      # their 30 cells, i.e. a ~3% per-cell dice roll,\
+    \ not a bad scenario.\n      # Retrying in place costs 30 s; the old behaviour (exit 1, reschedule\n      # the Job onto\
+    \ another node) cost a ~25 min bootstrap for the same\n      # outcome.\n      cell_ok=0\n      for _try in $(seq 1 \"\
+    ${CELL_TRIES:-4}\"); do\n        [ \"$_try\" -gt 1 ] && {\n          say \"  retry $_try/${CELL_TRIES:-4} after transient\
+    \ failure\"\n          sleep 30\n          serve_alive || { say \"  renderer gone \u2014 restarting\"; kill $SERVE_PID\
+    \ 2>/dev/null; start_serve || exit 1; }\n        }\n        timeout --signal=KILL \"$CELL_TIMEOUT\" \\\n          \"$PY\"\
+    \ \"$REPO/scripts/tools/eval_py123d.py\" \\\n            --scenario-source py123d --py123d-data-root \"$DATA_ROOT\" --py123d-scene-index\
+    \ 0 \\\n            \"${WORKDIR_ARGS[@]}\" \\\n            --render-backend nurec_grpc --cam-height navsim \\\n      \
+    \      --model-type \"$MT\" --checkpoint \"$CKPT\" \\\n            --traffic-mode semi_reactive \\\n            --recipe-dir\
+    \ \"$RECIPE_DIR\" \\\n            \"${AH[@]}\" \\\n            --ego-replay-frames 20 \\\n            --terminate-on-collision\
+    \ \\\n            --controller lqr --execution-mode controller \\\n            --replan-rate 5 --camera-resolution-scale\
+    \ 1.0 \\\n            --eval-frames 600 \\\n            --eval-seed \"$SEED\" \\\n            --navsafe-prune-artifacts\
+    \ \\\n            --output-dir \"$OUT\" > \"$LOG\" 2>&1\n        if grep -qs '^\\[eval_py123d\\] DONE\\.' \"$LOG\" &&\
+    \ [ -f \"$OUT/navsafe_metrics.json\" ]; then\n          cell_ok=1; break\n        fi\n        # CUDA would not initialise\
+    \ at all. On a healthy node this is the\n        # transient error-999 context race and a retry clears it; if it is\n\
+    \        # still failing on the last attempt the node itself is unusable, and\n        # the check below hands the slice\
+    \ back.\n        gpu_is_gone \"$LOG\" && say \"  CUDA init failed (error 999)\"\n      done\n      if [ \"$cell_ok\" !=\
+    \ 1 ] && gpu_is_gone \"$LOG\"; then\n        say \"GPU UNUSABLE on $(hostname) after ${CELL_TRIES:-4} tries \u2014 failing\
+    \ so the Job reschedules\"\n        exit 1\n      fi\n      if [ \"$cell_ok\" = 1 ]; then\n        done_n=$((done_n+1));\
+    \ consec_fail=0; say \"  OK\"\n      else\n        # ${CELL_TRIES:-4} attempts all failed. Whatever is wrong with this\n\
+    \        # scenario is not transient, so skip the WHOLE token (its remaining\n        # model x seed cells would fail\
+    \ the same way) and move on. The worker\n        # never exits on a scenario's account -- a shard is worth ~18 tokens\n\
+    \        # and must not be thrown away for one of them, which is exactly how\n        # w05/w07r/w13 were lost on 2026-09-04.\n\
+    \        fail_n=$((fail_n+1)); consec_fail=$((consec_fail+1))\n        say \"  FAILED after ${CELL_TRIES:-4} tries (see\
+    \ $LOG) \u2014 skipping token $T\"\n        tail -5 /tmp/serve.log > \"$OUTROOT/$SLUG/seed$SEED/$T.serve.log\" 2>/dev/null\n\
+    \        # A whole node whose driver has gone bad fails EVERY cell in seconds;\n        # that is an environment fault,\
+    \ not a scenario, so hand the slice back\n        # and let the Job reschedule it (backoffLimit is 4). The threshold is\n\
+    \        # deliberately far above one token's 30 cells.\n        if [ \"$consec_fail\" -ge 20 ]; then\n          say \"\
+    ABORT: $consec_fail consecutive failures \u2014 this node looks unusable\"\n          exit 1\n        fi\n        break\
+    \ 2\n      fi\n    done\n  done\ndone\n\nsay \"WORKER DONE ok=$done_n skipped=$skip_n failed=$fail_n\"\n# A worker that\
+    \ finished its slice exits 0 even with failed cells: the Job must\n# not retry a whole 6 h pod because one scenario is\
+    \ broken. status.sh is what\n# reports the holes.\nexit 0\n"
+  gtrs_dense.py: "\"\"\"NexusSim adapter for the official SimScale GTRS-Dense checkpoints.\"\"\"\n\nfrom __future__ import\
+    \ annotations\n\nimport os\nimport tempfile\nfrom typing import Any, Dict\n\nimport cv2\nimport numpy as np\nimport torch\n\
+    \nfrom nexussim.evaluation.utils.constants import DEFAULT_CMD, NAVSIM_CMD_MAPPING\nfrom nexussim.policy.registry import\
+    \ register_policy\nfrom nexussim.policy.sensor.utils.frames import crop_to_navsim_aspect, renderer_bgr_to_rgb\nfrom nexussim.policy.sensor_policy\
+    \ import SensorPolicy\nfrom nexussim.utils.camera_utils import NAVSIM_CAM_CONFIGS\n\n\n@register_policy(\"gtrs_dense\"\
+    )\nclass GTRSDenseAdapter(SensorPolicy):\n    \"\"\"Run SimScale's 8,192-trajectory GTRS-Dense scorer in closed loop.\"\
+    \"\"\n\n    def __init__(self, checkpoint_path: str, **kwargs: Any):\n        super().__init__(checkpoint_path, config_path=None,\
+    \ **kwargs)\n        self.backbone = os.environ.get(\"NAVSAFE_GTRS_BACKBONE\", \"resnet\").lower()\n        if self.backbone\
+    \ not in {\"resnet\", \"vov\"}:\n            raise ValueError(f\"NAVSAFE_GTRS_BACKBONE must be resnet or vov, got {self.backbone!r}\"\
+    )\n\n    def load_model(self) -> None:\n        from navsim.agents.gtrs_dense.hydra_config import HydraConfig\n      \
+    \  from navsim.agents.gtrs_dense.hydra_model import HydraModel\n\n        vocab_path = os.environ[\"NAVSAFE_GTRS_VOCAB\"\
+    ]\n        checkpoint = torch.load(self.checkpoint_path, map_location=\"cpu\", weights_only=False)\n        raw = checkpoint[\"\
+    state_dict\"]\n        clean = {}\n        for key, value in raw.items():\n            if \"model._trajectory_head.vocab\"\
+    \ in key:\n                continue\n            prefix = \"agent.model.\"\n            clean[key[len(prefix):] if key.startswith(prefix)\
+    \ else key] = value\n\n        config = HydraConfig(\n            vocab_path=vocab_path,\n            vocab_size=8192,\n\
+    \            lidar_seq_len=4,\n            sigma=0.5,\n            trajectory_imi_weight=1.0,\n            progress_weight=2.0,\n\
+    \            vocab_dropout=True,\n            normalize_vocab_pos=True,\n            camera_width=2048,\n            camera_height=512,\n\
+    \            img_vert_anchors=16,\n            img_horz_anchors=64,\n            backbone_type=self.backbone,\n      \
+    \      bkb_path=\"\",\n        )\n\n        temp_vov = None\n        if self.backbone == \"vov\":\n            # The upstream\
+    \ constructor loads a separate DD3D backbone before\n            # loading the policy. Rebuild that preload from the policy\
+    \ itself,\n            # avoiding an unrelated Google Drive dependency.\n            prefix = \"_backbone.image_encoder.\"\
+    \n            image_state = {\n                \"img_backbone.\" + key[len(prefix):]: value\n                for key,\
+    \ value in clean.items()\n                if key.startswith(prefix)\n            }\n            if not image_state:\n\
+    \                raise RuntimeError(\"V2-99 checkpoint has no image-encoder tensors\")\n            handle = tempfile.NamedTemporaryFile(suffix=\"\
+    .pth\", delete=False)\n            handle.close()\n            temp_vov = handle.name\n            torch.save({\"state_dict\"\
+    : image_state}, temp_vov)\n            config.vov_ckpt = temp_vov\n\n        # ResNet construction otherwise downloads\
+    \ ImageNet weights. The final\n        # SimScale checkpoint is complete, so build the topology offline and\n        #\
+    \ load the released weights immediately afterwards.\n        import timm\n        original_create_model = timm.create_model\n\
+    \n        def create_model_offline(name: str, *args: Any, **kwargs: Any):\n            kwargs[\"pretrained\"] = False\n\
+    \            kwargs.pop(\"pretrained_cfg_overlay\", None)\n            return original_create_model(name, *args, **kwargs)\n\
+    \n        timm.create_model = create_model_offline\n        try:\n            self.model = HydraModel(config)\n      \
+    \  finally:\n            timm.create_model = original_create_model\n            if temp_vov:\n                try:\n \
+    \                   os.unlink(temp_vov)\n                except OSError:\n                    pass\n\n        missing,\
+    \ unexpected = self.model.load_state_dict(clean, strict=False)\n        allowed_missing = {\"_trajectory_head.vocab\"\
+    }\n        bad_missing = set(missing) - allowed_missing\n        if bad_missing or unexpected:\n            raise RuntimeError(\n\
+    \                \"GTRS-Dense checkpoint mismatch: \"\n                f\"missing={sorted(bad_missing)[:12]}, unexpected={list(unexpected)[:12]}\"\
+    \n            )\n        self.model.to(self.device).eval()\n        print(\n            f\"GTRS-Dense loaded exactly:\
+    \ backbone={self.backbone}, \"\n            f\"checkpoint={self.checkpoint_path}, vocab={vocab_path}\"\n        )\n\n\
+    \    def get_camera_configs(self) -> Dict[str, Dict[str, float]]:\n        return {name: NAVSIM_CAM_CONFIGS[name] for\
+    \ name in (\"CAM_F0\", \"CAM_L0\", \"CAM_R0\")}\n\n    def get_waypoint_dt(self) -> float:\n        return 0.1\n\n   \
+    \ @staticmethod\n    def _image_or_zeros(image: np.ndarray | None) -> np.ndarray:\n        if image is None:\n       \
+    \     return np.zeros((1080, 1920, 3), dtype=np.uint8)\n        return image\n\n    def _camera_feature(self, images:\
+    \ Dict[str, np.ndarray]) -> torch.Tensor:\n        left = crop_to_navsim_aspect(renderer_bgr_to_rgb(self._image_or_zeros(images.get(\"\
+    CAM_L0\"))))\n        front = crop_to_navsim_aspect(renderer_bgr_to_rgb(self._image_or_zeros(images.get(\"CAM_F0\"))))\n\
+    \        right = crop_to_navsim_aspect(renderer_bgr_to_rgb(self._image_or_zeros(images.get(\"CAM_R0\"))))\n        height,\
+    \ width = front.shape[:2]\n        crop_tb = int(28 * height / 1080)\n        crop_lr = int(416 * width / 1920)\n    \
+    \    left = left[crop_tb:-crop_tb, crop_lr:-crop_lr]\n        front = front[crop_tb:-crop_tb]\n        right = right[crop_tb:-crop_tb,\
+    \ crop_lr:-crop_lr]\n        stitched = np.concatenate([left, front, right], axis=1)\n        resized = cv2.resize(stitched,\
+    \ (2048, 512))\n        return torch.from_numpy(resized.transpose(2, 0, 1)).float().div_(255.0)\n\n    @staticmethod\n\
+    \    def _status(ego_state: Dict[str, Any]) -> torch.Tensor:\n        command = ego_state.get(\"command\", 3)\n      \
+    \  command_vector = NAVSIM_CMD_MAPPING.get(command, DEFAULT_CMD)\n        heading = float(ego_state[\"heading\"])\n  \
+    \      rotation = np.array(\n            [[np.cos(heading), np.sin(heading)], [-np.sin(heading), np.cos(heading)]]\n \
+    \       )\n        velocity = rotation @ np.asarray(ego_state[\"velocity\"][:2])\n        acceleration = rotation @ np.asarray(ego_state.get(\"\
+    acceleration\", [0.0, 0.0])[:2])\n        value = np.concatenate([command_vector, velocity, acceleration]).astype(np.float32)\n\
+    \        return torch.from_numpy(value)\n\n    def prepare_input(\n        self,\n        images: Dict[str, np.ndarray],\n\
+    \        ego_state: Dict[str, Any],\n        scenario_data: Dict[str, Any],\n        frame_id: int,\n    ) -> Dict[str,\
+    \ Any]:\n        camera = self._camera_feature(images).unsqueeze(0).to(self.device)\n        status = self._status(ego_state).unsqueeze(0).to(self.device)\n\
+    \        return {\"camera_feature\": camera, \"status_feature\": [status]}\n\n    def run_inference(self, model_input:\
+    \ Dict[str, Any]) -> Dict[str, torch.Tensor]:\n        with torch.inference_mode():\n            return self.model(model_input)\n\
+    \n    def parse_output(\n        self, model_output: Dict[str, torch.Tensor], ego_state: Dict[str, Any]\n    ) -> Dict[str,\
+    \ np.ndarray]:\n        trajectory = model_output[\"trajectory\"][0].detach().cpu().numpy()\n        return {\"trajectory\"\
+    : np.column_stack([trajectory[:, 1], trajectory[:, 0]])}\n"
+  models.tsv: "# label\tmodel_type\tcheckpoint\textra_env\nltf_simscale\tltf\t/avl-west/navsafe_eval/aug_zoo/SimScale/LTF/ltf_sim_navhard.ckpt\n\
+    gtrs_dense_resnet_expert_simscale\tgtrs_dense\t/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_resnet_sim_expert_navhard.ckpt\t\
+    NAVSAFE_GTRS_BACKBONE=resnet,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy\ngtrs_dense_resnet_reward_simscale\t\
+    gtrs_dense\t/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_resnet_sim_reward_navhard.ckpt\tNAVSAFE_GTRS_BACKBONE=resnet,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy\n\
+    gtrs_dense_vov_expert_simscale\tgtrs_dense\t/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt\t\
+    NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy\ngtrs_dense_vov_reward_simscale\t\
+    gtrs_dense\t/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt\tNAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy\n"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w00
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w00
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w00
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '0'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w01
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w01
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w01
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '1'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w02
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w02
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w02
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '2'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w03
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w03
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w03
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '3'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w04
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w04
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w04
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '4'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w05
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w05
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w05
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '5'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w06
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w06
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w06
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '6'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w07
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w07
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w07
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '7'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w08
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w08
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w08
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '8'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w09
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w09
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w09
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '9'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w10
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w10
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w10
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '10'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w11
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w11
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w11
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '11'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w12
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w12
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w12
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '12'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w13
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w13
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w13
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '13'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w14
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w14
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w14
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '14'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w15
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w15
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w15
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '15'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w16
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w16
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w16
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '16'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w17
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w17
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w17
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '17'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w18
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w18
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w18
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '18'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-w19
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug
+    navsafe-batch: simscale-aug
+    worker: w19
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug
+        navsafe-batch: simscale-aug
+        worker: w19
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '19'
+        - name: WORKERS
+          value: '20'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/dataset
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: Y
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: Y
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
