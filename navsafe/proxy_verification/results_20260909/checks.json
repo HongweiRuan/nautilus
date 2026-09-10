@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "checks": [
+    "scored_bounded_input",
+    "unique_anchors",
+    "partition_exactly_covers_280",
+    "weights_sum_to_one",
+    "all_28_leaves",
+    "frozen_tokens_unchanged_after_float_fix",
+    "census_reconstructs_full_scores",
+    "holdout_score_mutation_does_not_change_anchors",
+    "spearman_float_boundary"
+  ]
+}

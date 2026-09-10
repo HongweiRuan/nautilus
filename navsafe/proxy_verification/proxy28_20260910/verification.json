@@ -1,0 +1,480 @@
+{
+  "created_utc": "2026-09-10T21:52:15.193435+00:00",
+  "population": 280,
+  "leaves": 28,
+  "model_count": 16,
+  "metric_order": [
+    "DS",
+    "SR"
+  ],
+  "selection_models": [
+    "autovla",
+    "diffusiondrive",
+    "diffusiondrive_beyonddrive",
+    "diffusiondrive_simscale",
+    "drivelaw",
+    "drivevla_w0",
+    "ltf",
+    "mtdrive_mtgrpo",
+    "mtdrive_sft",
+    "rap",
+    "sparsedrivev2"
+  ],
+  "heldout_models": [
+    "drivor",
+    "recogdrive_il",
+    "recogdrive_rl",
+    "simwam",
+    "simwam_rl"
+  ],
+  "fixed_all_descriptive": {
+    "mae_pp": [
+      3.9102513392857063,
+      6.785714285714282
+    ],
+    "max_error_pp": [
+      9.374410714285696,
+      17.499999999999982
+    ],
+    "spearman": [
+      0.8735294117647058,
+      0.9176373916604638
+    ]
+  },
+  "fixed_development_descriptive": {
+    "mae_pp": [
+      3.090969805194795,
+      5.324675324675325
+    ],
+    "max_error_pp": [
+      7.785796428571423,
+      10.357142857142865
+    ],
+    "spearman": [
+      0.7818181818181819,
+      0.9233805168766387
+    ]
+  },
+  "fixed_heldout_retrospective": {
+    "mae_pp": [
+      5.7126707142857125,
+      9.999999999999991
+    ],
+    "max_error_pp": [
+      9.374410714285696,
+      17.499999999999982
+    ],
+    "spearman": [
+      0.8999999999999998,
+      0.8999999999999998
+    ]
+  },
+  "familyout_procedure": {
+    "mae_pp": [
+      3.3275834821428614,
+      5.491071428571427
+    ],
+    "max_error_pp": [
+      7.3772499999999575,
+      13.928571428571413
+    ],
+    "spearman": [
+      0.8029411764705883,
+      0.7188009372453777
+    ]
+  },
+  "fixed_within_leaf_mae_pp": [
+    19.319684375000012,
+    26.741071428571427
+  ],
+  "fixed_heldout_within_leaf_mae_pp": [
+    24.391365000000008,
+    34.57142857142857
+  ],
+  "familyout_within_leaf_mae_pp": [
+    21.21345491071431,
+    28.080357142857142
+  ],
+  "random_total_mae_mean_pp": [
+    4.586657831696427,
+    5.846517857142854
+  ],
+  "random_within_leaf_mae_mean_pp": [
+    25.439853151785698,
+    31.176562500000003
+  ],
+  "changed_previous_leaves": [],
+  "v8_selection": "14c0a657ac3e5bb7",
+  "folds": [
+    {
+      "heldout_family": "autovla",
+      "tokens": [
+        "5bd2bc00e2d358e0",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "671da9103fe05141",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "7962741aebba5e56",
+        "0c49c66ca32551c2",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "173369dc059d5fe9",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "3a6525cd871a5fff",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "3239cd8874425d73",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "diffusiondrive",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "0670d0c81a5550c4",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "9605af7df76f5ba3",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "173369dc059d5fe9",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "0dd23f4ea286544f",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "drivelaw",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "89ac4f4584065c48",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "1ceec301ab6552b1",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "2ee44628526e524c",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c1c5dec6bab3598a",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "drivevla_w0",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "bfcbb192c11b5736",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "2fa724c29a215bc4",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "02015675e4585611",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "drivor",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "23f0187033d658d9",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "0a51eebaccc95c36",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "173369dc059d5fe9",
+        "42af8e33480d53b3",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "14c0a657ac3e5bb7",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "ltf",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "09d33cf8b87c5ae3",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "0027991369e05ab2",
+        "02b68b9cc51f506a",
+        "17b0992157365222",
+        "02015675e4585611",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "39d1f561e06054c5",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "mtdrive",
+      "tokens": [
+        "5bd2bc00e2d358e0",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "918b6721bcf75d38",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "2ee44628526e524c",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c1c5dec6bab3598a",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "26f4d8d4d72a588e",
+        "e9567d54464052f7",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "rap",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "c895b062e3735053",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "342f42c4b2855ffb",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "9eb1dcda60165ae3",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "02015675e4585611",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "56c64f7e47b15e0d",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "2b7bf25209dd5705"
+      ]
+    },
+    {
+      "heldout_family": "recogdrive",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "238f1cddb9415996",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "225eb6e22af55972",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "simwam",
+      "tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "1e9350ac2bc25f59",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "0d5b8da00d505be0",
+        "84acc78da95f56d3",
+        "0027991369e05ab2",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "02015675e4585611",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "heldout_family": "sparsedrivev2",
+      "tokens": [
+        "087023402a695ba3",
+        "2eb015a011ac5fa2",
+        "273f424fa2fc55ad",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "23f0187033d658d9",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "0d5b8da00d505be0",
+        "84acc78da95f56d3",
+        "0a51eebaccc95c36",
+        "02b68b9cc51f506a",
+        "132307b3c1a55f97",
+        "02015675e4585611",
+        "4c23b72459a55ad0",
+        "1c064ec24fa15900",
+        "c41f71c68ad45f21",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "26f4d8d4d72a588e",
+        "c8600743d9e050a9",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    }
+  ],
+  "limitations": [
+    "No perturbation validation; baseline only.",
+    "Selection uses 11 development models; fixed heldout data were inspected previously.",
+    "Single binary outcome cannot generally match within-leaf SR.",
+    "Metadata does not establish quantitative density or geometry representativeness.",
+    "Source controller/renderer conditions may differ; see source README."
+  ]
+}

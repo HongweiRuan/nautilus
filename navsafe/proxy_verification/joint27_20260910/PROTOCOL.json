@@ -1,0 +1,21 @@
+{
+  "budget": 27,
+  "one_per_leaf": true,
+  "exclude": "V-8",
+  "input": "immutable previous snapshot, seed0 only for fitting",
+  "hyperparameters": [
+    0,
+    0.01,
+    0.1
+  ],
+  "starts": 8,
+  "max_sweeps": 15,
+  "selection_seed": 9010,
+  "random_baseline_draws": 1000,
+  "outer": "leave entire model family out",
+  "inner": "leave family out within outer training; select lambda by family-balanced MAE",
+  "objective": "mean squared aggregate score error + lambda * mean within-leaf representation error; DS/SR equal scales, equal family contribution",
+  "final": "fit on original 11 development models; original 5 excluded models never select its lambda or anchors",
+  "caveat": "Retrospective repeated use of existing benchmark; not fresh blind confirmation. No perturbation generalization claim.",
+  "gates": "retain earlier MAE<=3pp, max<=5pp, rho>=.90; no loosening to call success"
+}

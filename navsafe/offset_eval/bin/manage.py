@@ -9,6 +9,35 @@ CFG=json.loads((ROOT/'config/campaign.json').read_text())
 def run(args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
 
+def contains_config(actual, expected):
+    """Compare authored fields while allowing API defaults and injected fields."""
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            k in actual and contains_config(actual[k], v) for k, v in expected.items())
+    if isinstance(expected, list):
+        if not isinstance(actual, list):
+            return False
+        if expected and all(isinstance(v, dict) and 'name' in v for v in expected):
+            by_name = {v['name']: v for v in actual if isinstance(v, dict) and 'name' in v}
+            return all(v['name'] in by_name and contains_config(by_name[v['name']], v) for v in expected)
+        return len(actual) == len(expected) and all(contains_config(a, e) for a, e in zip(actual, expected))
+    return actual == expected
+
+
+def existing_job_matches(path):
+    expected = yaml.safe_load(path.read_text())
+    name = expected['metadata']['name']
+    result = run(['kubectl', 'get', 'job', name, '-n', CFG['namespace'],
+                  '--ignore-not-found', '-o', 'json'], capture_output=True, text=True)
+    if not result.stdout.strip():
+        return False
+    actual = json.loads(result.stdout)
+    if not contains_config(actual, expected):
+        raise ValueError(f'{name} exists with different configuration; leaving it unchanged. Review before continuing.')
+    print(f'Skipping existing Job: {name}', flush=True)
+    return True
+
+
 def selected(args):
     names=args.models or ([m for m,v in CFG['models'].items() if v['audit_status']=='not-observed'] if args.missing else [])
     if args.all: names=list(CFG['models'])
@@ -87,13 +116,21 @@ def main():
     if args.action=='submit':
         print('Outputs resume from existing cells. Do not overlap legacy workers for the same model/partition.')
         for path in files:
+            if existing_job_matches(path):
+                continue
+            print(f'Submitting {path.relative_to(ROOT)}' if args.apply else f'Dry-run {path.relative_to(ROOT)}', flush=True)
             cmd=['kubectl','create','-f',str(path)]
             if not args.apply: cmd += ['--dry-run=server','-o','name']
             run(cmd)
 if __name__=='__main__':
     try:main()
     except KeyboardInterrupt:
-        print('\nCanceled. If staging had started, verify the destination before retrying; no rollback was performed.', file=sys.stderr)
+        if len(sys.argv) > 1 and sys.argv[1] == 'submit':
+            print('\nSubmission canceled. Created Jobs remain. Rerun the same command to skip matching Jobs and submit the rest.', file=sys.stderr)
+        elif len(sys.argv) > 1 and sys.argv[1] == 'stage':
+            print('\nStaging canceled. Verify the destination before retrying; no rollback was performed.', file=sys.stderr)
+        else:
+            print('\nCanceled.', file=sys.stderr)
         sys.exit(130)
     except (ValueError,subprocess.CalledProcessError) as e:
         print(e,file=sys.stderr);sys.exit(1)

@@ -1,0 +1,1181 @@
+{
+  "grid": {
+    "arms": [
+      {
+        "id": "base",
+        "lat": 0,
+        "lon": 0,
+        "yaw": 0
+      },
+      {
+        "id": "latp0.5",
+        "lat": 0.5,
+        "lon": 0,
+        "yaw": 0
+      }
+    ]
+  },
+  "leaves": {
+    "C-1": {
+      "picked": [
+        {
+          "token": "02902d180b405100",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/02902d180b405100/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/02902d180b405100",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0334cae9f1ef56ae",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0334cae9f1ef56ae/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/0334cae9f1ef56ae",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "3af3b3a7a8635164",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/3af3b3a7a8635164/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/3af3b3a7a8635164",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-2": {
+      "picked": [
+        {
+          "token": "f077a062ad9b55e9",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "3a0e2f53c9585e94",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/3a0e2f53c9585e94/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/3a0e2f53c9585e94",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "4bb2fc18f5ee5dcb",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/4bb2fc18f5ee5dcb/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/4bb2fc18f5ee5dcb",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-3": {
+      "picked": [
+        {
+          "token": "273f424fa2fc55ad",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "198bc5f3280e52cd",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/198bc5f3280e52cd/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/198bc5f3280e52cd",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "22f4f105eb64556e",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/22f4f105eb64556e/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/22f4f105eb64556e",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-4": {
+      "picked": [
+        {
+          "token": "238f1cddb9415996",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/238f1cddb9415996/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/238f1cddb9415996",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "1dae5903323e5214",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/1dae5903323e5214/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/1dae5903323e5214",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "e3e0b3d6d5ae52a1",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/e3e0b3d6d5ae52a1/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/e3e0b3d6d5ae52a1",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-5": {
+      "picked": [
+        {
+          "token": "58d69daf413c5d5a",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/58d69daf413c5d5a/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/58d69daf413c5d5a",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "442b2cf63c6f570a",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/442b2cf63c6f570a/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/442b2cf63c6f570a",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "e244b2ddf97a57d6",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/e244b2ddf97a57d6/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/e244b2ddf97a57d6",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-6": {
+      "picked": [
+        {
+          "token": "0122ce98b2735558",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0122ce98b2735558/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/0122ce98b2735558",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "10cfd645bb645e2e",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/10cfd645bb645e2e/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/10cfd645bb645e2e",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "6ad48974e9985e1f",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/6ad48974e9985e1f/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/6ad48974e9985e1f",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-7": {
+      "picked": [
+        {
+          "token": "1e9350ac2bc25f59",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/1e9350ac2bc25f59/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/C-7.1e9350ac2bc25f59.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/1e9350ac2bc25f59",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "599c8b2bc9b252a7",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/599c8b2bc9b252a7/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/599c8b2bc9b252a7",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "5d12ad55fdd858e1",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/5d12ad55fdd858e1/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/C-7.5d12ad55fdd858e1.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/5d12ad55fdd858e1",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-8": {
+      "picked": [
+        {
+          "token": "5ac972b34e2e5614",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/5ac972b34e2e5614/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/5ac972b34e2e5614",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "bfcbb192c11b5736",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/bfcbb192c11b5736/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/bfcbb192c11b5736",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "d5812df28c1558ba",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/d5812df28c1558ba/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/d5812df28c1558ba",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-9": {
+      "picked": [
+        {
+          "token": "6704953640e55b83",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/6704953640e55b83/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/6704953640e55b83",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "3838eb184c9d5989",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/3838eb184c9d5989/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/3838eb184c9d5989",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "a67c6744e6c45edb",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/a67c6744e6c45edb/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/a67c6744e6c45edb",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "C-10": {
+      "picked": [
+        {
+          "token": "2bd04a0902095129",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/2bd04a0902095129/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/2bd04a0902095129",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2d24100bcb1e57e2",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/2d24100bcb1e57e2/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/2d24100bcb1e57e2",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "42a20478abeb54d5",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/42a20478abeb54d5/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/42a20478abeb54d5",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "I-1": {
+      "picked": [
+        {
+          "token": "6fc91bf02f225d1b",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/6fc91bf02f225d1b/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/6fc91bf02f225d1b",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "36517f1223735d6a",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/36517f1223735d6a/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/36517f1223735d6a",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "71d14fc8ea3d5b5d",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/71d14fc8ea3d5b5d/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/71d14fc8ea3d5b5d",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "I-2": {
+      "picked": [
+        {
+          "token": "0d5b8da00d505be0",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0d5b8da00d505be0/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/0d5b8da00d505be0",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "7f49b4deed075e6c",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/7f49b4deed075e6c/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/7f49b4deed075e6c",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "9ef1d618435d5e53",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/9ef1d618435d5e53/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/9ef1d618435d5e53",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "I-3": {
+      "picked": [
+        {
+          "token": "84acc78da95f56d3",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/84acc78da95f56d3/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/I-3.84acc78da95f56d3.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/84acc78da95f56d3",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "76da778ff251508d",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/76da778ff251508d/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/I-3.76da778ff251508d.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/76da778ff251508d",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "a6b9a83019915658",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/a6b9a83019915658/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/I-3.a6b9a83019915658.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/a6b9a83019915658",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "R-1": {
+      "picked": [
+        {
+          "token": "0027991369e05ab2",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0027991369e05ab2/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/0027991369e05ab2",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "06b2df49f0455bd0",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/06b2df49f0455bd0/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/06b2df49f0455bd0",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0b12ac5676875ade",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0b12ac5676875ade/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/0b12ac5676875ade",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "R-2": {
+      "picked": [
+        {
+          "token": "20cc0fdb7e2d5c3f",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-2.20cc0fdb7e2d5c3f.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "02f1ad081f41550e",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/02f1ad081f41550e/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-2.02f1ad081f41550e.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/02f1ad081f41550e",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2575048779565f0b",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/2575048779565f0b/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-2.2575048779565f0b.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/2575048779565f0b",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "R-3": {
+      "picked": [
+        {
+          "token": "132307b3c1a55f97",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/132307b3c1a55f97/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-3.132307b3c1a55f97.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/132307b3c1a55f97",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "17b0992157365222",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/17b0992157365222/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-3.17b0992157365222.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/17b0992157365222",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2462c21ce2bb5f2d",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/2462c21ce2bb5f2d/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-3.2462c21ce2bb5f2d.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/2462c21ce2bb5f2d",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "R-4": {
+      "picked": [
+        {
+          "token": "225eb6e22af55972",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/225eb6e22af55972/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-4.225eb6e22af55972.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/225eb6e22af55972",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2ee44628526e524c",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/2ee44628526e524c/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-4.2ee44628526e524c.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/2ee44628526e524c",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "a2c2e046132e5596",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/a2c2e046132e5596/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-4.a2c2e046132e5596.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/a2c2e046132e5596",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-1": {
+      "picked": [
+        {
+          "token": "42af8e33480d53b3",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "05d0a1a763fc5334",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/05d0a1a763fc5334/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/05d0a1a763fc5334",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0ba54149d1575f95",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/0ba54149d1575f95/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/0ba54149d1575f95",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-2": {
+      "picked": [
+        {
+          "token": "3d324bda0cec57ab",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/3d324bda0cec57ab/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/3d324bda0cec57ab",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2391f12d7e6a5e7f",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/2391f12d7e6a5e7f/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/2391f12d7e6a5e7f",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "6f61120208385a02",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/6f61120208385a02/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/6f61120208385a02",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-3": {
+      "picked": [
+        {
+          "token": "c41f71c68ad45f21",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/c41f71c68ad45f21/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/c41f71c68ad45f21",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "20fffc4aa17d5a12",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/20fffc4aa17d5a12/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/20fffc4aa17d5a12",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "262333f372975eef",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/262333f372975eef/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/262333f372975eef",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-4": {
+      "picked": [
+        {
+          "token": "089e3eac4f7e5c5c",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/089e3eac4f7e5c5c/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/089e3eac4f7e5c5c",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2845a5483a0f57de",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/2845a5483a0f57de/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/2845a5483a0f57de",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "edc4a4a176f65fea",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/edc4a4a176f65fea/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/edc4a4a176f65fea",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-5": {
+      "picked": [
+        {
+          "token": "07c5114fdb395f8b",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/07c5114fdb395f8b/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/07c5114fdb395f8b",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0578756b879c55d0",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0578756b879c55d0/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/0578756b879c55d0",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0e272e003af65a71",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/0e272e003af65a71/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/0e272e003af65a71",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-6": {
+      "picked": [
+        {
+          "token": "8661a7e9b4a95042",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "39d1f561e06054c5",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/39d1f561e06054c5/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/39d1f561e06054c5",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "5afcbc10159e5b87",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/5afcbc10159e5b87/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/5afcbc10159e5b87",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-7": {
+      "picked": [
+        {
+          "token": "26f4d8d4d72a588e",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/26f4d8d4d72a588e/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/26f4d8d4d72a588e",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "97dcc120f4695080",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/97dcc120f4695080/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/97dcc120f4695080",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "a12d1a61d7cc50fe",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-9": {
+      "picked": [
+        {
+          "token": "3a5278b27c87565f",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/3a5278b27c87565f/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/3a5278b27c87565f",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "04aa69f18d255c96",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/04aa69f18d255c96/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/04aa69f18d255c96",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "0b1a626ef31150b3",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-10": {
+      "picked": [
+        {
+          "token": "63c145828c3b5fd8",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/63c145828c3b5fd8/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/V-10.63c145828c3b5fd8.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/63c145828c3b5fd8",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "13c555e68671524f",
+          "handoff": 8,
+          "data_root": "/avl-west/navsafe_eval/dataset/13c555e68671524f/arrow",
+          "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/V-10.13c555e68671524f.yaml",
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/13c555e68671524f",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "bbee1ab465af50c2",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/bbee1ab465af50c2/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/bbee1ab465af50c2",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    },
+    "V-11": {
+      "picked": [
+        {
+          "token": "32d85d373126537e",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/32d85d373126537e/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 201,
+          "bundle": "/avl-west/navsafe_eval/dataset/32d85d373126537e",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "2b7bf25209dd5705",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/2b7bf25209dd5705/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/2b7bf25209dd5705",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        },
+        {
+          "token": "a18d2b32f8415373",
+          "handoff": 20,
+          "data_root": "/avl-west/navsafe_eval/dataset/a18d2b32f8415373/arrow",
+          "recipe": null,
+          "nurec_work_dir": null,
+          "ego_frames": 200,
+          "bundle": "/avl-west/navsafe_eval/dataset/a18d2b32f8415373",
+          "arms_run": [
+            "base",
+            "latp0.5"
+          ]
+        }
+      ]
+    }
+  }
+}

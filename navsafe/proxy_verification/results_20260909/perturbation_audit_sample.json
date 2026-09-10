@@ -1,0 +1,326 @@
+[
+  {
+    "token": "02902d180b405100",
+    "leaf": "C-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "081b5785002b5962",
+    "leaf": "C-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "07bf0601ad425977",
+    "leaf": "C-10",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "17cac31ef9135faf",
+    "leaf": "C-10",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "7b635c8426075d70",
+    "leaf": "C-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "8d4c7214942e5619",
+    "leaf": "C-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "198bc5f3280e52cd",
+    "leaf": "C-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "89ac4f4584065c48",
+    "leaf": "C-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "238f1cddb9415996",
+    "leaf": "C-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "7403f892832b51d3",
+    "leaf": "C-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "58d69daf413c5d5a",
+    "leaf": "C-5",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "6e778c30490d5f50",
+    "leaf": "C-5",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0536ffc8d9555b0f",
+    "leaf": "C-6",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "23f0187033d658d9",
+    "leaf": "C-6",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0dd3256035e75770",
+    "leaf": "C-7",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "599c8b2bc9b252a7",
+    "leaf": "C-7",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0fa9a7f8b7235bfd",
+    "leaf": "C-8",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "1961d1075a085a1d",
+    "leaf": "C-8",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "029585f0509d52b0",
+    "leaf": "C-9",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "918b6721bcf75d38",
+    "leaf": "C-9",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "6fc91bf02f225d1b",
+    "leaf": "I-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "71d14fc8ea3d5b5d",
+    "leaf": "I-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "61bce03d2e4659b9",
+    "leaf": "I-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "7f49b4deed075e6c",
+    "leaf": "I-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "050284885b2059e9",
+    "leaf": "I-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "b023b7bcbab05bcb",
+    "leaf": "I-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0a51eebaccc95c36",
+    "leaf": "R-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "3b910accfc12560a",
+    "leaf": "R-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "02b68b9cc51f506a",
+    "leaf": "R-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "02f1ad081f41550e",
+    "leaf": "R-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "132307b3c1a55f97",
+    "leaf": "R-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "687dc7e79cf65570",
+    "leaf": "R-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "02015675e4585611",
+    "leaf": "R-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "2ee44628526e524c",
+    "leaf": "R-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0f622aef14545f59",
+    "leaf": "V-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "4c23b72459a55ad0",
+    "leaf": "V-1",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "13c555e68671524f",
+    "leaf": "V-10",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "63c145828c3b5fd8",
+    "leaf": "V-10",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "a4581d8af5f755a9",
+    "leaf": "V-11",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "bf896d504b4356c7",
+    "leaf": "V-11",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "21b8742127e7523c",
+    "leaf": "V-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "6f61120208385a02",
+    "leaf": "V-2",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "4ee177f621f259da",
+    "leaf": "V-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "bc08e60c250953a9",
+    "leaf": "V-3",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "089e3eac4f7e5c5c",
+    "leaf": "V-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "53571ab149005b43",
+    "leaf": "V-4",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0b1250020ea95539",
+    "leaf": "V-5",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "56c64f7e47b15e0d",
+    "leaf": "V-5",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "09a803ee2cb65992",
+    "leaf": "V-6",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "1b2b430e151a50ae",
+    "leaf": "V-6",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "184c11a8cc875403",
+    "leaf": "V-7",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "a12d1a61d7cc50fe",
+    "leaf": "V-7",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "0dd23f4ea286544f",
+    "leaf": "V-9",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  },
+  {
+    "token": "1bf45a481f1d52e3",
+    "leaf": "V-9",
+    "nonproxy_population": 4,
+    "inclusion_probability": 0.5
+  }
+]

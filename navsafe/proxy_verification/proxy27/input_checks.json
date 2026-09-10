@@ -1,0 +1,191 @@
+[
+  {
+    "token": "02902d180b405100",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 20
+  },
+  {
+    "token": "f077a062ad9b55e9",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "273f424fa2fc55ad",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "238f1cddb9415996",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "58d69daf413c5d5a",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "0122ce98b2735558",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "1e9350ac2bc25f59",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 8
+  },
+  {
+    "token": "5ac972b34e2e5614",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "6704953640e55b83",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 20
+  },
+  {
+    "token": "2bd04a0902095129",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "6fc91bf02f225d1b",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 20
+  },
+  {
+    "token": "0d5b8da00d505be0",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "84acc78da95f56d3",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 8
+  },
+  {
+    "token": "0027991369e05ab2",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "20cc0fdb7e2d5c3f",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 8
+  },
+  {
+    "token": "132307b3c1a55f97",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 8
+  },
+  {
+    "token": "225eb6e22af55972",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 8
+  },
+  {
+    "token": "42af8e33480d53b3",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "3d324bda0cec57ab",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "c41f71c68ad45f21",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "089e3eac4f7e5c5c",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "07c5114fdb395f8b",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 20
+  },
+  {
+    "token": "8661a7e9b4a95042",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "26f4d8d4d72a588e",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "3a5278b27c87565f",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 20
+  },
+  {
+    "token": "63c145828c3b5fd8",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 200,
+    "handoff": 8
+  },
+  {
+    "token": "32d85d373126537e",
+    "data_root_exists": true,
+    "bundle_exists": true,
+    "ego_frames": 201,
+    "handoff": 20
+  }
+]

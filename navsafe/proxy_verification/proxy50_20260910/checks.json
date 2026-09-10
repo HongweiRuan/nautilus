@@ -1,0 +1,9 @@
+{
+  "unique_scenarios": 50,
+  "covered_leaves": 28,
+  "clusters_partition_280": true,
+  "weights_sum": 1.0,
+  "reproduced_fixed28": true,
+  "heldout_mutation_no_effect": true,
+  "no_gpu": true
+}

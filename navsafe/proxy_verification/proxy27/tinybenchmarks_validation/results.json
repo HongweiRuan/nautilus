@@ -1,0 +1,82 @@
+{
+  "method": "tinyBenchmarks section 5 test-model score estimation; correctness-anchor vanilla estimator, not IRT++",
+  "source": "https://arxiv.org/html/2402.14992v2#S5",
+  "selection_sha256": "f465725e0e80e1f4eebcb7440042e9a61584f956c738d4076504d5006e42ceac",
+  "snapshot_sha256": "e0224becda4f30be198611c204fcc55a48ee13de188daf03766f6b17e3b3168c",
+  "test_models": [
+    "drivor",
+    "recogdrive_il",
+    "recogdrive_rl",
+    "simwam",
+    "simwam_rl"
+  ],
+  "test_families": 3,
+  "proxy_n": 27,
+  "population_n": 270,
+  "blind_new_test": false,
+  "perturbation_validated": false,
+  "seeds": {
+    "seed0": {
+      "DS": {
+        "mae_pp": 6.026450370370358,
+        "max_abs_error_pp": 10.040599999999984,
+        "rmse_pp": 6.4651120611477975,
+        "signed_bias_pp": 4.892641481481465,
+        "spearman": 0.8999999999999998,
+        "random_mean_mae_pp": 4.9596323140740735,
+        "random_median_mae_pp": 4.547787407407409,
+        "random_mae_percentiles_2_5_97_5": [
+          1.6251208888888793,
+          10.489309814814792
+        ],
+        "fraction_random_no_worse": 0.756
+      },
+      "SR": {
+        "mae_pp": 10.666666666666659,
+        "max_abs_error_pp": 18.148148148148138,
+        "rmse_pp": 12.375026845933933,
+        "signed_bias_pp": 7.7037037037036935,
+        "spearman": 0.8999999999999998,
+        "random_mean_mae_pp": 6.6244444444444435,
+        "random_median_mae_pp": 6.222222222222225,
+        "random_mae_percentiles_2_5_97_5": [
+          2.3666666666666702,
+          13.048148148148142
+        ],
+        "fraction_random_no_worse": 0.911
+      }
+    },
+    "seed1024": {
+      "DS": {
+        "mae_pp": 4.631178518518505,
+        "max_abs_error_pp": 5.791137037037032,
+        "rmse_pp": 4.750633018031188,
+        "signed_bias_pp": 3.061459999999985,
+        "spearman": 0.8999999999999998,
+        "random_mean_mae_pp": 4.874044934814814,
+        "random_median_mae_pp": 4.388360740740739,
+        "random_mae_percentiles_2_5_97_5": [
+          1.592822481481495,
+          10.53262940740739
+        ],
+        "fraction_random_no_worse": 0.549
+      },
+      "SR": {
+        "mae_pp": 8.740740740740735,
+        "max_abs_error_pp": 14.074074074074062,
+        "rmse_pp": 9.612520413338267,
+        "signed_bias_pp": 4.7407407407407325,
+        "spearman": 0.8999999999999998,
+        "random_mean_mae_pp": 6.51511111111111,
+        "random_median_mae_pp": 6.222222222222213,
+        "random_mae_percentiles_2_5_97_5": [
+          2.6666666666666736,
+          12.88888888888888
+        ],
+        "fraction_random_no_worse": 0.824
+      }
+    }
+  },
+  "selection_unchanged": true,
+  "conclusion": "The fixed 27-scene proxy does not demonstrate reliable absolute baseline score estimation or superiority to same-budget stratified random sampling. Ranking is partially retained. This does not test perturbation-response validity."
+}

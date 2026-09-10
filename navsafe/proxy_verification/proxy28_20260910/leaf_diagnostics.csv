@@ -1,0 +1,29 @@
+leaf,token,n,all_DS_MAE_pp,all_SR_MAE_pp,heldout_DS_MAE_pp,heldout_SR_MAE_pp,familyout_DS_MAE_pp,familyout_SR_MAE_pp,scenario_types,has_inserted_actors
+C-1,02902d180b405100,10,27.9155625,36.875,31.29572,38.0,31.2679875,40.625,"[""near_long_vehicle""]",False
+C-2,f077a062ad9b55e9,10,12.966918749999998,17.5,12.363359999999998,22.0,14.346856249999998,17.5,"[""on_intersection"", ""starting_left_turn"", ""starting_protected_cross_turn"", ""traversing_intersection""]",False
+C-3,273f424fa2fc55ad,10,17.192668749999996,26.25,19.9754,28.0,19.15016875,26.25,"[""near_high_speed_vehicle""]",False
+C-4,238f1cddb9415996,10,25.58426875,36.875,29.998900000000003,48.0,31.319043750000002,44.375,"[""near_multiple_vehicles""]",False
+C-5,58d69daf413c5d5a,10,22.903681250000005,35.625,30.421259999999997,46.0,23.963618750000002,36.875,"[""on_intersection""]",False
+C-6,0122ce98b2735558,10,21.4040375,33.75,25.133860000000006,48.0,22.05235,37.5,"[""traversing_pickup_dropoff""]",False
+C-7,1e9350ac2bc25f59,10,19.784825,19.375,30.630859999999995,40.0,23.901024999999997,19.375,"[""on_all_way_stop_intersection"", ""on_intersection"", ""traversing_crosswalk"", ""traversing_intersection""]",True
+C-8,5ac972b34e2e5614,10,24.02456875,38.125,26.183099999999996,40.0,26.61988125,40.625,"[""on_carpark""]",False
+C-9,6704953640e55b83,10,24.798175,28.75,30.735039999999998,40.0,28.131587500000002,32.5,"[""on_intersection"", ""starting_protected_noncross_turn"", ""starting_right_turn""]",False
+C-10,2bd04a0902095129,10,10.70194375,11.875,18.436,20.0,10.70194375,11.875,"[""on_intersection"", ""on_traffic_light_intersection"", ""traversing_intersection"", ""traversing_traffic_light_intersection""]",False
+I-1,6fc91bf02f225d1b,10,23.160224999999993,36.875,31.687160000000006,48.0,30.445649999999997,44.375,"[""near_trafficcone_on_driveable"", ""on_intersection"", ""on_traffic_light_intersection""]",False
+I-2,0d5b8da00d505be0,10,22.94510625,32.5,24.188180000000003,44.0,26.889768749999998,48.75,"[""near_construction_zone_sign"", ""on_intersection"", ""on_traffic_light_intersection"", ""traversing_intersection"", ""traversing_traffic_light_intersection""]",False
+I-3,84acc78da95f56d3,10,4.19665625,3.125,4.110059999999999,4.0,4.19665625,3.125,"[""high_magnitude_speed"", ""near_high_speed_vehicle""]",True
+R-1,0027991369e05ab2,10,27.22106875,31.875,30.025219999999997,48.0,31.45951875,35.625,"[""on_all_way_stop_intersection"", ""on_intersection"", ""traversing_crosswalk""]",False
+R-2,20cc0fdb7e2d5c3f,10,17.320475000000002,17.5,32.13082000000001,36.0,15.7901375,11.25,"[""on_intersection"", ""on_traffic_light_intersection"", ""traversing_intersection"", ""traversing_traffic_light_intersection""]",True
+R-3,132307b3c1a55f97,10,10.425637499999999,11.25,13.1236,16.0,14.8317,15.0,"[""near_pedestrian_on_crosswalk""]",True
+R-4,225eb6e22af55972,10,14.86853125,11.875,23.399839999999994,16.0,18.414756249999996,11.875,"[""near_barrier_on_driveable""]",True
+V-1,42af8e33480d53b3,10,30.98228125,30.0,39.494479999999996,36.0,26.978331249999997,31.25,"[""on_intersection"", ""on_traffic_light_intersection"", ""starting_left_turn"", ""starting_protected_cross_turn"", ""traversing_traffic_light_intersection""]",False
+V-2,3d324bda0cec57ab,10,23.645281250000004,28.75,49.28959999999999,68.0,19.466343750000004,12.5,"[""on_all_way_stop_intersection"", ""on_intersection"", ""traversing_intersection""]",False
+V-3,c41f71c68ad45f21,10,15.496931249999998,38.125,19.65766,44.0,19.596993750000003,40.625,"[""changing_lane"", ""changing_lane_to_right""]",False
+V-4,089e3eac4f7e5c5c,10,22.925481249999997,33.125,24.044239999999995,34.0,22.925481249999997,33.125,"[""high_lateral_acceleration""]",False
+V-5,07c5114fdb395f8b,10,19.842456249999998,34.375,21.264639999999996,42.0,22.05170625,34.375,"[""high_magnitude_speed"", ""near_high_speed_vehicle""]",False
+V-6,8661a7e9b4a95042,10,15.603937500000002,42.5,21.38714,44.0,21.101174999999998,48.75,"[""following_lane_with_slow_lead"", ""low_magnitude_speed""]",False
+V-7,26f4d8d4d72a588e,10,12.847099999999996,33.75,13.270899999999997,28.0,12.847099999999996,33.75,"[""following_lane_without_lead"", ""high_magnitude_speed""]",False
+V-8,14c0a657ac3e5bb7,10,9.40409375,8.125,10.7681,8.0,10.327431249999998,9.375,[],True
+V-9,3a5278b27c87565f,10,25.837124999999997,40.625,29.007599999999996,50.0,27.0902125,35.625,"[""stationary"", ""stationary_at_traffic_light_with_lead"", ""stationary_in_traffic""]",False
+V-10,63c145828c3b5fd8,10,19.856281250000002,17.5,21.23986,18.0,19.856281250000002,17.5,"[""on_intersection"", ""starting_left_turn"", ""starting_unprotected_noncross_turn""]",True
+V-11,32d85d373126537e,10,17.09584375,11.875,19.695619999999998,14.0,18.253031249999996,11.875,"[""on_stopline_traffic_light"", ""stationary"", ""stationary_at_traffic_light_without_lead""]",False

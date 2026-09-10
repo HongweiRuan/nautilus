@@ -1,0 +1,92 @@
+{
+  "050284885b2059e9": {
+    "registry": [
+      "C-2"
+    ],
+    "retained_audited_leaf": "I-3"
+  },
+  "05bcef7a11d65c6a": {
+    "registry": [
+      "V-7"
+    ],
+    "retained_audited_leaf": "C-7"
+  },
+  "0a51eb8adf8e5391": {
+    "registry": [
+      "V-5"
+    ],
+    "retained_audited_leaf": "R-3"
+  },
+  "0ebb578555b25ab2": {
+    "registry": [
+      "V-4"
+    ],
+    "retained_audited_leaf": "C-7"
+  },
+  "1bdfacbfcff75c27": {
+    "registry": [
+      "V-2"
+    ],
+    "retained_audited_leaf": "C-7"
+  },
+  "1e9350ac2bc25f59": {
+    "registry": [
+      "V-2"
+    ],
+    "retained_audited_leaf": "C-7"
+  },
+  "2462c21ce2bb5f2d": {
+    "registry": [
+      "R-1"
+    ],
+    "retained_audited_leaf": "R-3"
+  },
+  "34489cf42e005e93": {
+    "registry": [
+      "C-2"
+    ],
+    "retained_audited_leaf": "R-3"
+  },
+  "42a20478abeb54d5": {
+    "registry": [
+      "C-2"
+    ],
+    "retained_audited_leaf": "C-10"
+  },
+  "4d6456183bd056bc": {
+    "registry": [
+      "V-2"
+    ],
+    "retained_audited_leaf": "C-10"
+  },
+  "4fff5f5a86be53d5": {
+    "registry": [
+      "C-5"
+    ],
+    "retained_audited_leaf": "I-3"
+  },
+  "76da778ff251508d": {
+    "registry": [
+      "V-5"
+    ],
+    "retained_audited_leaf": "I-3"
+  },
+  "84acc78da95f56d3": {
+    "registry": [
+      "V-5"
+    ],
+    "retained_audited_leaf": "I-3"
+  },
+  "8c6c4c4b507c5eb1": {
+    "registry": [
+      "C-5"
+    ],
+    "retained_audited_leaf": "C-9"
+  },
+  "a67c6744e6c45edb": {
+    "registry": [
+      "C-5"
+    ],
+    "retained_audited_leaf": "C-9"
+  }
+}

@@ -84,8 +84,10 @@ bin/status.sh
 
 Use `--partition plain` or `--partition edit` to select one partition. Bare
 submission selects nothing and fails with usage guidance. Failures are surfaced;
-there is no indefinite admission-retry loop. Submission uses `kubectl create`,
-so an existing Job is not patched, restarted, or deleted. There is no automatic
+there is no indefinite admission-retry loop. Submission checks existing Jobs and skips those whose authored configuration
+matches (API-added defaults are allowed). A mismatch or lookup error stops
+submission. Missing Jobs use `kubectl create`; existing Jobs are never patched,
+restarted, or deleted. After Ctrl+C, rerun the same submission command to continue. There is no automatic
 cleanup of cluster resources. `bash_offset_eval.sh` forwards to this same entry
 point; its arguments are model names, not old fleet names.
 

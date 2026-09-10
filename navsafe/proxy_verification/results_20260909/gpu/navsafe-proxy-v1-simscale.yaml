@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-proxy-v1-simscale
+  namespace: cogrob
+spec:
+  suspend: true
+  completionMode: Indexed
+  completions: 4
+  parallelism: 1
+  backoffLimit: 0
+  activeDeadlineSeconds: 604800
+  ttlSecondsAfterFinished: 259200
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /hugsim-storage/NexusSim/docs/experiments/proxy_verification_20260909/gpu/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: WORKERS
+          value: '4'
+        - name: SEEDS
+          value: '0'
+        - name: NEXUSSIM_SHA
+          value: 649dddef261c5f79a3217eb47a224f8b2e7f219b
+        - name: MODELS_TSV
+          value: /hugsim-storage/NexusSim/docs/experiments/proxy_verification_20260909/gpu/diffusiondrive_simscale.tsv
+        - name: SELECTION
+          value: /hugsim-storage/NexusSim/docs/experiments/proxy_verification_20260909/gpu/selection.json
+        - name: OUTROOT
+          value: /avl-west/runs/20260909-proxy-verification-v1/eval
+        - name: CELL_TRIES
+          value: '1'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: NUREC_GRPC_STRICT
+          value: '1'
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        resources:
+          requests:
+            cpu: '6'
+            memory: 48Gi
+            nvidia.com/gpu: 2
+            ephemeral-storage: 150Gi
+          limits:
+            cpu: '6'
+            memory: 48Gi
+            nvidia.com/gpu: 2
+            ephemeral-storage: 150Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl
+          mountPath: /avl-west
+        - name: hugsim
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol

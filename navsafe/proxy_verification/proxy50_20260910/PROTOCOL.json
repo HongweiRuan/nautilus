@@ -1,0 +1,17 @@
+{
+  "budget": 50,
+  "minimum_per_leaf": 1,
+  "population": 280,
+  "source": "proxy28_20260910/snapshot.json",
+  "features": "DS/100 and success, family sqrt count scaling",
+  "method": "within-leaf k-means then closest real anchor; dynamic programming allocates k across leaves minimizing total squared anchor reconstruction error",
+  "kmeans_n_init": 20,
+  "seed": 9010,
+  "validation": "fixed original 11/5 retrospective; leave entire family out and refit all allocation/clustering",
+  "random_draws": 1000,
+  "random_comparator": "same per-leaf allocation as each evaluated panel; uniform without replacement in each leaf; equal within-leaf random weights",
+  "primary": "within-leaf DS/SR MAE; secondary aggregate MAE and ranking",
+  "no_threshold_tuning": true,
+  "gpu": false,
+  "perturbation": false
+}

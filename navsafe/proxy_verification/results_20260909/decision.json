@@ -1,0 +1,170 @@
+{
+  "status": "baseline_holdout_pass",
+  "chosen_k": 6,
+  "n_proxy": 172,
+  "development_models": [
+    "autovla",
+    "diffusiondrive",
+    "diffusiondrive_beyonddrive",
+    "diffusiondrive_simscale",
+    "drivelaw",
+    "drivevla_w0",
+    "ltf",
+    "mtdrive_mtgrpo",
+    "mtdrive_sft",
+    "rap",
+    "sparsedrivev2"
+  ],
+  "holdout_models": [
+    "drivor",
+    "recogdrive_il",
+    "recogdrive_rl",
+    "simwam",
+    "simwam_rl"
+  ],
+  "holdout_metrics": {
+    "DS": {
+      "mae_pp": 0.9615607407407477,
+      "max_error_pp": 1.3568111111111225,
+      "spearman": 0.9999999999999999,
+      "kendall_tau_b": 0.9999999999999999,
+      "large_gap_pairs": 1,
+      "large_gap_inversions": 0
+    },
+    "SR": {
+      "mae_pp": 1.703703703703696,
+      "max_error_pp": 3.333333333333316,
+      "spearman": 0.8999999999999998,
+      "kendall_tau_b": 0.7999999999999999,
+      "large_gap_pairs": 4,
+      "large_gap_inversions": 0
+    }
+  },
+  "random_comparison": {
+    "DS": {
+      "median_mae_pp": 1.268988148148153,
+      "q025_mae_pp": 0.50097129012346,
+      "q975_mae_pp": 3.055402586419763,
+      "fraction_random_no_worse_than_proxy": 0.262
+    },
+    "SR": {
+      "median_mae_pp": 1.7530864197530853,
+      "q025_mae_pp": 0.6913580246913587,
+      "q975_mae_pp": 3.506172839506172,
+      "fraction_random_no_worse_than_proxy": 0.477
+    }
+  },
+  "effective_weight_count": 130.23255813953475,
+  "inserted_fraction_full": 0.2,
+  "inserted_fraction_proxy": 0.18571428571428572,
+  "label_corrections": {
+    "0093ff0188ea5b90": {
+      "old": [
+        [
+          "C-6"
+        ],
+        [
+          "V-11"
+        ]
+      ],
+      "canonical": [
+        "V-11"
+      ],
+      "source": "/avl-west/navsafe_eval/dataset/0093ff0188ea5b90/manifest.json",
+      "sha256": "e8b70f0748a7b791e46e78829befcfda5c010bfccf3e629fbc3ebc222b03144f"
+    },
+    "00c1e4eb4a045f20": {
+      "old": [
+        [
+          "R-2"
+        ],
+        [
+          "V-1"
+        ]
+      ],
+      "canonical": [
+        "R-2"
+      ],
+      "source": "/avl-west/navsafe_eval/dataset/00c1e4eb4a045f20/manifest.json",
+      "sha256": "b76407398e721eed1aa134ad55640488ad3229a15817ab7ccd41e50c1bf87877"
+    },
+    "06a1f481118057b2": {
+      "old": [
+        [
+          "C-10"
+        ],
+        [
+          "V-5",
+          "C-5",
+          "V-2"
+        ]
+      ],
+      "canonical": [
+        "C-10"
+      ],
+      "source": "/avl-west/navsafe_eval/dataset/06a1f481118057b2/manifest.json",
+      "sha256": "1dc14c08e2a69875d7aca6767f3d0c08d89078948db82cde0b986bd6b6199525"
+    },
+    "17cac31ef9135faf": {
+      "old": [
+        [
+          "C-10"
+        ],
+        [
+          "V-1",
+          "V-9"
+        ]
+      ],
+      "canonical": [
+        "C-10"
+      ],
+      "source": "/avl-west/navsafe_eval/dataset/17cac31ef9135faf/manifest.json",
+      "sha256": "d29b97b758fbf7f748f11c01dc8f15325f423bf7e98614e9d4b35ae8cf0ab92d"
+    }
+  },
+  "sensitivity_excluding_render_workarounds": [
+    {
+      "model": "drivor",
+      "status": "cannot_estimate_after_excluding_selected_anchor",
+      "anchors": [
+        "442b2cf63c6f570a",
+        "9135a6d270475c7f"
+      ]
+    },
+    {
+      "model": "recogdrive_il",
+      "status": "cannot_estimate_after_excluding_selected_anchor",
+      "anchors": [
+        "442b2cf63c6f570a",
+        "9135a6d270475c7f"
+      ]
+    },
+    {
+      "model": "recogdrive_rl",
+      "status": "cannot_estimate_after_excluding_selected_anchor",
+      "anchors": [
+        "442b2cf63c6f570a",
+        "9135a6d270475c7f"
+      ]
+    },
+    {
+      "model": "simwam",
+      "status": "cannot_estimate_after_excluding_selected_anchor",
+      "anchors": [
+        "442b2cf63c6f570a",
+        "9135a6d270475c7f"
+      ]
+    },
+    {
+      "model": "simwam_rl",
+      "status": "cannot_estimate_after_excluding_selected_anchor",
+      "anchors": [
+        "442b2cf63c6f570a",
+        "9135a6d270475c7f"
+      ]
+    }
+  ],
+  "perturbation_validated": false,
+  "perturbation_audit_n": 54,
+  "scope": "Empirical baseline representativeness for recorded results; V8 census; no certification of heterogeneous source runs or perturbation representativeness."
+}

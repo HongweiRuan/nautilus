@@ -1,0 +1,9 @@
+{
+  "one_per_leaf": true,
+  "unique_27": true,
+  "weights_sum_to_one": true,
+  "search_objective_not_worse_than_initial_centroid": true,
+  "heldout_score_mutation_does_not_change_search": true,
+  "input_directories_27_of_27": true,
+  "no_gpu_run": true
+}

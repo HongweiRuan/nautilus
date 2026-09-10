@@ -1,0 +1,257 @@
+{
+  "checked_utc": "2026-09-10T21:47:35.325620+00:00",
+  "root": "/avl-west/navsafe_eval/metrics_all",
+  "tokens": [
+    "0980dd9cdc0e543a",
+    "14c0a657ac3e5bb7",
+    "61b3149306a3501a",
+    "67eb77e9004a503f",
+    "7c00774138ae5805",
+    "8decf23c348f5b65",
+    "b66f23071e675170",
+    "c8600743d9e050a9",
+    "e1526251bd0a53ee",
+    "e9567d54464052f7"
+  ],
+  "coverage": {
+    "autovla": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "diffusiondrive": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "diffusiondrive_beyonddrive": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "diffusiondrive_simscale": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "drivelaw": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "drivevla_w0": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "drivor": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "ltf": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "mtdrive_mtgrpo": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "mtdrive_sft": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "pdm_closed": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "rap": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "recogdrive_il": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "recogdrive_rl": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "simwam": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "simwam_rl": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    },
+    "sparsedrivev2": {
+      "seed0": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1024": {
+        "valid": 10,
+        "bad": []
+      },
+      "seed1": {
+        "valid": 10,
+        "bad": []
+      }
+    }
+  },
+  "all_learned_seed0_complete": true
+}

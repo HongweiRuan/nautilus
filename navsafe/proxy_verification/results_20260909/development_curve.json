@@ -1,0 +1,170 @@
+[
+  {
+    "k": 1,
+    "n_common": 27,
+    "n_with_v8": 37,
+    "development": {
+      "DS": {
+        "mae_pp": 1.919542424242421,
+        "max_error_pp": 6.842814814814768,
+        "spearman": 0.7000000000000001,
+        "kendall_tau_b": 0.6000000000000001,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 3.4680134680134675,
+        "max_error_pp": 8.148148148148149,
+        "spearman": 0.6915661063474073,
+        "kendall_tau_b": 0.5838742081211422,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 3
+      }
+    },
+    "pass": false
+  },
+  {
+    "k": 2,
+    "n_common": 54,
+    "n_with_v8": 64,
+    "development": {
+      "DS": {
+        "mae_pp": 2.488635690235679,
+        "max_error_pp": 3.8430925925925843,
+        "spearman": 0.7000000000000001,
+        "kendall_tau_b": 0.5636363636363636,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 3.5353535353535346,
+        "max_error_pp": 9.999999999999998,
+        "spearman": 0.7272727272727273,
+        "kendall_tau_b": 0.6000000000000001,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 2
+      }
+    },
+    "pass": false
+  },
+  {
+    "k": 3,
+    "n_common": 81,
+    "n_with_v8": 91,
+    "development": {
+      "DS": {
+        "mae_pp": 3.1113343434343275,
+        "max_error_pp": 5.812703703703631,
+        "spearman": 0.6545454545454547,
+        "kendall_tau_b": 0.4909090909090909,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 3.468013468013467,
+        "max_error_pp": 7.7777777777778,
+        "spearman": 0.8000000000000002,
+        "kendall_tau_b": 0.6727272727272727,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 1
+      }
+    },
+    "pass": false
+  },
+  {
+    "k": 4,
+    "n_common": 108,
+    "n_with_v8": 118,
+    "development": {
+      "DS": {
+        "mae_pp": 2.094177104377094,
+        "max_error_pp": 5.219262962962901,
+        "spearman": 0.6636363636363638,
+        "kendall_tau_b": 0.5272727272727272,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 2.5252525252525246,
+        "max_error_pp": 9.259259259259267,
+        "spearman": 0.881818181818182,
+        "kendall_tau_b": 0.7818181818181819,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 1
+      }
+    },
+    "pass": false
+  },
+  {
+    "k": 5,
+    "n_common": 135,
+    "n_with_v8": 145,
+    "development": {
+      "DS": {
+        "mae_pp": 1.8872922558922374,
+        "max_error_pp": 3.1084703703703473,
+        "spearman": 0.9,
+        "kendall_tau_b": 0.7818181818181819,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 1.8518518518518563,
+        "max_error_pp": 5.185185185185192,
+        "spearman": 0.9545454545454546,
+        "kendall_tau_b": 0.8909090909090909,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 0
+      }
+    },
+    "pass": false
+  },
+  {
+    "k": 6,
+    "n_common": 162,
+    "n_with_v8": 172,
+    "development": {
+      "DS": {
+        "mae_pp": 0.9107744107744025,
+        "max_error_pp": 2.996514814814766,
+        "spearman": 0.9454545454545454,
+        "kendall_tau_b": 0.8545454545454545,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 0.8417508417508439,
+        "max_error_pp": 2.222222222222231,
+        "spearman": 0.9818181818181818,
+        "kendall_tau_b": 0.9272727272727274,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 0
+      }
+    },
+    "pass": true
+  },
+  {
+    "k": 7,
+    "n_common": 189,
+    "n_with_v8": 199,
+    "development": {
+      "DS": {
+        "mae_pp": 0.6489636363636369,
+        "max_error_pp": 1.5691592592591896,
+        "spearman": 0.9363636363636365,
+        "kendall_tau_b": 0.8181818181818182,
+        "large_gap_pairs": 20,
+        "large_gap_inversions": 0
+      },
+      "SR": {
+        "mae_pp": 0.6734006734006805,
+        "max_error_pp": 1.8518518518518656,
+        "spearman": 0.9977246841962695,
+        "kendall_tau_b": 0.9908673886137245,
+        "large_gap_pairs": 29,
+        "large_gap_inversions": 0
+      }
+    },
+    "pass": true
+  }
+]

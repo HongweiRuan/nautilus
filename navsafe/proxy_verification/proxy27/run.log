@@ -1,0 +1,121 @@
+{
+  "development": {
+    "DS": {
+      "mae_pp": 3.0936824915824825,
+      "max_error_pp": 7.270155555555535,
+      "spearman": 0.7363636363636363,
+      "kendall_tau_b": 0.5272727272727272,
+      "large_gap_pairs": 20,
+      "large_gap_inversions": 0
+    },
+    "SR": {
+      "mae_pp": 5.420875420875422,
+      "max_error_pp": 10.370370370370368,
+      "spearman": 0.9233805168766388,
+      "kendall_tau_b": 0.8174238913695991,
+      "large_gap_pairs": 29,
+      "large_gap_inversions": 1
+    }
+  },
+  "selection_excluded_families": {
+    "DS": {
+      "mae_pp": 6.026450370370361,
+      "max_error_pp": 10.040599999999955,
+      "spearman": 0.8999999999999998,
+      "kendall_tau_b": 0.7999999999999999,
+      "large_gap_pairs": 1,
+      "large_gap_inversions": 0
+    },
+    "SR": {
+      "mae_pp": 10.666666666666664,
+      "max_error_pp": 18.148148148148145,
+      "spearman": 0.8999999999999998,
+      "kendall_tau_b": 0.7999999999999999,
+      "large_gap_pairs": 4,
+      "large_gap_inversions": 0
+    }
+  },
+  "all_learned": {
+    "DS": {
+      "mae_pp": 4.010172453703694,
+      "max_error_pp": 10.040599999999955,
+      "spearman": 0.8558823529411764,
+      "kendall_tau_b": 0.6666666666666667,
+      "large_gap_pairs": 39,
+      "large_gap_inversions": 0
+    },
+    "SR": {
+      "mae_pp": 7.060185185185185,
+      "max_error_pp": 18.148148148148145,
+      "spearman": 0.9176373916604637,
+      "kendall_tau_b": 0.8058066296105564,
+      "large_gap_pairs": 57,
+      "large_gap_inversions": 2
+    }
+  },
+  "status": "selected_for_exploratory_perturbation_analysis_not_certified_full_benchmark_replacement",
+  "selection_models": [
+    "autovla",
+    "diffusiondrive",
+    "diffusiondrive_beyonddrive",
+    "diffusiondrive_simscale",
+    "drivelaw",
+    "drivevla_w0",
+    "ltf",
+    "mtdrive_mtgrpo",
+    "mtdrive_sft",
+    "rap",
+    "sparsedrivev2"
+  ],
+  "evaluation_excluded_models": [
+    "drivor",
+    "recogdrive_il",
+    "recogdrive_rl",
+    "simwam",
+    "simwam_rl"
+  ],
+  "proxy_n": 27,
+  "population_n": 270,
+  "perturbation_validated": false,
+  "validation_note": "Retrospective diagnostics: same family split as preceding study, not a new blind test.",
+  "random_comparison": {
+    "DS": {
+      "median_mae_pp": 4.503250370370362,
+      "fraction_random_no_worse": 0.76
+    },
+    "SR": {
+      "median_mae_pp": 6.222222222222221,
+      "fraction_random_no_worse": 0.928
+    }
+  },
+  "input_checks": "27/27 passed; CPU existence only, not GPU render validation",
+  "source_snapshot_sha256": "e0224becda4f30be198611c204fcc55a48ee13de188daf03766f6b17e3b3168c"
+}
+SELECTION
+C-1 02902d180b405100
+C-2 f077a062ad9b55e9
+C-3 273f424fa2fc55ad
+C-4 238f1cddb9415996
+C-5 58d69daf413c5d5a
+C-6 0122ce98b2735558
+C-7 1e9350ac2bc25f59
+C-8 5ac972b34e2e5614
+C-9 6704953640e55b83
+C-10 2bd04a0902095129
+I-1 6fc91bf02f225d1b
+I-2 0d5b8da00d505be0
+I-3 84acc78da95f56d3
+R-1 0027991369e05ab2
+R-2 20cc0fdb7e2d5c3f
+R-3 132307b3c1a55f97
+R-4 225eb6e22af55972
+V-1 42af8e33480d53b3
+V-2 3d324bda0cec57ab
+V-3 c41f71c68ad45f21
+V-4 089e3eac4f7e5c5c
+V-5 07c5114fdb395f8b
+V-6 8661a7e9b4a95042
+V-7 26f4d8d4d72a588e
+V-9 3a5278b27c87565f
+V-10 63c145828c3b5fd8
+V-11 32d85d373126537e

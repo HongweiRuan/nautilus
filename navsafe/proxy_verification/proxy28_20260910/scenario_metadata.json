@@ -1,0 +1,4601 @@
+{
+  "00185dab0ba153b9": {
+    "token": "00185dab0ba153b9",
+    "scenario_types": [
+      "near_trafficcone_on_driveable",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0027991369e05ab2": {
+    "token": "0027991369e05ab2",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0057ce5b81c35a81": {
+    "token": "0057ce5b81c35a81",
+    "scenario_types": [
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "005f87dd980253a5": {
+    "token": "005f87dd980253a5",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0092e40a13ea52f4": {
+    "token": "0092e40a13ea52f4",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0093ff0188ea5b90": {
+    "token": "0093ff0188ea5b90",
+    "scenario_types": [
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "00c1e4eb4a045f20": {
+    "token": "00c1e4eb4a045f20",
+    "scenario_types": [
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0122ce98b2735558": {
+    "token": "0122ce98b2735558",
+    "scenario_types": [
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "01649900c5cc58c4": {
+    "token": "01649900c5cc58c4",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0166f867762a56e1": {
+    "token": "0166f867762a56e1",
+    "scenario_types": [
+      "stationary"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "01a58976a2e45a3d": {
+    "token": "01a58976a2e45a3d",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "02015675e4585611": {
+    "token": "02015675e4585611",
+    "scenario_types": [
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "02379e524f105926": {
+    "token": "02379e524f105926",
+    "scenario_types": [
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "02902d180b405100": {
+    "token": "02902d180b405100",
+    "scenario_types": [
+      "near_long_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "029585f0509d52b0": {
+    "token": "029585f0509d52b0",
+    "scenario_types": [
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "02b68b9cc51f506a": {
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "02f1ad081f41550e": {
+    "token": "02f1ad081f41550e",
+    "scenario_types": [
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0317b218061b5c4d": {
+    "token": "0317b218061b5c4d",
+    "scenario_types": [
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0334cae9f1ef56ae": {
+    "token": "0334cae9f1ef56ae",
+    "scenario_types": [
+      "near_long_vehicle",
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0371700bf65b51e0": {
+    "token": "0371700bf65b51e0",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign",
+      "starting_straight_stop_sign_intersection_traversal"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "03b66343e1ac5d68": {
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "03dfd23cf97c590f": {
+    "token": "03dfd23cf97c590f",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0436604d25145231": {
+    "token": "0436604d25145231",
+    "scenario_types": [
+      "stationary",
+      "stationary_at_traffic_light_with_lead"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "045044cb9f21527e": {
+    "token": "045044cb9f21527e",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "04aa69f18d255c96": {
+    "token": "04aa69f18d255c96",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "050284885b2059e9": {
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0536ffc8d9555b0f": {
+    "token": "0536ffc8d9555b0f",
+    "scenario_types": [
+      "near_long_vehicle",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "054e4984e1b55ec9": {
+    "token": "054e4984e1b55ec9",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "near_pedestrian_on_crosswalk_with_ego",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0578756b879c55d0": {
+    "token": "0578756b879c55d0",
+    "scenario_types": [
+      "low_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "05bcef7a11d65c6a": {
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "05d0a1a763fc5334": {
+    "token": "05d0a1a763fc5334",
+    "scenario_types": [
+      "accelerating_at_traffic_light",
+      "accelerating_at_traffic_light_without_lead",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "05ee09cb75205555": {
+    "token": "05ee09cb75205555",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "05f1a5cbc0905d8e": {
+    "token": "05f1a5cbc0905d8e",
+    "scenario_types": [
+      "on_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "061e7e1700945b03": {
+    "token": "061e7e1700945b03",
+    "scenario_types": [
+      "traversing_crosswalk",
+      "traversing_narrow_lane"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0670d0c81a5550c4": {
+    "token": "0670d0c81a5550c4",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "06a1f481118057b2": {
+    "token": "06a1f481118057b2",
+    "scenario_types": [
+      "low_magnitude_speed",
+      "on_intersection",
+      "starting_left_turn",
+      "starting_low_speed_turn",
+      "starting_unprotected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding",
+      "Intersection",
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "06b2df49f0455bd0": {
+    "token": "06b2df49f0455bd0",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0777f5a7263758be": {
+    "token": "0777f5a7263758be",
+    "scenario_types": [
+      "low_magnitude_speed",
+      "on_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "07846b829b3a575e": {
+    "token": "07846b829b3a575e",
+    "scenario_types": [
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "07930113a85651b0": {
+    "token": "07930113a85651b0",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "07bf0601ad425977": {
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "07c5114fdb395f8b": {
+    "token": "07c5114fdb395f8b",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0802a51b0a1d512c": {
+    "token": "0802a51b0a1d512c",
+    "scenario_types": [
+      "on_stopline_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "081b5785002b5962": {
+    "token": "081b5785002b5962",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_long_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "087023402a695ba3": {
+    "token": "087023402a695ba3",
+    "scenario_types": [
+      "near_long_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "087df0996ade50d3": {
+    "token": "087df0996ade50d3",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_all_way_stop_intersection",
+      "on_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "089e3eac4f7e5c5c": {
+    "token": "089e3eac4f7e5c5c",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "096d823b664e5972": {
+    "token": "096d823b664e5972",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0980dd9cdc0e543a": {
+    "token": "0980dd9cdc0e543a",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "09a803ee2cb65992": {
+    "token": "09a803ee2cb65992",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "09d33cf8b87c5ae3": {
+    "token": "09d33cf8b87c5ae3",
+    "scenario_types": [
+      "following_lane_with_slow_lead",
+      "near_barrier_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0a51eb8adf8e5391": {
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0a51eebaccc95c36": {
+    "token": "0a51eebaccc95c36",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0af464147919575d": {
+    "token": "0af464147919575d",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0b1250020ea95539": {
+    "token": "0b1250020ea95539",
+    "scenario_types": [
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0b12ac5676875ade": {
+    "token": "0b12ac5676875ade",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0b1a626ef31150b3": {
+    "token": "0b1a626ef31150b3",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0ba54149d1575f95": {
+    "token": "0ba54149d1575f95",
+    "scenario_types": [
+      "accelerating_at_traffic_light",
+      "accelerating_at_traffic_light_without_lead",
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0bcae698fd905226": {
+    "token": "0bcae698fd905226",
+    "scenario_types": [
+      "near_barrier_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0c49c66ca32551c2": {
+    "token": "0c49c66ca32551c2",
+    "scenario_types": [
+      "near_construction_zone_sign"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0ce170237acd51c2": {
+    "token": "0ce170237acd51c2",
+    "scenario_types": [
+      "following_lane_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0d07429bb7205688": {
+    "token": "0d07429bb7205688",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0d2403a8031f540c": {
+    "token": "0d2403a8031f540c",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0d5b8da00d505be0": {
+    "token": "0d5b8da00d505be0",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0dd23f4ea286544f": {
+    "token": "0dd23f4ea286544f",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0dd3256035e75770": {
+    "token": "0dd3256035e75770",
+    "scenario_types": [
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0e272e003af65a71": {
+    "token": "0e272e003af65a71",
+    "scenario_types": [
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0e6cae45fdd5536b": {
+    "token": "0e6cae45fdd5536b",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0ebb578555b25ab2": {
+    "token": "0ebb578555b25ab2",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0eeeee655d415970": {
+    "token": "0eeeee655d415970",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0f622aef14545f59": {
+    "token": "0f622aef14545f59",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "0fa9a7f8b7235bfd": {
+    "token": "0fa9a7f8b7235bfd",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "107a64d478fa508f": {
+    "token": "107a64d478fa508f",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "10cfd645bb645e2e": {
+    "token": "10cfd645bb645e2e",
+    "scenario_types": [
+      "following_lane_with_slow_lead",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "112db94505025ec5": {
+    "token": "112db94505025ec5",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "131a036a111e54f3": {
+    "token": "131a036a111e54f3",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "132307b3c1a55f97": {
+    "token": "132307b3c1a55f97",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "13805e7752fe5685": {
+    "token": "13805e7752fe5685",
+    "scenario_types": [
+      "near_construction_zone_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "13bb7469606159e9": {
+    "token": "13bb7469606159e9",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "13c555e68671524f": {
+    "token": "13c555e68671524f",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "14c0a657ac3e5bb7": {
+    "token": "14c0a657ac3e5bb7",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "14d171fcb9295596": {
+    "token": "14d171fcb9295596",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "14d53f85ccc65f23": {
+    "token": "14d53f85ccc65f23",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "14fe69db03425780": {
+    "token": "14fe69db03425780",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "17296f6032025ecc": {
+    "token": "17296f6032025ecc",
+    "scenario_types": [
+      "on_carpark",
+      "stationary"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "173369dc059d5fe9": {
+    "token": "173369dc059d5fe9",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_right_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "17b0992157365222": {
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "17cac31ef9135faf": {
+    "token": "17cac31ef9135faf",
+    "scenario_types": [
+      "on_stopline_traffic_light",
+      "stationary",
+      "stationary_at_traffic_light_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign",
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "184c11a8cc875403": {
+    "token": "184c11a8cc875403",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "18b5995484435fbe": {
+    "token": "18b5995484435fbe",
+    "scenario_types": [
+      "stationary",
+      "stationary_at_traffic_light_with_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "190bf8dd22a25d1c": {
+    "token": "190bf8dd22a25d1c",
+    "scenario_types": [
+      "behind_bike",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "190c8d0cece45af1": {
+    "token": "190c8d0cece45af1",
+    "scenario_types": [
+      "near_long_vehicle",
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1961d1075a085a1d": {
+    "token": "1961d1075a085a1d",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1981a85eb4ba5001": {
+    "token": "1981a85eb4ba5001",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "198bc5f3280e52cd": {
+    "token": "198bc5f3280e52cd",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "19b85cbca28f5c41": {
+    "token": "19b85cbca28f5c41",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1ad96f74e72750db": {
+    "token": "1ad96f74e72750db",
+    "scenario_types": [
+      "near_pedestrian_at_pickup_dropoff",
+      "near_pedestrian_on_crosswalk",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1b2b430e151a50ae": {
+    "token": "1b2b430e151a50ae",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1bdfacbfcff75c27": {
+    "token": "1bdfacbfcff75c27",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_cross_turn",
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1bf45a481f1d52e3": {
+    "token": "1bf45a481f1d52e3",
+    "scenario_types": [
+      "stationary",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1c064ec24fa15900": {
+    "token": "1c064ec24fa15900",
+    "scenario_types": [
+      "on_intersection",
+      "starting_right_turn",
+      "starting_unprotected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1ceec301ab6552b1": {
+    "token": "1ceec301ab6552b1",
+    "scenario_types": [
+      "accelerating_at_traffic_light",
+      "accelerating_at_traffic_light_without_lead",
+      "near_trafficcone_on_driveable",
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1d0334886e9f535b": {
+    "token": "1d0334886e9f535b",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_straight_traffic_light_intersection_traversal",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1dae5903323e5214": {
+    "token": "1dae5903323e5214",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "1e9350ac2bc25f59": {
+    "token": "1e9350ac2bc25f59",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2073f76964735ff7": {
+    "token": "2073f76964735ff7",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "20cc0fdb7e2d5c3f": {
+    "token": "20cc0fdb7e2d5c3f",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "20ec6765e35d5cd1": {
+    "token": "20ec6765e35d5cd1",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "20fffc4aa17d5a12": {
+    "token": "20fffc4aa17d5a12",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_left",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "21b8742127e7523c": {
+    "token": "21b8742127e7523c",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "225eb6e22af55972": {
+    "token": "225eb6e22af55972",
+    "scenario_types": [
+      "near_barrier_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "227d62f5dfd95624": {
+    "token": "227d62f5dfd95624",
+    "scenario_types": [
+      "accelerating_at_stop_sign",
+      "high_lateral_acceleration",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "22f4f105eb64556e": {
+    "token": "22f4f105eb64556e",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "high_magnitude_speed",
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "238f1cddb9415996": {
+    "token": "238f1cddb9415996",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2391f12d7e6a5e7f": {
+    "token": "2391f12d7e6a5e7f",
+    "scenario_types": [
+      "on_intersection",
+      "starting_right_turn",
+      "starting_unprotected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "23f0187033d658d9": {
+    "token": "23f0187033d658d9",
+    "scenario_types": [
+      "following_lane_with_lead",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2462c21ce2bb5f2d": {
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "_leaf_backfilled": true,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2575048779565f0b": {
+    "token": "2575048779565f0b",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "25b5cecdb3b75e7c": {
+    "token": "25b5cecdb3b75e7c",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign",
+      "starting_straight_stop_sign_intersection_traversal"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "26119d956d46590e": {
+    "token": "26119d956d46590e",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "262333f372975eef": {
+    "token": "262333f372975eef",
+    "scenario_types": [
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "26f4d8d4d72a588e": {
+    "token": "26f4d8d4d72a588e",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "273f424fa2fc55ad": {
+    "token": "273f424fa2fc55ad",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2845a5483a0f57de": {
+    "token": "2845a5483a0f57de",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "28a4a08f11a05407": {
+    "token": "28a4a08f11a05407",
+    "scenario_types": [
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2ad17379a25d55d9": {
+    "token": "2ad17379a25d55d9",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2b7bf25209dd5705": {
+    "token": "2b7bf25209dd5705",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2bd04a0902095129": {
+    "token": "2bd04a0902095129",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2c337eb368fb54ca": {
+    "token": "2c337eb368fb54ca",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2ccebcdb0da25be5": {
+    "token": "2ccebcdb0da25be5",
+    "scenario_types": [
+      "accelerating_at_stop_sign",
+      "high_lateral_acceleration",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2d24100bcb1e57e2": {
+    "token": "2d24100bcb1e57e2",
+    "scenario_types": [
+      "on_stopline_traffic_light",
+      "stationary",
+      "stationary_at_traffic_light_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2eb015a011ac5fa2": {
+    "token": "2eb015a011ac5fa2",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2ee44628526e524c": {
+    "token": "2ee44628526e524c",
+    "scenario_types": [
+      "on_intersection",
+      "starting_right_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "2fa724c29a215bc4": {
+    "token": "2fa724c29a215bc4",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_construction_zone_sign"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3067f3d3d5a75989": {
+    "token": "3067f3d3d5a75989",
+    "scenario_types": [
+      "near_trafficcone_on_driveable",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3151813685fe5b1d": {
+    "token": "3151813685fe5b1d",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3239cd8874425d73": {
+    "token": "3239cd8874425d73",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "32d85d373126537e": {
+    "token": "32d85d373126537e",
+    "scenario_types": [
+      "on_stopline_traffic_light",
+      "stationary",
+      "stationary_at_traffic_light_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "342f42c4b2855ffb": {
+    "token": "342f42c4b2855ffb",
+    "scenario_types": [
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "34489cf42e005e93": {
+    "token": "34489cf42e005e93",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "34ac200e359653b5": {
+    "token": "34ac200e359653b5",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "35cf51dd13d559c0": {
+    "token": "35cf51dd13d559c0",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "36517f1223735d6a": {
+    "token": "36517f1223735d6a",
+    "scenario_types": [
+      "near_trafficcone_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3838eb184c9d5989": {
+    "token": "3838eb184c9d5989",
+    "scenario_types": [
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3862c9ed94ab5f90": {
+    "token": "3862c9ed94ab5f90",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_right_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "398326681cd7500a": {
+    "token": "398326681cd7500a",
+    "scenario_types": [
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "39a1ca97dca75beb": {
+    "token": "39a1ca97dca75beb",
+    "scenario_types": [
+      "following_lane_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "39d1f561e06054c5": {
+    "token": "39d1f561e06054c5",
+    "scenario_types": [
+      "following_lane_with_slow_lead",
+      "low_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3a0e2f53c9585e94": {
+    "token": "3a0e2f53c9585e94",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3a5278b27c87565f": {
+    "token": "3a5278b27c87565f",
+    "scenario_types": [
+      "stationary",
+      "stationary_at_traffic_light_with_lead",
+      "stationary_in_traffic"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3a6525cd871a5fff": {
+    "token": "3a6525cd871a5fff",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3af3b3a7a8635164": {
+    "token": "3af3b3a7a8635164",
+    "scenario_types": [
+      "accelerating_at_traffic_light_with_lead"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3b910accfc12560a": {
+    "token": "3b910accfc12560a",
+    "scenario_types": [
+      "traversing_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "R-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Pedestrian-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3d324bda0cec57ab": {
+    "token": "3d324bda0cec57ab",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "3d3804a50285560e": {
+    "token": "3d3804a50285560e",
+    "scenario_types": [
+      "near_high_speed_vehicle",
+      "near_long_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4211afd0df14524c": {
+    "token": "4211afd0df14524c",
+    "scenario_types": [
+      "on_stopline_traffic_light",
+      "stationary",
+      "stationary_at_traffic_light_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "42a20478abeb54d5": {
+    "token": "42a20478abeb54d5",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_high_speed_turn",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "42af8e33480d53b3": {
+    "token": "42af8e33480d53b3",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "440a60430f4655de": {
+    "token": "440a60430f4655de",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "442b2cf63c6f570a": {
+    "token": "442b2cf63c6f570a",
+    "scenario_types": [
+      "starting_protected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4528c271d89c53e1": {
+    "token": "4528c271d89c53e1",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right",
+      "changing_lane_with_trail",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "467879c3d37054f5": {
+    "token": "467879c3d37054f5",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4874da28248a5026": {
+    "token": "4874da28248a5026",
+    "scenario_types": [
+      "stationary",
+      "stationary_at_traffic_light_with_lead"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "48f603e3b4335b74": {
+    "token": "48f603e3b4335b74",
+    "scenario_types": [
+      "near_high_speed_vehicle",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "49a0d29c7058501c": {
+    "token": "49a0d29c7058501c",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4bb2fc18f5ee5dcb": {
+    "token": "4bb2fc18f5ee5dcb",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4c23b72459a55ad0": {
+    "token": "4c23b72459a55ad0",
+    "scenario_types": [
+      "near_high_speed_vehicle",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4d6456183bd056bc": {
+    "token": "4d6456183bd056bc",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_right_turn",
+      "starting_unprotected_cross_turn",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Wrong-Way (crash)"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4ee177f621f259da": {
+    "token": "4ee177f621f259da",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_left",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "4fff5f5a86be53d5": {
+    "token": "4fff5f5a86be53d5",
+    "scenario_types": [
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "51ce5f94f83f576f": {
+    "token": "51ce5f94f83f576f",
+    "scenario_types": [
+      "near_multiple_vehicles",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "53571ab149005b43": {
+    "token": "53571ab149005b43",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "53f49b4480de528c": {
+    "token": "53f49b4480de528c",
+    "scenario_types": [
+      "following_lane_with_slow_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "54ae4b189e79541b": {
+    "token": "54ae4b189e79541b",
+    "scenario_types": [
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "56c64f7e47b15e0d": {
+    "token": "56c64f7e47b15e0d",
+    "scenario_types": [
+      "low_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "58d69daf413c5d5a": {
+    "token": "58d69daf413c5d5a",
+    "scenario_types": [
+      "on_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "58f3f43098985e77": {
+    "token": "58f3f43098985e77",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk_with_ego",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "599c8b2bc9b252a7": {
+    "token": "599c8b2bc9b252a7",
+    "scenario_types": [
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5ac972b34e2e5614": {
+    "token": "5ac972b34e2e5614",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5afcbc10159e5b87": {
+    "token": "5afcbc10159e5b87",
+    "scenario_types": [
+      "following_lane_with_slow_lead",
+      "on_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5bd2bc00e2d358e0": {
+    "token": "5bd2bc00e2d358e0",
+    "scenario_types": [
+      "behind_long_vehicle",
+      "near_long_vehicle",
+      "stationary"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5bd8cf3fa67a524f": {
+    "token": "5bd8cf3fa67a524f",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5c838efd36805c92": {
+    "token": "5c838efd36805c92",
+    "scenario_types": [
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "5d12ad55fdd858e1": {
+    "token": "5d12ad55fdd858e1",
+    "scenario_types": [
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "61b3149306a3501a": {
+    "token": "61b3149306a3501a",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "61bce03d2e4659b9": {
+    "token": "61bce03d2e4659b9",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "63c145828c3b5fd8": {
+    "token": "63c145828c3b5fd8",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6704953640e55b83": {
+    "token": "6704953640e55b83",
+    "scenario_types": [
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "671da9103fe05141": {
+    "token": "671da9103fe05141",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_right_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "67abcf0964415891": {
+    "token": "67abcf0964415891",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "67eb77e9004a503f": {
+    "token": "67eb77e9004a503f",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "687dc7e79cf65570": {
+    "token": "687dc7e79cf65570",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign",
+      "starting_straight_stop_sign_intersection_traversal"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "689abfdd66235378": {
+    "token": "689abfdd66235378",
+    "scenario_types": [
+      "following_lane_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6ad48974e9985e1f": {
+    "token": "6ad48974e9985e1f",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6b7c5199f84e5aac": {
+    "token": "6b7c5199f84e5aac",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_unprotected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Head-On"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6c9e40634f705f56": {
+    "token": "6c9e40634f705f56",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6e778c30490d5f50": {
+    "token": "6e778c30490d5f50",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "stationary",
+      "waiting_for_pedestrian_to_cross"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6f61120208385a02": {
+    "token": "6f61120208385a02",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6f75ee5c660855e7": {
+    "token": "6f75ee5c660855e7",
+    "scenario_types": [
+      "near_multiple_vehicles",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "6fc91bf02f225d1b": {
+    "token": "6fc91bf02f225d1b",
+    "scenario_types": [
+      "near_trafficcone_on_driveable",
+      "on_intersection",
+      "on_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "71d14fc8ea3d5b5d": {
+    "token": "71d14fc8ea3d5b5d",
+    "scenario_types": [
+      "near_trafficcone_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7403f892832b51d3": {
+    "token": "7403f892832b51d3",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "757c23c6819c589c": {
+    "token": "757c23c6819c589c",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "on_intersection",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "76da778ff251508d": {
+    "token": "76da778ff251508d",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "771c4e378bef58e4": {
+    "token": "771c4e378bef58e4",
+    "scenario_types": [
+      "low_magnitude_speed",
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7956fe13f69e53dc": {
+    "token": "7956fe13f69e53dc",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_protected_noncross_turn",
+      "starting_right_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7962741aebba5e56": {
+    "token": "7962741aebba5e56",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_trafficcone_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7b635c8426075d70": {
+    "token": "7b635c8426075d70",
+    "scenario_types": [
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7c00774138ae5805": {
+    "token": "7c00774138ae5805",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7cb91c1ad87c56d5": {
+    "token": "7cb91c1ad87c56d5",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7cdcf11e211759cf": {
+    "token": "7cdcf11e211759cf",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "stationary",
+      "stopping_at_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7e40ef4f0d5b5cc9": {
+    "token": "7e40ef4f0d5b5cc9",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7e5bbdae500e5ad1": {
+    "token": "7e5bbdae500e5ad1",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "7f49b4deed075e6c": {
+    "token": "7f49b4deed075e6c",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "84acc78da95f56d3": {
+    "token": "84acc78da95f56d3",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "854918c8b7665af0": {
+    "token": "854918c8b7665af0",
+    "scenario_types": [
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "8661a7e9b4a95042": {
+    "token": "8661a7e9b4a95042",
+    "scenario_types": [
+      "following_lane_with_slow_lead",
+      "low_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "888d1fb945ed5982": {
+    "token": "888d1fb945ed5982",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "89912e0a307256fd": {
+    "token": "89912e0a307256fd",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "89ac4f4584065c48": {
+    "token": "89ac4f4584065c48",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "89e02236312d5038": {
+    "token": "89e02236312d5038",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "near_pedestrian_on_crosswalk_with_ego",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "8c6c4c4b507c5eb1": {
+    "token": "8c6c4c4b507c5eb1",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "8d261d29f3655aec": {
+    "token": "8d261d29f3655aec",
+    "scenario_types": [
+      "near_multiple_vehicles",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "8d4c7214942e5619": {
+    "token": "8d4c7214942e5619",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_high_speed_turn",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "8decf23c348f5b65": {
+    "token": "8decf23c348f5b65",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9135a6d270475c7f": {
+    "token": "9135a6d270475c7f",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9157902936a456bf": {
+    "token": "9157902936a456bf",
+    "scenario_types": [
+      "accelerating_at_traffic_light",
+      "accelerating_at_traffic_light_without_lead",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "918b6721bcf75d38": {
+    "token": "918b6721bcf75d38",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_noncross_turn",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "92c6df44cf055882": {
+    "token": "92c6df44cf055882",
+    "scenario_types": [
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn",
+      "traversing_crosswalk",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9311d9a2409c5224": {
+    "token": "9311d9a2409c5224",
+    "scenario_types": [
+      "accelerating_at_stop_sign",
+      "high_lateral_acceleration",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9605af7df76f5ba3": {
+    "token": "9605af7df76f5ba3",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_trafficcone_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "97146fc0e8525e75": {
+    "token": "97146fc0e8525e75",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_trafficcone_on_driveable"
+    ],
+    "taxonomy_leaves": [
+      "I-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Obstruction / Hazard"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "97dcc120f4695080": {
+    "token": "97dcc120f4695080",
+    "scenario_types": [
+      "following_lane_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9869278b0f8f5061": {
+    "token": "9869278b0f8f5061",
+    "scenario_types": [
+      "on_carpark",
+      "stationary"
+    ],
+    "taxonomy_leaves": [
+      "V-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Blocking Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "99a98a7ffb075389": {
+    "token": "99a98a7ffb075389",
+    "scenario_types": [
+      "behind_bike"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9a6489254d5f5577": {
+    "token": "9a6489254d5f5577",
+    "scenario_types": [
+      "near_pedestrian_on_crosswalk",
+      "on_intersection",
+      "on_stopline_crosswalk",
+      "stationary",
+      "waiting_for_pedestrian_to_cross"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9ac86ade68505597": {
+    "token": "9ac86ade68505597",
+    "scenario_types": [
+      "following_lane_with_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Tailgating"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9b21b864f1a159e8": {
+    "token": "9b21b864f1a159e8",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9d791495c47e5061": {
+    "token": "9d791495c47e5061",
+    "scenario_types": [
+      "near_long_vehicle",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Rear-End"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9e34c53444bd518c": {
+    "token": "9e34c53444bd518c",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-1"
+    ],
+    "taxonomy_leaf_names": [
+      "Red-Light / Stop-Sign"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9eb1dcda60165ae3": {
+    "token": "9eb1dcda60165ae3",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "9ef1d618435d5e53": {
+    "token": "9ef1d618435d5e53",
+    "scenario_types": [
+      "near_construction_zone_sign"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a0ff0b74063659a2": {
+    "token": "a0ff0b74063659a2",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a12d1a61d7cc50fe": {
+    "token": "a12d1a61d7cc50fe",
+    "scenario_types": [
+      "following_lane_without_lead",
+      "high_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-7"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Maintain Lane"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a18d2b32f8415373": {
+    "token": "a18d2b32f8415373",
+    "scenario_types": [
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a2c2e046132e5596": {
+    "token": "a2c2e046132e5596",
+    "scenario_types": [
+      "starting_high_speed_turn",
+      "starting_right_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "R-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Animal-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a43dbb1d34665f24": {
+    "token": "a43dbb1d34665f24",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "on_stopline_crosswalk"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a4581d8af5f755a9": {
+    "token": "a4581d8af5f755a9",
+    "scenario_types": [
+      "on_all_way_stop_intersection",
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a67c6744e6c45edb": {
+    "token": "a67c6744e6c45edb",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "a6b9a83019915658": {
+    "token": "a6b9a83019915658",
+    "scenario_types": [
+      "accelerating_at_traffic_light",
+      "accelerating_at_traffic_light_without_lead",
+      "on_stopline_traffic_light",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "aac96a67f68e51ac": {
+    "token": "aac96a67f68e51ac",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "ac019d81388056be": {
+    "token": "ac019d81388056be",
+    "scenario_types": [
+      "behind_pedestrian_on_driveable",
+      "medium_magnitude_speed"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "ac01c31d1a5a5ed2": {
+    "token": "ac01c31d1a5a5ed2",
+    "scenario_types": [
+      "behind_bike"
+    ],
+    "taxonomy_leaves": [
+      "R-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Bicycle-Involved"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "b023b7bcbab05bcb": {
+    "token": "b023b7bcbab05bcb",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_straight_traffic_light_intersection_traversal",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-3"
+    ],
+    "taxonomy_leaf_names": [
+      "General Incident"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "b66f23071e675170": {
+    "token": "b66f23071e675170",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bbee1ab465af50c2": {
+    "token": "bbee1ab465af50c2",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "near_construction_zone_sign"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bc08e60c250953a9": {
+    "token": "bc08e60c250953a9",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "be36f75d360c502f": {
+    "token": "be36f75d360c502f",
+    "scenario_types": [
+      "medium_magnitude_speed",
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-10"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Merge / Entry"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bea8f31993cd5a1b": {
+    "token": "bea8f31993cd5a1b",
+    "scenario_types": [
+      "near_high_speed_vehicle"
+    ],
+    "taxonomy_leaves": [
+      "C-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Sideswipe"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bf72d4d6b25f5b27": {
+    "token": "bf72d4d6b25f5b27",
+    "scenario_types": [
+      "high_magnitude_speed",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "starting_straight_traffic_light_intersection_traversal",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "V-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Speeding"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bf896d504b4356c7": {
+    "token": "bf896d504b4356c7",
+    "scenario_types": [
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign",
+      "stationary",
+      "stopping_at_stop_sign_without_lead"
+    ],
+    "taxonomy_leaves": [
+      "V-11"
+    ],
+    "taxonomy_leaf_names": [
+      "Driving Wrong Way"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "bfcbb192c11b5736": {
+    "token": "bfcbb192c11b5736",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "c1c5dec6bab3598a": {
+    "token": "c1c5dec6bab3598a",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_left"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "c41f71c68ad45f21": {
+    "token": "c41f71c68ad45f21",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "c8600743d9e050a9": {
+    "token": "c8600743d9e050a9",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "c895b062e3735053": {
+    "token": "c895b062e3735053",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "c896895a9524547f": {
+    "token": "c896895a9524547f",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "cc108c5480345911": {
+    "token": "cc108c5480345911",
+    "scenario_types": [
+      "changing_lane",
+      "changing_lane_to_right"
+    ],
+    "taxonomy_leaves": [
+      "V-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Unsafe Lane Change"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "cce944facc8158e8": {
+    "token": "cce944facc8158e8",
+    "scenario_types": [
+      "on_intersection",
+      "on_stopline_traffic_light",
+      "on_traffic_light_intersection",
+      "starting_high_speed_turn",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "d5812df28c1558ba": {
+    "token": "d5812df28c1558ba",
+    "scenario_types": [
+      "on_carpark"
+    ],
+    "taxonomy_leaves": [
+      "C-8"
+    ],
+    "taxonomy_leaf_names": [
+      "Backing"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "d64a3964875f5b41": {
+    "token": "d64a3964875f5b41",
+    "scenario_types": [
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-6"
+    ],
+    "taxonomy_leaf_names": [
+      "Roadway Departure"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "daf905a8d1255722": {
+    "token": "daf905a8d1255722",
+    "scenario_types": [
+      "high_lateral_acceleration"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "e1526251bd0a53ee": {
+    "token": "e1526251bd0a53ee",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "e244b2ddf97a57d6": {
+    "token": "e244b2ddf97a57d6",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn"
+    ],
+    "taxonomy_leaves": [
+      "C-5"
+    ],
+    "taxonomy_leaf_names": [
+      "Intersection"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "e3e0b3d6d5ae52a1": {
+    "token": "e3e0b3d6d5ae52a1",
+    "scenario_types": [
+      "near_multiple_vehicles"
+    ],
+    "taxonomy_leaves": [
+      "C-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Multi-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "e74ca27f40755297": {
+    "token": "e74ca27f40755297",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_unprotected_noncross_turn"
+    ],
+    "taxonomy_leaves": [
+      "V-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Failure to Yield"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "e9567d54464052f7": {
+    "token": "e9567d54464052f7",
+    "scenario_types": [],
+    "taxonomy_leaves": [
+      "V-8"
+    ],
+    "taxonomy_leaf_names": [],
+    "has_inserted_actors": true,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "edc4a4a176f65fea": {
+    "token": "edc4a4a176f65fea",
+    "scenario_types": [
+      "high_lateral_acceleration",
+      "near_pedestrian_at_pickup_dropoff",
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "V-4"
+    ],
+    "taxonomy_leaf_names": [
+      "Reckless / Aggressive Driving"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "f038fc7ffdab5bad": {
+    "token": "f038fc7ffdab5bad",
+    "scenario_types": [
+      "on_pickup_dropoff",
+      "traversing_pickup_dropoff"
+    ],
+    "taxonomy_leaves": [
+      "C-9"
+    ],
+    "taxonomy_leaf_names": [
+      "Single-Vehicle"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  },
+  "f077a062ad9b55e9": {
+    "token": "f077a062ad9b55e9",
+    "scenario_types": [
+      "on_intersection",
+      "starting_left_turn",
+      "starting_protected_cross_turn",
+      "traversing_intersection"
+    ],
+    "taxonomy_leaves": [
+      "C-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Angle / T-Bone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null,
+    "leaf_source": "prior proxy_verification_20260909/proxy_set.json (fixed taxonomy; see taxonomy_discrepancies.json)"
+  }
+}

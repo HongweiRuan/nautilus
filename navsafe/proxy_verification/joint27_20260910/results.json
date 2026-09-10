@@ -1,0 +1,593 @@
+{
+  "protocol": {
+    "budget": 27,
+    "one_per_leaf": true,
+    "exclude": "V-8",
+    "input": "immutable previous snapshot, seed0 only for fitting",
+    "hyperparameters": [
+      0,
+      0.01,
+      0.1
+    ],
+    "starts": 8,
+    "max_sweeps": 15,
+    "selection_seed": 9010,
+    "random_baseline_draws": 1000,
+    "outer": "leave entire model family out",
+    "inner": "leave family out within outer training; select lambda by family-balanced MAE",
+    "objective": "mean squared aggregate score error + lambda * mean within-leaf representation error; DS/SR equal scales, equal family contribution",
+    "final": "fit on original 11 development models; original 5 excluded models never select its lambda or anchors",
+    "caveat": "Retrospective repeated use of existing benchmark; not fresh blind confirmation. No perturbation generalization claim.",
+    "gates": "retain earlier MAE<=3pp, max<=5pp, rho>=.90; no loosening to call success"
+  },
+  "model_count": 16,
+  "family_count": 11,
+  "source_sha256": "e0224becda4f30be198611c204fcc55a48ee13de188daf03766f6b17e3b3168c",
+  "oof_joint": {
+    "DS": {
+      "mae_pp": 4.587137731481477,
+      "max_error_pp": 10.910562962962938,
+      "bias_pp": 0.5214687500000055,
+      "spearman": 0.75
+    },
+    "SR": {
+      "mae_pp": 6.921296296296296,
+      "max_error_pp": 12.592592592592588,
+      "bias_pp": 2.569444444444443,
+      "spearman": 0.6895563631760848
+    }
+  },
+  "oof_centroid": {
+    "DS": {
+      "mae_pp": 3.5752807870370367,
+      "max_error_pp": 7.705740740740702,
+      "bias_pp": -0.13946412037036382,
+      "spearman": 0.7941176470588236
+    },
+    "SR": {
+      "mae_pp": 5.717592592592593,
+      "max_error_pp": 14.444444444444443,
+      "bias_pp": 0.25462962962962843,
+      "spearman": 0.7032820163571585
+    }
+  },
+  "oof_random_mean_mae_pp": [
+    4.698449118518521,
+    6.017546296296288
+  ],
+  "oof_random_median_mae_pp": [
+    4.244717592592592,
+    5.624999999999998
+  ],
+  "family_mean_joint_minus_centroid_mae_pp": [
+    1.2132586980920304,
+    0.9315375982042642
+  ],
+  "family_bootstrap_95ci_joint_minus_centroid": [
+    [
+      -0.7207106285072918,
+      -1.5491021324354668
+    ],
+    [
+      3.401390227272719,
+      3.221380471380467
+    ]
+  ],
+  "final_lambda": 0,
+  "final_inner_mae_pp": [
+    3.948446682098767,
+    5.598396913580249,
+    3.967049537037032
+  ],
+  "final_excluded_joint": {
+    "DS": {
+      "mae_pp": 3.970274074074058,
+      "max_error_pp": 7.093311111111101,
+      "bias_pp": 0.7262933333333232,
+      "spearman": 0.8999999999999998
+    },
+    "SR": {
+      "mae_pp": 6.814814814814814,
+      "max_error_pp": 8.888888888888891,
+      "bias_pp": 0.29629629629629434,
+      "spearman": 0.8999999999999998
+    }
+  },
+  "final_excluded_centroid": {
+    "DS": {
+      "mae_pp": 6.026450370370364,
+      "max_error_pp": 10.040599999999966,
+      "bias_pp": 4.892641481481481,
+      "spearman": 0.8999999999999998
+    },
+    "SR": {
+      "mae_pp": 10.666666666666664,
+      "max_error_pp": 18.148148148148145,
+      "bias_pp": 7.703703703703702,
+      "spearman": 0.8999999999999998
+    }
+  },
+  "final_random_mean_mae_pp": [
+    4.9769952651851845,
+    6.607555555555567
+  ],
+  "final_random_fraction_no_worse": [
+    0.396,
+    0.583
+  ],
+  "changed_tokens": 22,
+  "folds": [
+    {
+      "family": "autovla",
+      "test_models": [
+        "autovla"
+      ],
+      "lambda": 0,
+      "inner_mae": [
+        2.1778725308641995,
+        4.6501791975308615,
+        4.993080432098765
+      ],
+      "joint_tokens": [
+        "02902d180b405100",
+        "2eb015a011ac5fa2",
+        "3151813685fe5b1d",
+        "1dae5903323e5214",
+        "671da9103fe05141",
+        "0122ce98b2735558",
+        "1bdfacbfcff75c27",
+        "1961d1075a085a1d",
+        "5c838efd36805c92",
+        "2bd04a0902095129",
+        "7962741aebba5e56",
+        "0c49c66ca32551c2",
+        "76da778ff251508d",
+        "06b2df49f0455bd0",
+        "20cc0fdb7e2d5c3f",
+        "17b0992157365222",
+        "02015675e4585611",
+        "9311d9a2409c5224",
+        "3862c9ed94ab5f90",
+        "3a6525cd871a5fff",
+        "089e3eac4f7e5c5c",
+        "56c64f7e47b15e0d",
+        "8661a7e9b4a95042",
+        "a12d1a61d7cc50fe",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "family": "diffusiondrive",
+      "test_models": [
+        "diffusiondrive",
+        "diffusiondrive_beyonddrive",
+        "diffusiondrive_simscale"
+      ],
+      "lambda": 0,
+      "inner_mae": [
+        4.775355740740739,
+        7.734995370370366,
+        5.953299999999997
+      ],
+      "joint_tokens": [
+        "3af3b3a7a8635164",
+        "8d4c7214942e5619",
+        "48f603e3b4335b74",
+        "7e40ef4f0d5b5cc9",
+        "9a6489254d5f5577",
+        "23f0187033d658d9",
+        "6b7c5199f84e5aac",
+        "096d823b664e5972",
+        "5c838efd36805c92",
+        "42a20478abeb54d5",
+        "1ceec301ab6552b1",
+        "7e5bbdae500e5ad1",
+        "050284885b2059e9",
+        "05ee09cb75205555",
+        "20cc0fdb7e2d5c3f",
+        "0777f5a7263758be",
+        "a2c2e046132e5596",
+        "92c6df44cf055882",
+        "7956fe13f69e53dc",
+        "cc108c5480345911",
+        "467879c3d37054f5",
+        "0578756b879c55d0",
+        "3239cd8874425d73",
+        "0d07429bb7205688",
+        "4211afd0df14524c",
+        "13c555e68671524f",
+        "bf896d504b4356c7"
+      ]
+    },
+    {
+      "family": "drivelaw",
+      "test_models": [
+        "drivelaw"
+      ],
+      "lambda": 0.01,
+      "inner_mae": [
+        5.875790123456785,
+        5.36238407407407,
+        6.860469506172836
+      ],
+      "joint_tokens": [
+        "081b5785002b5962",
+        "f077a062ad9b55e9",
+        "3151813685fe5b1d",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "1bdfacbfcff75c27",
+        "5ac972b34e2e5614",
+        "5c838efd36805c92",
+        "4d6456183bd056bc",
+        "09d33cf8b87c5ae3",
+        "7f49b4deed075e6c",
+        "4fff5f5a86be53d5",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "2462c21ce2bb5f2d",
+        "225eb6e22af55972",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c1c5dec6bab3598a",
+        "daf905a8d1255722",
+        "0e272e003af65a71",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "0dd23f4ea286544f",
+        "6c9e40634f705f56",
+        "bf896d504b4356c7"
+      ]
+    },
+    {
+      "family": "drivevla_w0",
+      "test_models": [
+        "drivevla_w0"
+      ],
+      "lambda": 0,
+      "inner_mae": [
+        4.705430555555552,
+        5.509204999999994,
+        5.979635740740741
+      ],
+      "joint_tokens": [
+        "087023402a695ba3",
+        "7b635c8426075d70",
+        "3151813685fe5b1d",
+        "c895b062e3735053",
+        "e244b2ddf97a57d6",
+        "0536ffc8d9555b0f",
+        "599c8b2bc9b252a7",
+        "771c4e378bef58e4",
+        "a67c6744e6c45edb",
+        "4d6456183bd056bc",
+        "1ceec301ab6552b1",
+        "0d5b8da00d505be0",
+        "89e02236312d5038",
+        "05ee09cb75205555",
+        "ac01c31d1a5a5ed2",
+        "0a51eb8adf8e5391",
+        "05f1a5cbc0905d8e",
+        "92c6df44cf055882",
+        "6f61120208385a02",
+        "20fffc4aa17d5a12",
+        "53571ab149005b43",
+        "0578756b879c55d0",
+        "1b2b430e151a50ae",
+        "19b85cbca28f5c41",
+        "0dd23f4ea286544f",
+        "13805e7752fe5685",
+        "a18d2b32f8415373"
+      ]
+    },
+    {
+      "family": "drivor",
+      "test_models": [
+        "drivor"
+      ],
+      "lambda": 0.01,
+      "inner_mae": [
+        3.7510864814814826,
+        3.7103800617283897,
+        5.110585740740742
+      ],
+      "joint_tokens": [
+        "190c8d0cece45af1",
+        "35cf51dd13d559c0",
+        "3151813685fe5b1d",
+        "1dae5903323e5214",
+        "1981a85eb4ba5001",
+        "6ad48974e9985e1f",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "a67c6744e6c45edb",
+        "2bd04a0902095129",
+        "1ceec301ab6552b1",
+        "61bce03d2e4659b9",
+        "89e02236312d5038",
+        "0a51eebaccc95c36",
+        "99a98a7ffb075389",
+        "132307b3c1a55f97",
+        "225eb6e22af55972",
+        "42af8e33480d53b3",
+        "6f61120208385a02",
+        "c41f71c68ad45f21",
+        "daf905a8d1255722",
+        "07c5114fdb395f8b",
+        "9ac86ade68505597",
+        "26f4d8d4d72a588e",
+        "1bf45a481f1d52e3",
+        "6c9e40634f705f56",
+        "18b5995484435fbe"
+      ]
+    },
+    {
+      "family": "ltf",
+      "test_models": [
+        "ltf"
+      ],
+      "lambda": 0.01,
+      "inner_mae": [
+        4.0015369135802485,
+        3.5630838888888836,
+        4.815959506172835
+      ],
+      "joint_tokens": [
+        "190c8d0cece45af1",
+        "2eb015a011ac5fa2",
+        "22f4f105eb64556e",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0536ffc8d9555b0f",
+        "599c8b2bc9b252a7",
+        "17296f6032025ecc",
+        "a67c6744e6c45edb",
+        "2bd04a0902095129",
+        "09d33cf8b87c5ae3",
+        "7f49b4deed075e6c",
+        "84acc78da95f56d3",
+        "0027991369e05ab2",
+        "02b68b9cc51f506a",
+        "17b0992157365222",
+        "225eb6e22af55972",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "c41f71c68ad45f21",
+        "daf905a8d1255722",
+        "07c5114fdb395f8b",
+        "09a803ee2cb65992",
+        "26f4d8d4d72a588e",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "bf896d504b4356c7"
+      ]
+    },
+    {
+      "family": "mtdrive",
+      "test_models": [
+        "mtdrive_mtgrpo",
+        "mtdrive_sft"
+      ],
+      "lambda": 0,
+      "inner_mae": [
+        3.8871217901234543,
+        4.125812222222222,
+        5.61203888888889
+      ],
+      "joint_tokens": [
+        "0334cae9f1ef56ae",
+        "f077a062ad9b55e9",
+        "22f4f105eb64556e",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "d5812df28c1558ba",
+        "5c838efd36805c92",
+        "42a20478abeb54d5",
+        "97146fc0e8525e75",
+        "7f49b4deed075e6c",
+        "4fff5f5a86be53d5",
+        "06b2df49f0455bd0",
+        "02b68b9cc51f506a",
+        "2462c21ce2bb5f2d",
+        "225eb6e22af55972",
+        "4c23b72459a55ad0",
+        "21b8742127e7523c",
+        "c1c5dec6bab3598a",
+        "daf905a8d1255722",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "689abfdd66235378",
+        "1bf45a481f1d52e3",
+        "34ac200e359653b5",
+        "bf896d504b4356c7"
+      ]
+    },
+    {
+      "family": "rap",
+      "test_models": [
+        "rap"
+      ],
+      "lambda": 0.1,
+      "inner_mae": [
+        3.915894876543206,
+        5.930458765432097,
+        3.0086904320987644
+      ],
+      "joint_tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "89ac4f4584065c48",
+        "0670d0c81a5550c4",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "5ac972b34e2e5614",
+        "342f42c4b2855ffb",
+        "2bd04a0902095129",
+        "36517f1223735d6a",
+        "9eb1dcda60165ae3",
+        "84acc78da95f56d3",
+        "06b2df49f0455bd0",
+        "02f1ad081f41550e",
+        "132307b3c1a55f97",
+        "225eb6e22af55972",
+        "4c23b72459a55ad0",
+        "7956fe13f69e53dc",
+        "3a6525cd871a5fff",
+        "467879c3d37054f5",
+        "56c64f7e47b15e0d",
+        "5afcbc10159e5b87",
+        "a12d1a61d7cc50fe",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "2b7bf25209dd5705"
+      ]
+    },
+    {
+      "family": "recogdrive",
+      "test_models": [
+        "recogdrive_il",
+        "recogdrive_rl"
+      ],
+      "lambda": 0.01,
+      "inner_mae": [
+        4.87365904320987,
+        3.6971049691358058,
+        5.596165154320987
+      ],
+      "joint_tokens": [
+        "5bd2bc00e2d358e0",
+        "f077a062ad9b55e9",
+        "22f4f105eb64556e",
+        "238f1cddb9415996",
+        "1981a85eb4ba5001",
+        "0122ce98b2735558",
+        "6b7c5199f84e5aac",
+        "17296f6032025ecc",
+        "5c838efd36805c92",
+        "2bd04a0902095129",
+        "7962741aebba5e56",
+        "7f49b4deed075e6c",
+        "131a036a111e54f3",
+        "0027991369e05ab2",
+        "20cc0fdb7e2d5c3f",
+        "17b0992157365222",
+        "225eb6e22af55972",
+        "67abcf0964415891",
+        "6f61120208385a02",
+        "c41f71c68ad45f21",
+        "aac96a67f68e51ac",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "26f4d8d4d72a588e",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "2b7bf25209dd5705"
+      ]
+    },
+    {
+      "family": "simwam",
+      "test_models": [
+        "simwam",
+        "simwam_rl"
+      ],
+      "lambda": 0.1,
+      "inner_mae": [
+        4.255933240740741,
+        5.411676820987653,
+        4.142109537037034
+      ],
+      "joint_tokens": [
+        "02902d180b405100",
+        "f077a062ad9b55e9",
+        "273f424fa2fc55ad",
+        "0670d0c81a5550c4",
+        "58d69daf413c5d5a",
+        "0122ce98b2735558",
+        "1e9350ac2bc25f59",
+        "17296f6032025ecc",
+        "6704953640e55b83",
+        "2bd04a0902095129",
+        "1ceec301ab6552b1",
+        "2fa724c29a215bc4",
+        "84acc78da95f56d3",
+        "0a51eebaccc95c36",
+        "0057ce5b81c35a81",
+        "0802a51b0a1d512c",
+        "02015675e4585611",
+        "92c6df44cf055882",
+        "7956fe13f69e53dc",
+        "3a6525cd871a5fff",
+        "089e3eac4f7e5c5c",
+        "07c5114fdb395f8b",
+        "5afcbc10159e5b87",
+        "26f4d8d4d72a588e",
+        "1bf45a481f1d52e3",
+        "63c145828c3b5fd8",
+        "32d85d373126537e"
+      ]
+    },
+    {
+      "family": "sparsedrivev2",
+      "test_models": [
+        "sparsedrivev2"
+      ],
+      "lambda": 0.01,
+      "inner_mae": [
+        4.23374919753086,
+        3.2666515432098775,
+        4.679810432098767
+      ],
+      "joint_tokens": [
+        "0334cae9f1ef56ae",
+        "2eb015a011ac5fa2",
+        "3151813685fe5b1d",
+        "1dae5903323e5214",
+        "58d69daf413c5d5a",
+        "0536ffc8d9555b0f",
+        "599c8b2bc9b252a7",
+        "1961d1075a085a1d",
+        "5c838efd36805c92",
+        "2bd04a0902095129",
+        "6fc91bf02f225d1b",
+        "0d5b8da00d505be0",
+        "89e02236312d5038",
+        "0a51eebaccc95c36",
+        "00c1e4eb4a045f20",
+        "2462c21ce2bb5f2d",
+        "2ee44628526e524c",
+        "4c23b72459a55ad0",
+        "21b8742127e7523c",
+        "9b21b864f1a159e8",
+        "daf905a8d1255722",
+        "07c5114fdb395f8b",
+        "8661a7e9b4a95042",
+        "689abfdd66235378",
+        "0b1a626ef31150b3",
+        "63c145828c3b5fd8",
+        "a18d2b32f8415373"
+      ]
+    }
+  ],
+  "perturbation_validated": false,
+  "final_precision_gate_pass": false,
+  "final_excluded_seed1024": {
+    "DS": {
+      "mae_pp": 3.1809651851851752,
+      "max_error_pp": 7.093311111111101,
+      "bias_pp": 0.7777785185185028,
+      "spearman": 0.9999999999999999
+    },
+    "SR": {
+      "mae_pp": 4.740740740740741,
+      "max_error_pp": 7.777777777777772,
+      "bias_pp": 1.037037037037034,
+      "spearman": 0.9746794344808963
+    }
+  }
+}
