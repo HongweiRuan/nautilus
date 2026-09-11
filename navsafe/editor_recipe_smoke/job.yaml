@@ -1,0 +1,110 @@
+"apiVersion": "batch/v1"
+"kind": "Job"
+"metadata":
+  "name": "ns-editor-c1-c2-drivor-200-v1"
+  "namespace": "cogrob"
+  "labels": &id001
+    "app": "navsafe-editor-smoke"
+    "model": "drivor"
+"spec":
+  "backoffLimit": !!int "0"
+  "podReplacementPolicy": "TerminatingOrFailed"
+  "ttlSecondsAfterFinished": !!int "259200"
+  "template":
+    "metadata":
+      "labels": *id001
+    "spec":
+      "restartPolicy": "Never"
+      "imagePullSecrets":
+      - "name": "ngc-pull"
+      "containers":
+      - "name": "eval"
+        "image": "nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90"
+        "imagePullPolicy": "IfNotPresent"
+        "command":
+        - "/opt/nvidia/nvidia_entrypoint.sh"
+        - "bash"
+        "args":
+        - "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/run_worker.sh"
+        "env":
+        - "name": "NGC_API_KEY"
+          "valueFrom":
+            "secretKeyRef":
+              "name": "ngc-api-key"
+              "key": "NGC_API_KEY"
+        - "name": "HF_TOKEN"
+          "valueFrom":
+            "secretKeyRef":
+              "name": "hf-token"
+              "key": "HF_TOKEN"
+        - "name": "HYDRA_FULL_ERROR"
+          "value": "1"
+        - "name": "ACCEPT_EULA"
+          "value": "Y"
+        - "name": "OMNI_KIT_ACCEPT_EULA"
+          "value": "Y"
+        - "name": "INPUT_ROOT"
+          "value": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1"
+        - "name": "JOB_COMPLETION_INDEX"
+          "valueFrom":
+            "fieldRef":
+              "fieldPath": "metadata.annotations['batch.kubernetes.io/job-completion-index']"
+        "resources":
+          "requests":
+            "cpu": "3"
+            "memory": "76Gi"
+            "nvidia.com/gpu": "2"
+            "ephemeral-storage": "100Gi"
+          "limits":
+            "cpu": "3"
+            "memory": "91Gi"
+            "nvidia.com/gpu": "2"
+            "ephemeral-storage": "100Gi"
+        "volumeMounts":
+        - "name": "dshm"
+          "mountPath": "/dev/shm"
+        - "name": "avl-west-vol"
+          "mountPath": "/avl-west"
+        - "name": "hugsim-storage"
+          "mountPath": "/hugsim-storage"
+      "volumes":
+      - "name": "dshm"
+        "emptyDir":
+          "medium": "Memory"
+          "sizeLimit": "24Gi"
+      - "name": "avl-west-vol"
+        "persistentVolumeClaim":
+          "claimName": "avl-west-vol"
+      - "name": "hugsim-storage"
+        "persistentVolumeClaim":
+          "claimName": "horuan-hugsim-vol"
+      "tolerations":
+      - "effect": "NoSchedule"
+        "key": "nautilus.io/reservation"
+        "operator": "Equal"
+        "value": "cogrob"
+      - "effect": "NoSchedule"
+        "key": "nautilus.io/cogrob"
+        "operator": "Exists"
+      "affinity":
+        "nodeAffinity":
+          "requiredDuringSchedulingIgnoredDuringExecution":
+            "nodeSelectorTerms":
+            - "matchExpressions":
+              - "key": "kubernetes.io/hostname"
+                "operator": "In"
+                "values":
+                - "ry-gpu-05.sdsc.optiputer.net"
+                - "ry-gpu-06.sdsc.optiputer.net"
+                - "ry-gpu-07.sdsc.optiputer.net"
+                - "ry-gpu-11.sdsc.optiputer.net"
+                - "ry-gpu-12.sdsc.optiputer.net"
+                - "ry-gpu-14.sdsc.optiputer.net"
+              - "key": "nvidia.com/gpu.product"
+                "operator": "In"
+                "values":
+                - "NVIDIA-GeForce-RTX-3090"
+  "activeDeadlineSeconds": !!int "21600"
+  "completions": !!int "2"
+  "parallelism": !!int "2"
+  "completionMode": "Indexed"

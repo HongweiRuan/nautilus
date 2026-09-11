@@ -1,0 +1,6 @@
+{
+  "input_preflight": "passed: 6 event + 6 baseline recipes; checksums/assets/horizon/runtime",
+  "job_server_dry_run": "rejected by Nautilus admission webhook: account pod resources utilization too low",
+  "job_submitted": false,
+  "eval_results": "not run"
+}

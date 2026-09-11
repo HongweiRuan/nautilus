@@ -1,0 +1,190 @@
+[
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/cut_in/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/cut_in/baseline.yaml",
+    "source_sha256": "70807613dcb6914693cb69da025f6d334308ccb9d1ec9070f2a28ab1f7d6beda",
+    "ready_sha256": "5a9f51624ce93ccee617a3abcbe5f59827bc5f4ad0928ccb18f45c9a12f3e26b",
+    "changes": [
+      {
+        "actor": "editor_a9494d64bf869",
+        "tail_added_m": 9.57085488433043,
+        "old_length_m": 110.42914511566957,
+        "new_length_m": 120.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/cut_in/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/cut_in/event.yaml",
+    "source_sha256": "13cfeef5005020147437a82ca95a300eb6b3105ea98c2a3cc4e17183963891a0",
+    "ready_sha256": "53f6e22b5233be27ae8f7be35f106572fb3c20985e0dfd1b63229df6e81d11db",
+    "changes": [
+      {
+        "actor": "editor_a9494d64bf869",
+        "tail_added_m": 9.57085488433043,
+        "old_length_m": 110.42914511566957,
+        "new_length_m": 120.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/lead_brake/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/lead_brake/baseline.yaml",
+    "source_sha256": "81ff3b36dc1fcdfc860db210807b355dd4bb2bffaa85c90700fda1cbc08d25ef",
+    "ready_sha256": "039a3c1b50dee548a43c26c67707b2fabb635b17d2635a15aea2d5cead9e3812",
+    "changes": [
+      {
+        "actor": "editor_ac21b8d2382ef",
+        "tail_added_m": 21.000000000000853,
+        "old_length_m": 153.99999999999915,
+        "new_length_m": 175.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/lead_brake/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/lead_brake/event.yaml",
+    "source_sha256": "8268ad413f4c75d9e77ae6f9f4ee16e28bab4a44fb80bbe4d4f39e73d5beb518",
+    "ready_sha256": "d70cddd05992b17c8639cdc47937e31c809cc6a4ed5f93a447653e917a1f1b17",
+    "changes": [
+      {
+        "actor": "editor_ac21b8d2382ef",
+        "tail_added_m": 21.000000000000853,
+        "old_length_m": 153.99999999999915,
+        "new_length_m": 175.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/vru_cross/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/vru_cross/baseline.yaml",
+    "source_sha256": "88186a8407c0c954d955544490c79d23d6047545c1e5b9c0b181d4238558bf89",
+    "ready_sha256": "71667d71a957ba71dec5153054359e630fc9deb917a7dc9e19a534f38494a295",
+    "changes": [],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0891aa38-439f-4055-8a44-693dbd3adb8a/C-1_02902d180b405100/vru_cross/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/vru_cross/event.yaml",
+    "source_sha256": "684b0a48d3f1ed9d90eef590710da6cbd6013cfda352d9a0c4520367d71b6160",
+    "ready_sha256": "165a0d9337c2e59dcf3958f45c66fce626f96fdf5fab8a8993fbce9a5ba66ddb",
+    "changes": [],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/cut_in/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/cut_in/baseline.yaml",
+    "source_sha256": "06a2a6c200fe5f781fb5922997c164e2a3a5d9d4a5a7d214b77ce3e0175bbd40",
+    "ready_sha256": "36934a0c43027ceb72d957a0028283c2d8d98ab0863d3f767b5d8cb4e924f04c",
+    "changes": [
+      {
+        "actor": "editor_aed59adafac35",
+        "tail_added_m": 105.40383742339863,
+        "old_length_m": 19.596162576601373,
+        "new_length_m": 125.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/cut_in/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/cut_in/event.yaml",
+    "source_sha256": "0d63d2563cab26175a997b07765d1767d714bc15aa22e71517dd68103ebc2c1f",
+    "ready_sha256": "b987997c8c63f15ece68a2e6da12596a087a7ad2ec09a55f2ba3140df67b41df",
+    "changes": [
+      {
+        "actor": "editor_aed59adafac35",
+        "tail_added_m": 105.40383742339863,
+        "old_length_m": 19.596162576601373,
+        "new_length_m": 125.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/lead_brake/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/lead_brake/baseline.yaml",
+    "source_sha256": "29010a3fd0c6ed6fc77fddfae1dc4f769abf72e829dc5bb8cf8d821138e90d66",
+    "ready_sha256": "72557f08aea19a93d211908c7d48e16d0a7aac40a3106a59b46eb91a10ea1d6d",
+    "changes": [
+      {
+        "actor": "editor_a5ffd94e1fa25",
+        "tail_added_m": 141.9128468451064,
+        "old_length_m": 33.087153154893606,
+        "new_length_m": 175.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/lead_brake/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/lead_brake/event.yaml",
+    "source_sha256": "a50432280d98041c01bea6148c1dd333beae3956fcdb8919794f435fce040049",
+    "ready_sha256": "0a04e07eafd1a3b0825f1e7867030de98b65988f683371173a5e4cf9b3bff49c",
+    "changes": [
+      {
+        "actor": "editor_a5ffd94e1fa25",
+        "tail_added_m": 141.9128468451064,
+        "old_length_m": 33.087153154893606,
+        "new_length_m": 175.0
+      }
+    ],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/vru_cross/baseline.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/vru_cross/baseline.yaml",
+    "source_sha256": "359a85d237ba37c9ffbf251237891b451e8e7ec1fc77f8c5662f6e1b4ec0a82c",
+    "ready_sha256": "32a7e1e7a1df027673106811108a420745fdc30aa385e857eb77d639ca5c2d02",
+    "changes": [],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  },
+  {
+    "source": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/unpacked/navsafe-recipe-0dd64452-0de9-44a8-93d4-d26302e7f4b2/C-2_f077a062ad9b55e9/vru_cross/event.yaml",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/vru_cross/event.yaml",
+    "source_sha256": "b334c83ef3a72d0a3e2f02ab81683ca9fab6671f8bb028f34f66ac7214a8c0d8",
+    "ready_sha256": "1b00832deb8239adf3332892953ee1b099cbfa574b86a43eeb1130da60b3e5f3",
+    "changes": [],
+    "actor_count": 1,
+    "edits_count": 1,
+    "checksums_verified": true,
+    "horizon_s": 22.0
+  }
+]

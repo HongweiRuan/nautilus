@@ -105,43 +105,50 @@ def main() -> None:
                 continue
         return item.path, None, "no matching local file"
 
-    print("Verifying local USDZ files against official LFS SHA256...", flush=True)
-    reusable: dict[str, Path] = {}
-    unresolved: list[str] = []
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = [pool.submit(choose_source, item) for item in usdz_entries]
-        for index, future in enumerate(as_completed(futures), 1):
-            remote, source, _reason = future.result()
-            if source is None:
-                unresolved.append(remote)
-            else:
-                reusable[remote] = source
-            if index % 100 == 0 or index == len(futures):
-                print(f"USDZ verified {index}/{len(futures)}", flush=True)
+    complete_tree = all((ROOT / name).is_file() for name in expected_paths)
+    if complete_tree:
+        print(
+            "RESUME: complete file tree found; skipping source scan and downloads",
+            flush=True,
+        )
+    else:
+        print("Verifying local USDZ files against official LFS SHA256...", flush=True)
+        reusable: dict[str, Path] = {}
+        unresolved: list[str] = []
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(choose_source, item) for item in usdz_entries]
+            for index, future in enumerate(as_completed(futures), 1):
+                remote, source, _reason = future.result()
+                if source is None:
+                    unresolved.append(remote)
+                else:
+                    reusable[remote] = source
+                if index % 100 == 0 or index == len(futures):
+                    print(f"USDZ verified {index}/{len(futures)}", flush=True)
 
-    for remote, source in reusable.items():
-        destination = ROOT / remote
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.is_symlink() and Path(os.path.realpath(destination)) == source:
-            continue
-        if destination.exists() or destination.is_symlink():
-            destination.unlink()
-        destination.symlink_to(source)
+        for remote, source in reusable.items():
+            destination = ROOT / remote
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.is_symlink() and Path(os.path.realpath(destination)) == source:
+                continue
+            if destination.exists() or destination.is_symlink():
+                destination.unlink()
+            destination.symlink_to(source)
 
-    non_usdz = [name for name in expected_paths if not name.endswith(".usdz")]
-    download_files = non_usdz + sorted(unresolved)
-    print(
-        f"canonical=280 usdz_linked={len(reusable)} "
-        f"usdz_download={len(unresolved)} other_download={len(non_usdz)}",
-        flush=True,
-    )
-    snapshot_download(
-        REPO_ID,
-        repo_type="dataset",
-        allow_patterns=download_files,
-        local_dir=ROOT,
-        max_workers=16,
-    )
+        non_usdz = [name for name in expected_paths if not name.endswith(".usdz")]
+        download_files = non_usdz + sorted(unresolved)
+        print(
+            f"canonical=280 usdz_linked={len(reusable)} "
+            f"usdz_download={len(unresolved)} other_download={len(non_usdz)}",
+            flush=True,
+        )
+        snapshot_download(
+            REPO_ID,
+            repo_type="dataset",
+            allow_patterns=download_files,
+            local_dir=ROOT,
+            max_workers=16,
+        )
 
     expected_rel = {str(Path(name).relative_to("full_test")) for name in expected_paths}
     actual_rel = {
@@ -169,11 +176,20 @@ def main() -> None:
             f"bundle validation failed: expected=280 actual={len(actual_tokens)}"
         )
 
-    bad_usdz = []
-    for item in usdz_entries:
+    def verify_final(item):
         expected_sha = lfs_sha(item)
-        if not expected_sha or sha256(ROOT / item.path) != expected_sha:
-            bad_usdz.append(item.path)
+        return item.path if not expected_sha or sha256(ROOT / item.path) != expected_sha else None
+
+    print("Final USDZ SHA256 validation (8 workers)...", flush=True)
+    bad_usdz = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(verify_final, item) for item in usdz_entries]
+        for index, future in enumerate(as_completed(futures), 1):
+            bad = future.result()
+            if bad:
+                bad_usdz.append(bad)
+            if index % 100 == 0 or index == len(futures):
+                print(f"Final USDZ verified {index}/{len(futures)}", flush=True)
     if bad_usdz:
         raise RuntimeError(f"USDZ checksum validation failed: {bad_usdz}")
 

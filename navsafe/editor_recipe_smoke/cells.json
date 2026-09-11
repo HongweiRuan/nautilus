@@ -1,0 +1,68 @@
+[
+  {
+    "leaf": "C-1",
+    "token": "02902d180b405100",
+    "event": "cut_in",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/cut_in/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/cut_in/baseline.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/02902d180b405100/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  },
+  {
+    "leaf": "C-1",
+    "token": "02902d180b405100",
+    "event": "lead_brake",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/lead_brake/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/lead_brake/baseline.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/02902d180b405100/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  },
+  {
+    "leaf": "C-1",
+    "token": "02902d180b405100",
+    "event": "vru_cross",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/vru_cross/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/02902d180b405100/vru_cross/baseline.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/02902d180b405100/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "cut_in",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/cut_in/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/cut_in/baseline.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "lead_brake",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/lead_brake/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/lead_brake/baseline.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "vru_cross",
+    "recipe": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/vru_cross/event.yaml",
+    "baseline": "/avl-west/navsafe_eval/editor_smoke/20260911-c1-c2-drivor-v1/recipes/f077a062ad9b55e9/vru_cross/baseline.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "replay_frames": 20,
+    "eval_frames": 200,
+    "enable_vis": true
+  }
+]

@@ -1,0 +1,5 @@
+{
+  "base_commit": "ed2a97ba9b89a637e6816622fbb4166131f626c2",
+  "working_tree_status": " M nexussim/evaluation/evaluator.py\n M nexussim/traffic/navsafe.py\n M scripts/tools/eval_py123d.py\n M uv.lock\n?? docs/experiments/proxy_verification_20260909/perturbation_validation/\n?? nexussim/evaluation/perturbation.py\n?? nexussim/navsafe/editor/\n?? nexussim/navsafe/experiment3/proxy_events.py\n?? nexussim/traffic/authored_path.py\n?? nexussim/traffic/timed_cut_in.py\n?? scripts/tools/check_proxy_ego_history.py\n?? tests/traffic/test_authored_path.py\n?? tests/traffic/test_controlled_perturbations.py\n",
+  "sha256": "7d820709baaaf13911bca11a4d9d4126a02ff807a46ff044c590a6d40364efa2"
+}
