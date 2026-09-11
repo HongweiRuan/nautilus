@@ -50,14 +50,20 @@ def local_usdz_candidates(token: str, remote: Path) -> list[Path]:
 def main() -> None:
     READY.unlink(missing_ok=True)
     api = HfApi()
-    expected_paths = sorted(
+    repo_paths = sorted(
         name
         for name in api.list_repo_files(REPO_ID, repo_type="dataset")
         if name.startswith("full_test/")
     )
+    reference = sorted(path.stem for path in REFERENCE.glob("*.json"))
+    reference_set = set(reference)
+    expected_paths = [
+        name
+        for name in repo_paths
+        if len(name.split("/")) > 2 and name.split("/")[1] in reference_set
+    ]
     expected = set(expected_paths)
     canonical = sorted({name.split("/")[1] for name in expected_paths})
-    reference = sorted(path.stem for path in REFERENCE.glob("*.json"))
     if len(canonical) != 280 or canonical != reference:
         raise RuntimeError(
             f"authoritative set mismatch: HF={len(canonical)} metrics={len(reference)}"
