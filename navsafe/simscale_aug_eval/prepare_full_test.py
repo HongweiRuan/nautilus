@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Materialize the exact 280-scenario NavSafe full_test set on shared storage."""
+"""Build the exact 280-scenario NavSafe full_test tree with verified USDZ links."""
 
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from huggingface_hub import HfApi, snapshot_download
@@ -8,29 +14,49 @@ from huggingface_hub import HfApi, snapshot_download
 
 REPO_ID = "c13752hz/NavSafe"
 ROOT = Path("/avl-west/navsafe_eval")
-LEGACY = ROOT / "dataset"
 TARGET = ROOT / "full_test"
+LEGACY = ROOT / "dataset"
+LOCAL_USDZ = Path("/avl-west/navsafe_5s_500")
 REFERENCE = ROOT / "metrics_all" / "drivor" / "seed0"
+READY = ROOT / "full_test.READY.json"
 
 
-def valid_bundle(path: Path) -> bool:
-    return (
-        path.is_dir()
-        and (path / "manifest.json").is_file()
-        and (path / "arrow").is_dir()
-        and len(list(path.glob("*.usdz"))) == 4
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(16 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def lfs_sha(item) -> str | None:
+    lfs = getattr(item, "lfs", None)
+    if not lfs:
+        return None
+    if isinstance(lfs, dict):
+        return lfs.get("sha256")
+    return getattr(lfs, "sha256", None)
+
+
+def local_usdz_candidates(token: str, remote: Path) -> list[Path]:
+    stem = remote.stem
+    candidates = sorted(
+        (LOCAL_USDZ / stem / "output_5cam").glob("*/artifacts/last.usdz")
     )
+    candidates.append(LEGACY / token / remote.name)
+    return candidates
 
 
 def main() -> None:
-    files = HfApi().list_repo_files(REPO_ID, repo_type="dataset")
-    canonical = sorted(
-        {
-            name.split("/")[1]
-            for name in files
-            if name.startswith("full_test/") and len(name.split("/")) > 2
-        }
+    READY.unlink(missing_ok=True)
+    api = HfApi()
+    expected_paths = sorted(
+        name
+        for name in api.list_repo_files(REPO_ID, repo_type="dataset")
+        if name.startswith("full_test/")
     )
+    expected = set(expected_paths)
+    canonical = sorted({name.split("/")[1] for name in expected_paths})
     reference = sorted(path.stem for path in REFERENCE.glob("*.json"))
     if len(canonical) != 280 or canonical != reference:
         raise RuntimeError(
@@ -38,33 +64,133 @@ def main() -> None:
         )
 
     TARGET.mkdir(parents=True, exist_ok=True)
-    linked = 0
     for token in canonical:
-        destination = TARGET / token
-        source = LEGACY / token
-        if valid_bundle(destination):
-            continue
-        if not destination.exists() and valid_bundle(source):
-            destination.symlink_to(source, target_is_directory=True)
-            linked += 1
+        bundle = TARGET / token
+        if bundle.is_symlink():
+            bundle.unlink()
+        bundle.mkdir(parents=True, exist_ok=True)
 
-    missing = [token for token in canonical if not valid_bundle(TARGET / token)]
-    print(f"canonical=280 linked_now={linked} need_download={len(missing)}", flush=True)
-    if missing:
-        snapshot_download(
-            REPO_ID,
-            repo_type="dataset",
-            allow_patterns=[f"full_test/{token}/**" for token in missing],
-            local_dir=ROOT,
-            max_workers=8,
+    usdz_paths = [name for name in expected_paths if name.endswith(".usdz")]
+    usdz_entries = []
+    for start in range(0, len(usdz_paths), 128):
+        usdz_entries.extend(
+            api.get_paths_info(
+                REPO_ID,
+                usdz_paths[start : start + 128],
+                repo_type="dataset",
+                expand=True,
+            )
+        )
+    if len(usdz_entries) != 1120:
+        raise RuntimeError(f"expected 1120 USDZ files, found {len(usdz_entries)}")
+
+    def choose_source(item):
+        remote = Path(item.path)
+        token = remote.parts[1]
+        expected_sha = lfs_sha(item)
+        if not expected_sha:
+            return item.path, None, "missing official LFS sha256"
+        for candidate in local_usdz_candidates(token, remote):
+            try:
+                if candidate.is_file() and candidate.stat().st_size == item.size:
+                    if sha256(candidate) == expected_sha:
+                        return item.path, candidate, None
+            except OSError:
+                continue
+        return item.path, None, "no matching local file"
+
+    print("Verifying local USDZ files against official LFS SHA256...", flush=True)
+    reusable: dict[str, Path] = {}
+    unresolved: list[str] = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(choose_source, item) for item in usdz_entries]
+        for index, future in enumerate(as_completed(futures), 1):
+            remote, source, _reason = future.result()
+            if source is None:
+                unresolved.append(remote)
+            else:
+                reusable[remote] = source
+            if index % 100 == 0 or index == len(futures):
+                print(f"USDZ verified {index}/{len(futures)}", flush=True)
+
+    for remote, source in reusable.items():
+        destination = ROOT / remote
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.is_symlink() and Path(os.path.realpath(destination)) == source:
+            continue
+        if destination.exists() or destination.is_symlink():
+            destination.unlink()
+        destination.symlink_to(source)
+
+    non_usdz = [name for name in expected_paths if not name.endswith(".usdz")]
+    download_files = non_usdz + sorted(unresolved)
+    print(
+        f"canonical=280 usdz_linked={len(reusable)} "
+        f"usdz_download={len(unresolved)} other_download={len(non_usdz)}",
+        flush=True,
+    )
+    snapshot_download(
+        REPO_ID,
+        repo_type="dataset",
+        allow_patterns=download_files,
+        local_dir=ROOT,
+        max_workers=16,
+    )
+
+    expected_rel = {str(Path(name).relative_to("full_test")) for name in expected_paths}
+    actual_rel = {
+        str(path.relative_to(TARGET))
+        for path in TARGET.rglob("*")
+        if path.is_file()
+    }
+    missing = sorted(expected_rel - actual_rel)
+    extras = sorted(actual_rel - expected_rel)
+    bad_sizes = [
+        item.path
+        for item in usdz_entries
+        if (ROOT / item.path).is_file()
+        and (ROOT / item.path).stat().st_size != item.size
+    ]
+    if missing or extras or bad_sizes:
+        raise RuntimeError(
+            f"file-tree validation failed: missing={missing[:20]} "
+            f"extras={extras[:20]} bad_sizes={bad_sizes[:20]}"
         )
 
-    invalid = [token for token in canonical if not valid_bundle(TARGET / token)]
-    extras = sorted(path.name for path in TARGET.iterdir() if path.name not in canonical)
-    if invalid or extras:
-        raise RuntimeError(f"full_test validation failed: invalid={invalid} extras={extras}")
+    actual_tokens = sorted(path.name for path in TARGET.iterdir() if path.is_dir())
+    if actual_tokens != canonical:
+        raise RuntimeError(
+            f"bundle validation failed: expected=280 actual={len(actual_tokens)}"
+        )
+
+    bad_usdz = []
+    for item in usdz_entries:
+        expected_sha = lfs_sha(item)
+        if not expected_sha or sha256(ROOT / item.path) != expected_sha:
+            bad_usdz.append(item.path)
+    if bad_usdz:
+        raise RuntimeError(f"USDZ checksum validation failed: {bad_usdz}")
+
     (ROOT / "full_test_tokens.txt").write_text("\n".join(canonical) + "\n")
-    print("READY: 280/280 full_test bundles validated", flush=True)
+    READY.write_text(
+        json.dumps(
+            {
+                "repo": REPO_ID,
+                "bundles": len(canonical),
+                "files": len(expected),
+                "usdz": len(usdz_entries),
+                "usdz_sha256_verified": True,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    print(
+        f"READY: 280/280 bundles, {len(expected)} files, "
+        "all USDZ checksums validated",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

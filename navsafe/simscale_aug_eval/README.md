@@ -18,10 +18,12 @@ The official files are already downloaded under `/avl-west/navsafe_eval/aug_zoo/
 
 The completed `diffusiondrive_simscale` and `drivor_simscale` evaluations are excluded from `models.tsv`, so this campaign does not spend GPU time rerunning them.
 
-Prepare the authoritative 280-scenario dataset first. This creates an exact
-`full_test/` view, reuses the 209 existing matching bundles, downloads the 71
-missing official bundles (~560 GiB), and validates every manifest, Arrow tree,
-and four-file NuRec reconstruction:
+Prepare the authoritative 280-scenario dataset first. This creates real bundle
+directories under `full_test/`, verifies each official USDZ against its Hugging
+Face LFS SHA256, and symlinks matching reconstructions from
+`/avl-west/navsafe_5s_500`. Only unmatched USDZ files and the remaining smaller
+bundle files are downloaded. The final check requires the exact official file
+tree, all 280 tokens, and valid SHA256 checksums for all 1,120 USDZ files:
 
 ```bash
 ./prepare_full_test.sh

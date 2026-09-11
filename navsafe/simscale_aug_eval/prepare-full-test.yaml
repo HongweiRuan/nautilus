@@ -1,13 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: navsafe-full-test-prepare
-  namespace: cogrob
-data:
-  prepare_full_test.py: "#!/usr/bin/env python3\n\"\"\"Materialize the exact 280-scenario NavSafe full_test set on shared storage.\"\"\"\n\nfrom pathlib import Path\n\nfrom huggingface_hub import HfApi, snapshot_download\n\n\nREPO_ID = \"c13752hz/NavSafe\"\nROOT = Path(\"/avl-west/navsafe_eval\")\nLEGACY = ROOT / \"dataset\"\nTARGET = ROOT / \"full_test\"\nREFERENCE = ROOT / \"metrics_all\" / \"drivor\" / \"seed0\"\n\n\ndef valid_bundle(path: Path) -> bool:\n    return (\n        path.is_dir()\n        and (path / \"manifest.json\").is_file()\n        and (path / \"arrow\").is_dir()\n        and len(list(path.glob(\"*.usdz\"))) == 4\n    )\n\n\ndef main() -> None:\n    files = HfApi().list_repo_files(REPO_ID, repo_type=\"dataset\")\n    canonical = sorted(\n        {\n            name.split(\"/\")[1]\n            for name in files\n            if name.startswith(\"full_test/\") and len(name.split(\"/\")) > 2\n        }\n    )\n    reference = sorted(path.stem for path in REFERENCE.glob(\"\
-    *.json\"))\n    if len(canonical) != 280 or canonical != reference:\n        raise RuntimeError(\n            f\"authoritative set mismatch: HF={len(canonical)} metrics={len(reference)}\"\n        )\n\n    TARGET.mkdir(parents=True, exist_ok=True)\n    linked = 0\n    for token in canonical:\n        destination = TARGET / token\n        source = LEGACY / token\n        if valid_bundle(destination):\n            continue\n        if not destination.exists() and valid_bundle(source):\n            destination.symlink_to(source, target_is_directory=True)\n            linked += 1\n\n    missing = [token for token in canonical if not valid_bundle(TARGET / token)]\n    print(f\"canonical=280 linked_now={linked} need_download={len(missing)}\", flush=True)\n    if missing:\n        snapshot_download(\n            REPO_ID,\n            repo_type=\"dataset\",\n            allow_patterns=[f\"full_test/{token}/**\" for token in missing],\n            local_dir=ROOT,\n            max_workers=8,\n\
-    \        )\n\n    invalid = [token for token in canonical if not valid_bundle(TARGET / token)]\n    extras = sorted(path.name for path in TARGET.iterdir() if path.name not in canonical)\n    if invalid or extras:\n        raise RuntimeError(f\"full_test validation failed: invalid={invalid} extras={extras}\")\n    (ROOT / \"full_test_tokens.txt\").write_text(\"\\n\".join(canonical) + \"\\n\")\n    print(\"READY: 280/280 full_test bundles validated\", flush=True)\n\n\nif __name__ == \"__main__\":\n    main()\n"
----
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -16,7 +6,7 @@ metadata:
   labels:
     navsafe-batch: full-test-prepare
 spec:
-  backoffLimit: 3
+  backoffLimit: 2
   template:
     metadata:
       labels:
@@ -26,9 +16,7 @@ spec:
       containers:
       - name: download
         image: python:3.12-slim
-        command:
-        - bash
-        - -lc
+        command: [bash, -lc]
         args:
         - python -m pip install --quiet 'huggingface_hub[hf_xet]>=0.34' && python /cfg/prepare_full_test.py
         env:
@@ -38,15 +26,15 @@ spec:
               name: hf-token
               key: HF_TOKEN
         - name: HF_XET_HIGH_PERFORMANCE
-          value: '1'
+          value: "1"
         resources:
           requests:
-            cpu: '4'
-            memory: 12Gi
+            cpu: "8"
+            memory: 16Gi
             ephemeral-storage: 20Gi
           limits:
-            cpu: '4'
-            memory: 12Gi
+            cpu: "8"
+            memory: 16Gi
             ephemeral-storage: 20Gi
         volumeMounts:
         - name: cfg
