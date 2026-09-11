@@ -18,11 +18,25 @@ The official files are already downloaded under `/avl-west/navsafe_eval/aug_zoo/
 
 The completed `diffusiondrive_simscale` and `drivor_simscale` evaluations are excluded from `models.tsv`, so this campaign does not spend GPU time rerunning them.
 
-Submit:
+Prepare the authoritative 280-scenario dataset first. This creates an exact
+`full_test/` view, reuses the 209 existing matching bundles, downloads the 71
+missing official bundles (~560 GiB), and validates every manifest, Arrow tree,
+and four-file NuRec reconstruction:
+
+```bash
+./prepare_full_test.sh
+kubectl logs -n cogrob -f job/navsafe-full-test-prepare
+```
+
+After the preparation Job reports `READY: 280/280`, submit from this directory:
 
 ```bash
 ./submit.sh
 ```
+
+`submit.sh` runs a shared-storage preflight and a Kubernetes server-side dry-run
+before creating anything. It refuses to submit if the exact 280 bundles, pinned
+nuPlan source, or Kubernetes schema validation is missing.
 
 Monitor:
 
@@ -37,4 +51,4 @@ Final audit from the discovered `horuan-nexussim` utility pod:
 kubectl exec -i -n cogrob horuan-nexussim -c nexussim-container -- python - < audit_outputs.py
 ```
 
-The jobs are resumable. A cell is skipped only when its prior log has the evaluator DONE marker and its metrics contain a numeric driving score.
+The jobs are resumable. A cell is successful only when its log has the evaluator DONE marker and `navsafe_metrics.json` has `status: scored` with a numeric `metrics.driving_score`; excluded or null-score results are retried. GTRS-Dense imports the official nuPlan devkit pinned at commit `ce3c323af01c0d7ec5672f7832ef53f9c679aab0`.
