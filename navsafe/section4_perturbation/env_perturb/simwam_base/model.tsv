@@ -1,0 +1,1 @@
+simwam_base	simwam	simwam/weights/SimWAM.pt	NAVSAFE_SIMWAM_REPO=/avl-west/navsafe_eval/vla_repos/SimWAM,DIFFSYNTH_MODEL_BASE_PATH=/avl-west/navsafe_eval/model_zoo/_base/diffsynth

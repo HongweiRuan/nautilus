@@ -39,7 +39,7 @@ data:
     $ROW\"\n    # The augmentation rows live outside the zoo (see models_final18.tsv), so\n    # an absolute checkpoint column is passed through unchanged.\n    case \"$CK\" in\n      none) CKPT=none ;;\n      /*)   CKPT=\"$CK\" ;;\n      *)    CKPT=\"$ZOO/$CK\" ;;\n    esac\n    # drivelaw's \"checkpoint\" column is the materialised inference config\n    # (--config), not a weights file \u2014 the adapter passes checkpoint_path\n    # straight through as --config (nexussim/policy/sensor/drivelaw.py).\n\n    # Row 4 (extra_env: comma-separated KEY=VAL pairs) carries per-model data\n    # paths (NAVSAFE_RECOGDRIVE_VLM, NAVSAFE_AUTOVLA_BASE/REPO,\n    # NAVSAFE_DRIVELAW_REPO). NAVSAFE_VLA_PYTHON/NAVSAFE_VLA_EXTRA_PYTHONPATH\n    # are NOT per-row: one shared vla-venv serves every VLA row, exported once\n    # in section 1b. Unset the per-row vars first so one VLA row's paths never\n    # leak into the next row or into a non-VLA row that follows it.\n    unset NAVSAFE_RECOGDRIVE_VLM NAVSAFE_AUTOVLA_BASE\
     \ NAVSAFE_AUTOVLA_REPO \\\n          NAVSAFE_DRIVELAW_REPO NAVSAFE_SIMWAM_REPO NAVSAFE_RESWORLD_REPO \\\n          NAVSAFE_DRIVEVLA_W0_REPO NAVSAFE_DRIVEVLA_W0_VLM NAVSAFE_DRIVEVLA_W0_VQ \\\n          NAVSAFE_DRIVEVLA_W0_ACTION_TOKENIZER NAVSAFE_DRIVEVLA_W0_NORM_STATS \\\n          NAVSAFE_PRIOREYE_EMBEDDING \\\n          DIFFSYNTH_MODEL_BASE_PATH DIFFSYNTH_DOWNLOAD_SOURCE\n    if [ -n \"$EXTRA_ENV\" ]; then\n      IFS=',' read -ra _KVS <<< \"$EXTRA_ENV\"\n      for _KV in \"${_KVS[@]}\"; do export \"${_KV?}\"; done\n    fi\n\n    for SEED in $SEEDS; do\n      OUT=\"$OUTROOT/$SLUG/seed$SEED/$T\"\n      LOG=\"$OUTROOT/$SLUG/seed$SEED/$T.log\"\n      # Resume guard. The DONE line + a metrics file is NOT enough on its own:\n      # an infra_failure cell writes both, with status \"excluded\" and a null\n      # driving_score, so a plain existence check treats a renderer OOM as\n      # finished work and the retry silently skips every cell it was launched\n      # for (measured: ok=0 skipped=6).\
     \ RETRY_EXCLUDED=1 additionally requires\n      # a non-null driving_score, so only genuinely scored cells are skipped.\n      if grep -qs '^\\[eval_py123d\\] DONE\\.' \"$LOG\" && metrics_scored \"$OUT/navsafe_metrics.json\"; then\n        skip_n=$((skip_n+1)); continue\n      elif [ -f \"$OUT/navsafe_metrics.json\" ]; then\n        say \"  $T: previous output is not a valid scored result -- retrying\"\n      fi\n      serve_alive || { say \"renderer died \u2014 restarting\"; kill $SERVE_PID 2>/dev/null; start_serve || exit 1; }\n\n      mkdir -p \"$OUT\"\n      say \"$SLUG seed$SEED $T\"\n      # --asset-harvester-replace is PER SCENARIO: 248 of the 270 published\n      # bundles carry ah_assets/replace_manifest.json and 22 do not (they have\n      # none on the Hub either -- scenarios with no inserted actors). The bare\n      # flag resolves the bank beside the data root and ap.error()s when it is\n      # absent, so passing it unconditionally would kill a fifth of the sweep\n    \
-    \  # at argument parsing.\n      # Pass the manifest PATH, never the bare flag. With no value the eval\n      # resolves the bank from --py123d-data-root's parent, which for an\n      # edited scenario is the corpus dir and not the bundle -- it then\n      # ap.error()s on a path that was never going to exist, killing the cell\n      # at argument parsing and, after seven in a row, the whole shard.\n      AH=()\n      _ahm=\"$AH_BASE/ah_assets/replace_manifest.json\"\n      [ -f \"$_ahm\" ] && AH=(--asset-harvester-replace \"$_ahm\")\n      # Up to CELL_TRIES attempts per cell. On a 24 GB 3090 the renderer sits\n      # a few hundred MB under the ceiling, so a scene occasionally fails to\n      # build (infra_failure at frame 0) or CUDA context creation returns\n      # error 999 -- both are transient, both clear on a retry once the\n      # previous process has released its memory. Measured 2026-09-04: of the\n      # 14 tokens that ever hit infra_failure, 12 had already scored 29-30\
+    \  # at argument parsing.\n      # Pass the manifest PATH, never the bare flag. With no value the eval\n      # resolves the bank from --py123d-data-root's parent, which for an\n      # edited scenario is the corpus dir and not the bundle -- it then\n      # ap.error()s on a path that was never going to exist, killing the cell\n      # at argument parsing and, after seven in a row, the whole shard.\n      AH=()\n      _ahm=\"$AH_BASE/ah_assets/replace_manifest.json\"\n      if [ \"${NAVSAFE_DISABLE_AH:-0}\" != 1 ] && [ -f \"$_ahm\" ]; then\n        AH=(--asset-harvester-replace \"$_ahm\")\n      fi\n      # Up to CELL_TRIES attempts per cell. On a 24 GB 3090 the renderer sits\n      # a few hundred MB under the ceiling, so a scene occasionally fails to\n      # build (infra_failure at frame 0) or CUDA context creation returns\n      # error 999 -- both are transient, both clear on a retry once the\n      # previous process has released its memory. Measured 2026-09-04: of the\n      # 14 tokens that ever hit infra_failure, 12 had already scored 29-30\
     \ of\n      # their 30 cells, i.e. a ~3% per-cell dice roll, not a bad scenario.\n      # Retrying in place costs 30 s; the old behaviour (exit 1, reschedule\n      # the Job onto another node) cost a ~25 min bootstrap for the same\n      # outcome.\n      cell_ok=0\n      for _try in $(seq 1 \"${CELL_TRIES:-4}\"); do\n        [ \"$_try\" -gt 1 ] && {\n          say \"  retry $_try/${CELL_TRIES:-4} after transient failure\"\n          sleep 30\n          serve_alive || { say \"  renderer gone \u2014 restarting\"; kill $SERVE_PID 2>/dev/null; start_serve || exit 1; }\n        }\n        timeout --signal=KILL \"$CELL_TIMEOUT\" \\\n          \"$PY\" \"$REPO/scripts/tools/eval_py123d.py\" \\\n            --scenario-source py123d --py123d-data-root \"$DATA_ROOT\" --py123d-scene-index 0 \\\n            \"${WORKDIR_ARGS[@]}\" \\\n            --render-backend nurec_grpc --cam-height navsim \\\n            --model-type \"$MT\" --checkpoint \"$CKPT\" \\\n            --traffic-mode semi_reactive\
     \ \\\n            --recipe-dir \"$RECIPE_DIR\" \\\n            \"${AH[@]}\" \\\n            --ego-replay-frames 20 \\\n            --terminate-on-collision \\\n            --controller lqr --execution-mode controller \\\n            --replan-rate 5 --camera-resolution-scale 1.0 \\\n            --eval-frames 600 \\\n            --eval-seed \"$SEED\" \\\n            --navsafe-prune-artifacts \\\n            --output-dir \"$OUT\" > \"$LOG\" 2>&1\n        if grep -qs '^\\[eval_py123d\\] DONE\\.' \"$LOG\" && metrics_scored \"$OUT/navsafe_metrics.json\"; then\n          cell_ok=1; break\n        fi\n        # CUDA would not initialise at all. On a healthy node this is the\n        # transient error-999 context race and a retry clears it; if it is\n        # still failing on the last attempt the node itself is unusable, and\n        # the check below hands the slice back.\n        gpu_is_gone \"$LOG\" && say \"  CUDA init failed (error 999)\"\n      done\n      if [ \"$cell_ok\" != 1 ] && gpu_is_gone\
     \ \"$LOG\"; then\n        say \"GPU UNUSABLE on $(hostname) after ${CELL_TRIES:-4} tries \u2014 failing so the Job reschedules\"\n        exit 1\n      fi\n      if [ \"$cell_ok\" = 1 ]; then\n        done_n=$((done_n+1)); consec_fail=0; say \"  OK\"\n      else\n        # ${CELL_TRIES:-4} attempts all failed. Whatever is wrong with this\n        # scenario is not transient, so skip the WHOLE token (its remaining\n        # model x seed cells would fail the same way) and move on. The worker\n        # never exits on a scenario's account -- a shard is worth ~18 tokens\n        # and must not be thrown away for one of them, which is exactly how\n        # w05/w07r/w13 were lost on 2026-09-04.\n        fail_n=$((fail_n+1)); consec_fail=$((consec_fail+1))\n        say \"  FAILED after ${CELL_TRIES:-4} tries (see $LOG) \u2014 skipping token $T\"\n        tail -5 /tmp/serve.log > \"$OUTROOT/$SLUG/seed$SEED/$T.serve.log\" 2>/dev/null\n        # A whole node whose driver has gone bad fails EVERY\
@@ -619,6 +619,10 @@ data:
 
     442b2cf63c6f570a
 
+    5d12ad55fdd858e1
+
+    6c9e40634f705f56
+
     9135a6d270475c7f
 
     '
@@ -688,11 +692,11 @@ spec:
         - name: WORKER_INDEX
           value: '0'
         - name: WORKERS
-          value: '3'
+          value: '5'
         - name: SEEDS
           value: 0 1 1024
         - name: OUTROOT
-          value: /avl-west/navsafe_eval/simscale_aug_scope_fix_outputs
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
         - name: CELL_TRIES
           value: '4'
         - name: CELL_TIMEOUT
@@ -728,9 +732,11 @@ spec:
         - name: NAVSAFE_GAIT_BANK
           value: /avl-west/navsafe_eval/gait_bank
         - name: EXPECTED_TOKENS
-          value: '3'
+          value: '5'
         - name: NAVSAFE_REPLACE_SCOPE
           value: source
+        - name: NAVSAFE_DISABLE_AH
+          value: '1'
         resources:
           requests:
             cpu: '2'
@@ -831,11 +837,11 @@ spec:
         - name: WORKER_INDEX
           value: '1'
         - name: WORKERS
-          value: '3'
+          value: '5'
         - name: SEEDS
           value: 0 1 1024
         - name: OUTROOT
-          value: /avl-west/navsafe_eval/simscale_aug_scope_fix_outputs
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
         - name: CELL_TRIES
           value: '4'
         - name: CELL_TIMEOUT
@@ -871,9 +877,11 @@ spec:
         - name: NAVSAFE_GAIT_BANK
           value: /avl-west/navsafe_eval/gait_bank
         - name: EXPECTED_TOKENS
-          value: '3'
+          value: '5'
         - name: NAVSAFE_REPLACE_SCOPE
           value: source
+        - name: NAVSAFE_DISABLE_AH
+          value: '1'
         resources:
           requests:
             cpu: '2'
@@ -974,11 +982,11 @@ spec:
         - name: WORKER_INDEX
           value: '2'
         - name: WORKERS
-          value: '3'
+          value: '5'
         - name: SEEDS
           value: 0 1 1024
         - name: OUTROOT
-          value: /avl-west/navsafe_eval/simscale_aug_scope_fix_outputs
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
         - name: CELL_TRIES
           value: '4'
         - name: CELL_TIMEOUT
@@ -1014,9 +1022,302 @@ spec:
         - name: NAVSAFE_GAIT_BANK
           value: /avl-west/navsafe_eval/gait_bank
         - name: EXPECTED_TOKENS
-          value: '3'
+          value: '5'
         - name: NAVSAFE_REPLACE_SCOPE
           value: source
+        - name: NAVSAFE_DISABLE_AH
+          value: '1'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-scope-fix-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-scope-fix-w03
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug-scope-fix
+    navsafe-batch: simscale-aug-scope-fix
+    worker: w03
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug-scope-fix
+        navsafe-batch: simscale-aug-scope-fix
+        worker: w03
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '3'
+        - name: WORKERS
+          value: '5'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/full_test
+        - name: TOKENS_FILE
+          value: /cfg/render_scope_tokens.txt
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        - name: NAVSAFE_GAIT_BANK
+          value: /avl-west/navsafe_eval/gait_bank
+        - name: EXPECTED_TOKENS
+          value: '5'
+        - name: NAVSAFE_REPLACE_SCOPE
+          value: source
+        - name: NAVSAFE_DISABLE_AH
+          value: '1'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-simscale-aug-scope-fix-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-simscale-aug-scope-fix-w04
+  namespace: cogrob
+  labels:
+    app: navsafe-simscale-aug-scope-fix
+    navsafe-batch: simscale-aug-scope-fix
+    worker: w04
+spec:
+  backoffLimit: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-simscale-aug-scope-fix
+        navsafe-batch: simscale-aug-scope-fix
+        worker: w04
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          value: '4'
+        - name: WORKERS
+          value: '5'
+        - name: SEEDS
+          value: 0 1 1024
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/simscale_aug_outputs
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/full_test
+        - name: TOKENS_FILE
+          value: /cfg/render_scope_tokens.txt
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        - name: NAVSAFE_GAIT_BANK
+          value: /avl-west/navsafe_eval/gait_bank
+        - name: EXPECTED_TOKENS
+          value: '5'
+        - name: NAVSAFE_REPLACE_SCOPE
+          value: source
+        - name: NAVSAFE_DISABLE_AH
+          value: '1'
         resources:
           requests:
             cpu: '2'

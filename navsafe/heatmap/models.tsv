@@ -1,0 +1,2 @@
+drivor	drivor	drivor/drivor_Nav1_25epochs.pth
+drivor_simscale	drivor	/avl-west/navsafe_eval/aug_zoo/SimScale/DrivoR/nav1_30epochs_with_134k_simscale_bis_103ktrainval.pth

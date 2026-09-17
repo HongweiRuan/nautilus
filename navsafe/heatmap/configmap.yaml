@@ -1,0 +1,623 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: navsafe-heatmap-27x30-20260913-cfg
+  namespace: cogrob
+data:
+  run_worker.sh: "#!/usr/bin/env bash\n# 27 scenarios, two DrivoR checkpoints, seeds\
+    \ 0..29; no ego perturbation.\nset -uo pipefail\n\n: \"${WORKER_INDEX:?}\" \"\
+    ${WORKERS:?}\" \"${SEEDS:?}\" \"${NEXUSSIM_SHA:?}\"\n\n# How many cards this pod\
+    \ actually got decides the layout. See the note above.\nN_GPU=$(nvidia-smi -L\
+    \ 2>/dev/null | grep -c '^GPU ')\nif [ \"${N_GPU:-1}\" -ge 2 ]; then\n  RENDER_CACHE=4;\
+    \ EVAL_GPU=1; GPU_LAYOUT=\"$N_GPU cards, rollout on GPU $EVAL_GPU\"\nelse\n  RENDER_CACHE=2;\
+    \ EVAL_GPU=0;             GPU_LAYOUT=\"1 card, shared with the rollout\"\nfi\n\
+    ROOT=/avl-west/navsafe_eval\nOUTROOT=${OUTROOT:-/avl-west/navsafe_eval/perturbation}\n\
+    \n# Asset/gait banks. 7 of the 28 proxy tokens carry an edited recipe that inserts\n\
+    # actors (e.g. 'car_6.ply'); the recipe stores the authoring machine's absolute\n\
+    # path, so replay must rebase it against these banks. Unset => RecipeError at\n\
+    # argument-parse time, ~10s per cell, which trips the consecutive-failure guard\n\
+    # and blames the node. Set here rather than in the job YAML so a future copy of\n\
+    # this script cannot lose them silently -- which is exactly how they went missing\n\
+    # in this campaign's first launch (the source campaign only ran recipe-free\n\
+    # tokens, so it never noticed). Override from the environment if ever needed.\n\
+    export NAVSAFE_ASSET_BANK=${NAVSAFE_ASSET_BANK:-$ROOT/asset}\nexport NAVSAFE_GAIT_BANK=${NAVSAFE_GAIT_BANK:-$ROOT/gait_bank}\n\
+    for _b in \"$NAVSAFE_ASSET_BANK\" \"$NAVSAFE_GAIT_BANK\"; do\n  [ -d \"$_b\" ]\
+    \ || { echo \"FATAL: bank missing: $_b\"; exit 1; }\ndone\nMODELS_TSV=${MODELS_TSV:-/cfg/models.tsv}\n\
+    SELECTION=${SELECTION:-/cfg/selection.json}\nZOO=$ROOT/model_zoo\nHARMONIZER_CACHE=${HARMONIZER_CACHE:-/avl-west/navsafe_dev/.harmonizer-cache}\n\
+    PORT=8080\nCELL_TIMEOUT=${CELL_TIMEOUT:-45m}\nW=$(printf 'w%02d' \"$WORKER_INDEX\"\
+    )\n\nsay() { echo \"[$W $(date -u +%H:%M:%S)] $*\"; }\n\n# \u2500\u2500 0. which\
+    \ scenarios are mine \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# One line per selected\
+    \ scenario, sorted, so every worker computes the same\n# list from the same file\
+    \ and no worker needs to be told which slice is its\n# own. Fields: leaf, token,\
+    \ handoff frame, data root, recipe-or-'-',\n# nurec work dir-or-'-'.\nmapfile\
+    \ -t ALL_ROWS < <(python3 - \"$SELECTION\" <<'PY'\nimport json, sys\nsel = json.load(open(sys.argv[1]))\n\
+    default = \",\".join(a[\"id\"] for a in sel[\"grid\"][\"arms\"])\nrows = []\n\
+    for leaf, block in sel[\"leaves\"].items():\n    for p in block[\"picked\"]:\n\
+    \        # A scenario may name its OWN arm subset. A leaf whose geometry cannot\n\
+    \        # take the full grid -- C-8 is backing, where the ego sits against the\n\
+    \        # kerb and 1.5 m to its right is the pavement -- would otherwise have\n\
+    \        # to be dropped or run with a single scenario. Absent, the full grid.\n\
+    \        rows.append(\"\\t\".join([\n            leaf, p[\"token\"], str(p[\"\
+    handoff\"]), p[\"data_root\"],\n            p.get(\"recipe\") or \"-\", p.get(\"\
+    nurec_work_dir\") or \"-\",\n            \",\".join(p[\"arms_run\"]) if p.get(\"\
+    arms_run\") else default,\n            str(p[\"ego_frames\"])]))\nprint(\"\\n\"\
+    .join(sorted(rows)))\nPY\n)\n[ ${#ALL_ROWS[@]} -gt 0 ] || { say \"no scenarios\
+    \ in $SELECTION\"; exit 1; }\nMY_ROWS=()\nfor i in \"${!ALL_ROWS[@]}\"; do\n \
+    \ [ $(( i % WORKERS )) -eq \"$WORKER_INDEX\" ] && MY_ROWS+=(\"${ALL_ROWS[$i]}\"\
+    )\ndone\nsay \"scenarios ${#ALL_ROWS[@]} selected, ${#MY_ROWS[@]} mine\"\n[ ${#MY_ROWS[@]}\
+    \ -gt 0 ] || { say \"nothing to do\"; exit 0; }\n\n# The perturbation grid travels\
+    \ in the same file as the selection it was\n# screened against -- a grid and a\
+    \ screening that can disagree is a campaign\n# that silently evaluates arms nobody\
+    \ checked.\nmapfile -t ARMS < <(python3 - \"$SELECTION\" <<'PY'\nimport json,\
+    \ sys\nfor a in json.load(open(sys.argv[1]))[\"grid\"][\"arms\"]:\n    print(f'{a[\"\
+    id\"]}\\t{a[\"lat\"]}\\t{a[\"lon\"]}\\t{a[\"yaw\"]}')\nPY\n)\nsay \"arms ${#ARMS[@]}:\
+    \ $(printf '%s\\n' \"${ARMS[@]}\" | cut -f1 | tr '\\n' ' ')\"\n\nmapfile -t ROWS\
+    \ < <(grep -v '^\\s*#' \"$MODELS_TSV\" | grep -v '^\\s*$')\nsay \"models: $(printf\
+    \ '%s\\n' \"${ROWS[@]}\" | cut -f1 | tr '\\n' ' ')\"\nsay \"gpu: $GPU_LAYOUT,\
+    \ renderer --cache-size $RENDER_CACHE\"\n\n# \u2500\u2500 1. environment \u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\n# Verbatim from the rerun worker: the venv\
+    \ is built on the pod's own ephemeral\n# /root every time, ~15 minutes, paid once\
+    \ per pod and amortised over ~250\n# cells.\nexport DEBIAN_FRONTEND=noninteractive\n\
+    say \"apt: GL/X libs the renderer and IsaacSim need\"\napt-get update -qq && apt-get\
+    \ install -y -qq git curl python3-venv python3-dev \\\n  libglu1-mesa libxt6 libgl1\
+    \ libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 \\\n  libxcursor1 libxi6\
+    \ libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 \\\n  libice6 libgomp1\
+    \ >/dev/null || { say \"apt FAILED\"; exit 1; }\n\nexport PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH\n\
+    export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv\nfor\
+    \ i in 1 2 3 4; do\n  command -v uv >/dev/null && break\n  python -m pip install\
+    \ --quiet --user uv 2>/dev/null \\\n    || pip install --quiet --user uv 2>/dev/null\
+    \ \\\n    || curl -LsSf https://astral.sh/uv/install.sh | sh\n  hash -r; sleep\
+    \ 5\ndone\ncommand -v uv >/dev/null || { say \"uv unavailable\"; exit 1; }\n\n\
+    REPO=/root/ns\n[ ! -e \"$REPO\" ] || { say \"$REPO already exists; use a fresh\
+    \ worker pod\"; exit 1; }\ngit clone --quiet --no-hardlinks /hugsim-storage/NexusSim\
+    \ \"$REPO\" || { say \"clone FAILED\"; exit 1; }\ngit -C \"$REPO\" checkout --quiet\
+    \ \"$NEXUSSIM_SHA\" || { say \"checkout $NEXUSSIM_SHA FAILED\"; exit 1; }\nsay\
+    \ \"code at $(git -C \"$REPO\" log --oneline -1)\"\n\ncd \"$REPO\"\nif ! /root/ns-venv/bin/python\
+    \ -c \"import isaacsim, isaaclab, nexussim\" 2>/dev/null; then\n  say \"uv sync\
+    \ (IsaacSim 6.0 + cu128 torch, ~15 min)\"\n  uv sync --all-extras --python 3.12\
+    \ || { say \"uv sync FAILED\"; exit 1; }\n  [ -d /root/IsaacLab/.git ] || git\
+    \ clone --depth 1 --branch v3.0.0-beta \\\n    https://github.com/isaac-sim/IsaacLab.git\
+    \ /root/IsaacLab\n  for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl\
+    \ isaaclab_mimic; do\n    d=/root/IsaacLab/source/$ext\n    [ -d \"$d\" ] && uv\
+    \ pip install --python /root/ns-venv/bin/python --no-deps -e \"$d\" >/dev/null\n\
+    \  done\n  uv pip install --python /root/ns-venv/bin/python lazy_loader einops\
+    \ >/dev/null\n  uv pip install --python /root/ns-venv/bin/python ninja >/dev/null\n\
+    fi\nPY=/root/ns-venv/bin/python\n\"$PY\" -c \"import nexussim, isaaclab\" || {\
+    \ say \"venv unusable\"; exit 1; }\n\n# \u2500\u2500 1a. Omniverse Kit shader\
+    \ cache \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\n# 7.6 of the ~10 minutes an IsaacSim boot costs\
+    \ is Kit compiling materials\n# (omni.ujitso) and the ray-tracing pipeline, into\
+    \ a cache that dies with the\n# pod. Restoring a warm tar takes AppLauncher from\
+    \ 467 s to 10.5 s. Compilation\n# happens on an empty stage, before any scene\
+    \ is read, so one tar serves every\n# scenario; it is keyed by DRIVER version\
+    \ because the OptiX/Vulkan pipeline\n# caches are.\n#\n# EULA FIRST, and that\
+    \ ordering is the whole point. Locating the tar's\n# destination needs `import\
+    \ isaacsim`, and that import without ACCEPT_EULA\n# blocks on an interactive prompt\
+    \ and exits 1 -- so a script that exports the\n# EULA vars AFTER this block restores\
+    \ nothing, says only \"cannot locate the\n# isaacsim package\", and pays the eight\
+    \ minutes anyway. That is exactly what\n# navsafe_eval/run_worker_current.sh does,\
+    \ which is why the production eval\n# workers have never actually had this cache.\n\
+    export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES\nKITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi\
+    \ --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr\
+    \ -d \" \").tar\nif [ -f \"$KITCACHE\" ]; then\n  KITPKG=$(\"$PY\" -c \"import\
+    \ isaacsim, os; print(os.path.dirname(isaacsim.__file__))\" 2>/dev/null)\n  if\
+    \ [ -n \"$KITPKG\" ] && tar -xf \"$KITCACHE\" -C \"$KITPKG\" kit && tar -xf \"\
+    $KITCACHE\" -C / var root; then\n    say \"Kit shader cache restored into $KITPKG\"\
+    \n  else\n    say \"Kit cache restore FAILED \u2014 the first IsaacSim boot recompiles\
+    \ (~8 min)\"\n  fi\nelse\n  say \"no Kit cache at $KITCACHE \u2014 first boot\
+    \ recompiles (~8 min)\"\nfi\ngit -C \"$REPO\" checkout -- uv.lock 2>/dev/null\
+    \ || true\nexport PATH=/root/ns-venv/bin:$PATH\nINC=$(\"$PY\" -c 'import sysconfig;\
+    \ print(sysconfig.get_paths()[\"include\"])')\n[ -f \"$INC/Python.h\" ] || { say\
+    \ \"missing Python.h\"; exit 1; }\nsay \"venv ready ($(git -C \"$REPO\" status\
+    \ --porcelain | wc -l) tracked files modified)\"\n\n# \u2500\u2500 1b. VLA venv\
+    \ (recogdrive_rl) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# recogdrive and simwam\
+    \ run their models in a persistent subprocess under the\n# shared vla venv built\
+    \ from the proven lockfile. resworld was NOT here: it has\n# its own py3.8 venv\
+    \ on the PVC and resworld.py defaults to it, which is why\n# swapping resworld\
+    \ for simwam means adding simwam to this list -- without it\n# the venv is never\
+    \ built, NAVSAFE_VLA_PYTHON keeps its /bigdata default, and\n# the adapter dies\
+    \ on a missing interpreter before it ever reaches the GPU.\n# Every slug here\
+    \ must be listed EXACTLY. `simwam\\b` does not match\n# `simwam_base`: an underscore\
+    \ is a word character, so there is no word\n# boundary between them, and a slug\
+    \ that slips past this test gets no venv\n# at all -- NAVSAFE_VLA_PYTHON keeps\
+    \ its /bigdata default and the adapter\n# dies on a missing interpreter before\
+    \ it ever reaches a GPU.\nif grep -qE '^(recogdrive_il|recogdrive_rl|mtdrive_sft|mtdrive_mtgrpo|autovla|drivelaw|simwam|simwam_base|drivevla_w0)\\\
+    b' \"$MODELS_TSV\"; then\n  VLA_LOCK=/avl-west/navsafe_eval/env_kit/vla_requirements.lock.txt\n\
+    \  VLA_EXTRA_LOCK=/avl-west/navsafe_eval/env_kit/vla_extra_site_requirements.lock.txt\n\
+    \  [ -f \"$VLA_LOCK\" ] || { say \"VLA lockfile missing at $VLA_LOCK\"; exit 1;\
+    \ }\n  if [ ! -x /root/vla-venv/bin/python ]; then\n    say \"building vla-venv\
+    \ (torch 2.10.0+cu128 + transformers 4.57.6, ~5 min)\"\n    uv venv --python 3.12\
+    \ /root/vla-venv >/dev/null || { say \"vla-venv create FAILED\"; exit 1; }\n \
+    \   grep -v '^omegaconf==' \"$VLA_LOCK\" > /tmp/vla_reqs.txt\n    uv pip install\
+    \ --python /root/vla-venv/bin/python \\\n      --extra-index-url https://download.pytorch.org/whl/cu128\
+    \ \\\n      --index-strategy unsafe-best-match \\\n      -r /tmp/vla_reqs.txt\
+    \ || { say \"vla-venv install FAILED\"; exit 1; }\n    uv pip install --python\
+    \ /root/vla-venv/bin/python --no-deps omegaconf==2.4.0.dev14 \\\n      || { say\
+    \ \"vla-venv omegaconf FAILED\"; exit 1; }\n  fi\n  export NAVSAFE_VLA_PYTHON=/root/vla-venv/bin/python\n\
+    fi\n\nif grep -q '^drivevla_w0\\b' \"$MODELS_TSV\"; then\n  # Three packages the\
+    \ shared lockfile does not carry, because no earlier VLA\n  # row needed them:\
+    \ tiktoken/blobfile are what Emu3Tokenizer imports, and\n  # scipy is required\
+    \ by the FAST action tokenizer's remote code (transformers\n  # refuses to load\
+    \ that module without it). Installed into vla-venv rather\n  # than a side site-dir\
+    \ -- unlike DriveLaW's nuplan devkit these are ordinary\n  # leaf packages and\
+    \ cannot shadow another row's torch/numpy.\n  /root/vla-venv/bin/python -c 'import\
+    \ tiktoken, scipy' 2>/dev/null || \\\n    uv pip install --python /root/vla-venv/bin/python\
+    \ tiktoken blobfile scipy \\\n      || { say \"drivevla_w0 deps FAILED\"; exit\
+    \ 1; }\nfi\nif grep -q '^drivelaw\\b' \"$MODELS_TSV\"; then\n  # DriveLaW's navsim\
+    \ fork imports nuplan.common.actor_state beyond what\n  # drivelaw_server.py's\
+    \ own stub covers; the real devkit has to be\n  # importable. Installed --no-deps\
+    \ into a side site-dir (not into vla-venv\n  # itself) so its own transitive deps\
+    \ never shadow vla-venv's torch/numpy for\n  # the other 5 VLA rows sharing that\
+    \ venv.\n  [ -d /root/vla_extra_site ] || {\n    mkdir -p /root/vla_extra_site\n\
+    \    uv pip install --target /root/vla_extra_site --no-deps -r \"$VLA_EXTRA_LOCK\"\
+    \ \\\n      || { say \"vla_extra_site FAILED\"; exit 1; }\n  }\n  export NAVSAFE_VLA_EXTRA_PYTHONPATH=/root/vla_extra_site\n\
+    \  [ -f /avl-west/navsafe_eval/model_zoo/drivelaw/inference_front.yaml ] || {\
+    \ say \"missing DriveLaW config\"; exit 1; }\nfi\n\n# \u2500\u2500 1c. ResWorld\
+    \ venv \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\n# ResWorld is a nuScenes/mmdet3d model,\
+    \ not a navsim one: py3.8 + torch\n# 1.9.1+cu111 + mmcv-full 1.4.0 + a source-built\
+    \ mmdet3d 0.17.1 with CUDA ops.\n# None of that can share vla-venv (py3.12 / torch\
+    \ 2.10), so it gets its own,\n# and unlike vla-venv this one lives on the PVC\
+    \ \u2014 the mmdet3d compile is ~10\n# minutes and there is no reason for every\
+    \ worker to repeat it.\n#\n# Two fixes are baked into that PVC copy rather than\
+    \ installed here, because\n# both are edits to third-party source: mmdet3d 0.17's\n\
+    # `from numba.errors import NumbaPerformanceWarning` (the alias numba dropped\n\
+    # in 0.49, so it fails against the pinned 0.53), and the pandas/lyft-sdk deps\n\
+    # mmdet3d imports unconditionally.\nif grep -q '^resworld\\b' \"$MODELS_TSV\"\
+    ; then\n  RW_VENV=/avl-west/navsafe_eval/vla_repos/resworld-venv\n  # `test -x`\
+    \ is not enough and was not enough: the first build of this venv\n  # pointed\
+    \ bin/python at a uv-managed interpreter under /root, which is the\n  # POD's\
+    \ ephemeral disk. The symlink survives on the PVC, its target does\n  # not, so\
+    \ `-x` fails on a venv that looks perfectly intact \u2014 and would fail\n  #\
+    \ identically on every fresh worker. The venv is rebuilt --relocatable with\n\
+    \  # its interpreter beside it under vla_repos/resworld-python; the check that\n\
+    \  # actually means something is whether it can import the stack.\n  \"$RW_VENV/bin/python\"\
+    \ -c 'import torch, mmcv, mmdet3d' 2>/dev/null || {\n    say \"ResWorld venv at\
+    \ $RW_VENV cannot import torch/mmcv/mmdet3d\"\n    say \"  (if bin/python is a\
+    \ dangling symlink, its interpreter was on a dead pod's disk)\"\n    ls -l \"\
+    $RW_VENV/bin/python\" 2>&1 | while read -r l; do say \"  $l\"; done\n    exit\
+    \ 1\n  }\n  export NAVSAFE_RESWORLD_PYTHON=\"$RW_VENV/bin/python\"\n  say \"ResWorld\
+    \ venv OK ($RW_VENV)\"\nfi\n\n# \u2500\u2500 2. the renderer \u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\n# --artifact-glob covers only THIS worker's scenarios; pointing\
+    \ every worker at\n# all 500 reconstructions would make each scan half a terabyte\
+    \ of CephFS to\n# serve a handful of scenes.\nSHARD=/root/shard\nmkdir -p \"$SHARD\"\
+    \nMY_SCENES=()\nfor ROW in \"${MY_ROWS[@]}\"; do\n  IFS=$'\\t' read -r _L T _H\
+    \ _DR _RC _WD _AR _EF <<< \"$ROW\"\n  for f in /avl-west/navsafe_eval/dataset/\"\
+    $T\"/*.usdz \\\n           /avl-west/navsafe_dev/full_test_mirror/\"$T\"/*.usdz;\
+    \ do\n    [ -e \"$f\" ] || continue\n    b=$(basename \"$f\")\n    [ -e \"$SHARD/$b\"\
+    \ ] && continue\n    ln -sf \"$f\" \"$SHARD/$b\"; MY_SCENES+=(\"${b%.usdz}\")\n\
+    \  done\ndone\nmkdir -p \"$HARMONIZER_CACHE\"\nsay \"shard holds ${#MY_SCENES[@]}\
+    \ reconstructions\"\n\nSERVE_PID=\"\"\n# A killed /app/run leaves its children\
+    \ alive, and an orphaned renderer holds\n# ~19 GB that the replacement then cannot\
+    \ get -- every subsequent cell OOMs.\n# Kill the tree and wait for the port to\
+    \ actually free.\nstop_serve() {\n  [ -n \"$SERVE_PID\" ] || return 0\n  pkill\
+    \ -TERM -P \"$SERVE_PID\" 2>/dev/null\n  kill -TERM \"$SERVE_PID\" 2>/dev/null\n\
+    \  sleep 5\n  pkill -KILL -P \"$SERVE_PID\" 2>/dev/null\n  kill -KILL \"$SERVE_PID\"\
+    \ 2>/dev/null\n  pkill -KILL -f 'serve-grpc' 2>/dev/null\n  for _ in $(seq 1 30);\
+    \ do\n    (exec 3<>\"/dev/tcp/127.0.0.1/$PORT\") 2>/dev/null || break\n    exec\
+    \ 3<&- 3>&-; sleep 2\n  done\n  SERVE_PID=\"\"\n}\n\nstart_serve() {\n  say \"\
+    serve-grpc starting on GPU 0 (${GPU_LAYOUT}, --cache-size $RENDER_CACHE)\"\n \
+    \ CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \\\n    --enable-editing-actors\
+    \ --renderer default --cache-size \"$RENDER_CACHE\" \\\n    --enable-harmonizer\
+    \ --harmonizer-cache \"$HARMONIZER_CACHE\" \\\n    --artifact-glob \"$SHARD/*.usdz\"\
+    \ > /tmp/serve.log 2>&1 &\n  SERVE_PID=$!\n\n  # The scene list is CHECKED, never\
+    \ assumed: a renderer asked for a scene it\n  # does not hold falls back to raster\
+    \ silently, and the result reads as a\n  # reconstruction-quality problem rather\
+    \ than a configuration one.\n  for _ in $(seq 1 120); do\n    kill -0 $SERVE_PID\
+    \ 2>/dev/null || { say \"serve exited early\"; tail -40 /tmp/serve.log; return\
+    \ 1; }\n    grep -q \"Available scenes\" /tmp/serve.log && break\n    sleep 5\n\
+    \  done\n  local scenes; scenes=$(grep \"Available scenes\" /tmp/serve.log | tail\
+    \ -1)\n  [ -n \"$scenes\" ] || { say \"no scene list published\"; tail -40 /tmp/serve.log;\
+    \ return 1; }\n  for SC in \"${MY_SCENES[@]}\"; do\n    echo \"$scenes\" | grep\
+    \ -q \"$SC\" || { say \"MISSING scene $SC \u2014 would render raster\"; return\
+    \ 1; }\n  done\n  # The scene list is not readiness: serve-grpc prints it while\
+    \ still loading\n  # the harmonizer weights and binds the port ~2 min later.\n\
+    \  for _ in $(seq 1 120); do grep -q \"Serving on\" /tmp/serve.log && break; sleep\
+    \ 5; done\n  grep -q \"Serving on\" /tmp/serve.log || { say \"never bound its\
+    \ port\"; tail -40 /tmp/serve.log; return 1; }\n  for _ in $(seq 1 60); do\n \
+    \   (exec 3<>\"/dev/tcp/127.0.0.1/$PORT\") 2>/dev/null && { exec 3<&- 3>&-; break;\
+    \ }\n    sleep 2\n  done\n  say \"renderer accepting connections ($(echo \"$scenes\"\
+    \ | wc -w) scene tokens)\"\n}\n\nserve_alive() {\n  [ -n \"$SERVE_PID\" ] && kill\
+    \ -0 \"$SERVE_PID\" 2>/dev/null || return 1\n  (exec 3<>\"/dev/tcp/127.0.0.1/$PORT\"\
+    ) 2>/dev/null && { exec 3<&- 3>&-; return 0; }\n  return 1\n}\n\ntrap 'say \"\
+    exiting\"; tail -40 /tmp/serve.log 2>/dev/null; stop_serve' EXIT\nstart_serve\
+    \ || exit 1\n\n# \u2500\u2500 3. the sweep \u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\
+    \u2500\u2500\u2500\nexport NUREC_GRPC_STRICT=1\nexport NUREC_GRPC_HOST=127.0.0.1\
+    \ NUREC_GRPC_PORT=$PORT\n# RECON rig: the reconstruction's own training CameraSpec\
+    \ and baked cam->rig,\n# preserving calibrated distortion, native extent and observed\
+    \ rays. This is\n# the default since 2026-08-31 and the rig every current NavSafe\
+    \ number uses;\n# it is named here so the campaign records which one it ran.\n\
+    export NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600\n\
+    export PY123D_RECENTER=1\nexport NUPLAN_MAP_VERSION=nuplan-maps-v1.0\nexport NEXUSSIM_NO_CAM_MAP_LINES=1\n\
+    export PYTHONPATH=\"$REPO:$REPO/third_party/nurec_protos\"\nexport ACCEPT_EULA=Y\
+    \ OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1\nexport LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6\n\
+    # The rollout and any VLA subprocess server go on the LAST visible card, which\n\
+    # is the renderer's own card in a one-GPU pod and a card of their own in a\n#\
+    \ two-GPU one. NAVSAFE_VLA_GPU otherwise defaults to 7, an index no pod here has.\n\
+    export CUDA_VISIBLE_DEVICES=$EVAL_GPU NEXUSSIM_NUREC_GPUS=1\nexport NAVSAFE_VLA_GPU=${NAVSAFE_VLA_GPU:-$EVAL_GPU}\n\
+    \ndone_n=0; skip_n=0; fail_n=0; consec_fail=0\n\ngpu_is_gone() {\n  grep -qE \"\
+    cudaErrorInitializationError|CUDA driver initialization failed|no CUDA-capable\
+    \ device|CUDA unknown error\" \"$1\"\n}\n\nfor ROW in \"${MY_ROWS[@]}\"; do\n\
+    \  IFS=$'\\t' read -r LEAF T HANDOFF DATA_ROOT RECIPE WORKDIR ARM_IDS EGO_FRAMES\
+    \ <<< \"$ROW\"\n  B=/avl-west/navsafe_eval/dataset/$T\n  [ -d \"$B\" ] || B=/avl-west/navsafe_dev/full_test_mirror/$T\n\
+    \  HANDOFF_ARG=$(\"$PY\" -m nexussim.navsafe.eval.bundle --handoff \"$B\" 2>/dev/null)\n\
+    \  [ -n \"$HANDOFF_ARG\" ] || { say \"$T: no handoff, skipping scenario\"; fail_n=$((fail_n+1));\
+    \ continue; }\n  export NUREC_GRPC_HANDOFF=\"$HANDOFF_ARG\"\n\n  WORKDIR_ARGS=()\n\
+    \  [ \"$WORKDIR\" != \"-\" ] && WORKDIR_ARGS=(--nurec-work-dir \"$WORKDIR\")\n\
+    \  # The asset-harvester bank sits beside the RECONSTRUCTIONS, which for an\n\
+    \  # edited scenario is the corpus _20s dir and not the published bundle. Pass\n\
+    \  # the manifest PATH, never the bare flag: with no value the eval resolves the\n\
+    \  # bank from --py123d-data-root's parent and ap.error()s on a path that was\n\
+    \  # never going to exist, killing the cell at argument parsing.\n  AH=()\n  AH_BASE=\"\
+    $B\"\n  [ \"$WORKDIR\" != \"-\" ] && AH_BASE=\"$WORKDIR/${T}_20s\"\n  _ahm=\"\
+    $AH_BASE/ah_assets/replace_manifest.json\"\n  [ -f \"$_ahm\" ] && AH=(--asset-harvester-replace\
+    \ \"$_ahm\")\n  # The recipe is AUTO-SELECTED, exactly as in the rerun worker,\
+    \ rather than\n  # named here. resolve_recipe (nexussim/navsafe/editing/autoselect.py)\
+    \ is what\n  # decides, and its decision is not \"is there a file\": 28 of the\
+    \ 80 recipes\n  # carry `actors: {}` -- all of C-10, all of V-11, and a few C-7/R-2/V-10\
+    \ --\n  # and for those it returns None and the scenario runs UNEDITED, keeping\
+    \ the\n  # hand-off this flag asks for instead of the recipe's 8. Naming the recipe\n\
+    \  # with --recipe would override that and force a hand-off no placement needs.\n\
+    \  # It also switches --traffic-mode to navsafe by itself when, and only when,\n\
+    \  # there are actors to drive.\n  # THE EPISODE ENDS WHERE THE LOG DOES. --eval-frames\
+    \ counts SCORED frames, so\n  # the run lasts handoff + eval_frames; the rerun\
+    \ campaign's constant 600 makes\n  # that 620 on a scenario whose log is 201 frames\
+    \ long, and the ego then drives\n  # for 40 s through a world with no data in\
+    \ it -- agents frozen at their last\n  # pose, and the four 5 s reconstructions\
+    \ long since out of range. Measured\n  # here on 190c8d0cece45af1: at frame 220\
+    \ the ego was still doing 8.7 m/s past\n  # the end of a 201-frame log. That was\
+    \ invisible in the rerun sweep because\n  # without --enable-vis a frame costs\
+    \ ~1.2 s and 620 of them fit inside the\n  # 45 min cell timeout; at 4.35 s/frame\
+    \ with four cameras they do not, so the\n  # constant would also have killed every\
+    \ cell at the timeout.\n  #\n  # Scenario-specific, and identical across the arms\
+    \ of one scenario, so two\n  # arms differ in where the ego went and not in how\
+    \ long it was allowed to go.\n  # CAMPAIGN CHOICE: a CONSTANT 600 scored frames,\
+    \ set by the run owner, not the\n  # log-derived bound the source campaign used.\
+    \ These 28 logs are 200-201 frames\n  # long, so 600 means the episode outlives\
+    \ its data: agents freeze at their last\n  # pose and the four 5 s reconstructions\
+    \ go out of range. The reference worker\n  # computed `EGO_FRAMES - HANDOFF -\
+    \ 1` for exactly that reason. Kept here\n  # because the owner asked for 600 explicitly;\
+    \ the log length travels in\n  # selection.json (ego_frames) so any analysis can\
+    \ see where data ran out.\n  EVAL_FRAMES=40\n  # reference value, for comparison:\
+    \ $(( EGO_FRAMES - HANDOFF - 1 ))\n  say \"$T ($LEAF): handoff=$HANDOFF log=$EGO_FRAMES\
+    \ frames -> --eval-frames $EVAL_FRAMES\"\n  say \"$T ($LEAF): handoff=$HANDOFF\
+    \ data_root=$DATA_ROOT recipe=$([ \"$RECIPE\" = \"-\" ] && echo none || basename\
+    \ \"$RECIPE\") arms=$ARM_IDS\"\n\n  for ARM in \"${ARMS[@]}\"; do\n    IFS=$'\\\
+    t' read -r AID ALAT ALON AYAW <<< \"$ARM\"\n    # Only the arms this scenario\
+    \ was screened for (see the selection reader).\n    case \",$ARM_IDS,\" in *\"\
+    ,$AID,\"*) ;; *) continue ;; esac\n    for MROW in \"${ROWS[@]}\"; do\n      IFS=$'\\\
+    t' read -r SLUG MT CK EXTRA_ENV <<< \"$MROW\"\n      case \"$CK\" in\n       \
+    \ none) CKPT=none ;;\n        /*)   CKPT=\"$CK\" ;;\n        *)    CKPT=\"$ZOO/$CK\"\
+    \ ;;\n      esac\n      unset NAVSAFE_RECOGDRIVE_VLM NAVSAFE_AUTOVLA_BASE NAVSAFE_AUTOVLA_REPO\
+    \ \\\n            NAVSAFE_DRIVELAW_REPO NAVSAFE_SIMWAM_REPO NAVSAFE_RESWORLD_REPO\
+    \ \\\n            NAVSAFE_PRIOREYE_EMBEDDING\n      if [ -n \"${EXTRA_ENV:-}\"\
+    \ ]; then\n        IFS=',' read -ra _KVS <<< \"$EXTRA_ENV\"\n        for _KV in\
+    \ \"${_KVS[@]}\"; do export \"${_KV?}\"; done\n      fi\n\n      for SEED in $SEEDS;\
+    \ do\n        OUT=\"$OUTROOT/seed$SEED/$LEAF/$T/$AID/$SLUG\"\n        LOG=\"$OUT.log\"\
+    \n        mkdir -p \"$(dirname \"$LOG\")\"\n        # A cell is done when eval_py123d\
+    \ said so AND the two artifacts this\n        # campaign exists for are on disk.\
+    \ plan_records.json is checked as well\n        # as navsafe_metrics.json: a run\
+    \ that scored but wrote no plan record\n        # is useless here and must be\
+    \ redone, not skipped.\n        if grep -qs '^\\[eval_py123d\\] DONE\\.' \"$LOG\"\
+    \ \\\n           && [ -f \"$OUT/navsafe_metrics.json\" ] && [ -f \"$OUT/plan_records.json\"\
+    \ ]; then\n          skip_n=$((skip_n+1)); continue\n        fi\n        serve_alive\
+    \ || { say \"renderer died \u2014 restarting\"; stop_serve; start_serve || exit\
+    \ 1; }\n\n        mkdir -p \"$OUT\"\n        say \"  $T $AID $SLUG seed$SEED\"\
+    \n        cell_ok=0\n        for _try in $(seq 1 \"${CELL_TRIES:-3}\"); do\n \
+    \         [ \"$_try\" -gt 1 ] && {\n            say \"    retry $_try/${CELL_TRIES:-3}\
+    \ after transient failure\"\n            sleep 30\n            serve_alive ||\
+    \ { say \"    renderer gone \u2014 restarting\"; stop_serve; start_serve || exit\
+    \ 1; }\n          }\n          timeout --signal=KILL \"$CELL_TIMEOUT\" \\\n  \
+    \          \"$PY\" \"$REPO/scripts/tools/eval_py123d.py\" \\\n              --scenario-source\
+    \ py123d --py123d-data-root \"$DATA_ROOT\" --py123d-scene-index 0 \\\n       \
+    \       \"${WORKDIR_ARGS[@]}\" \\\n              --render-backend nurec_grpc --cam-height\
+    \ navsim \\\n              --model-type \"$MT\" --checkpoint \"$CKPT\" \\\n  \
+    \            --traffic-mode semi_reactive \\\n              --recipe-dir \"${RECIPE_DIR:-$REPO/nexussim/navsafe/recipes/benchmark}\"\
+    \ \\\n              \"${AH[@]}\" \\\n              --ego-replay-frames 0 --keep-ego-replay-frames\
+    \ \\\n              --ego-perturb-lateral \"$ALAT\" \\\n              --ego-perturb-longitudinal\
+    \ \"$ALON\" \\\n              --ego-perturb-yaw \"$AYAW\" \\\n              --terminate-on-collision\
+    \ \\\n              --controller lqr --execution-mode controller \\\n        \
+    \      --replan-rate 5 --camera-resolution-scale 1.0 \\\n              --eval-frames\
+    \ \"$EVAL_FRAMES\" \\\n              --eval-seed \"$SEED\" \\\n              --output-dir\
+    \ \"$OUT\" > \"$LOG\" 2>&1\n          if grep -qs '^\\[eval_py123d\\] DONE\\.'\
+    \ \"$LOG\" && [ -f \"$OUT/navsafe_metrics.json\" ]; then\n            cell_ok=1;\
+    \ break\n          fi\n          gpu_is_gone \"$LOG\" && say \"    CUDA init failed\
+    \ (error 999)\"\n        done\n        if [ \"$cell_ok\" != 1 ] && gpu_is_gone\
+    \ \"$LOG\"; then\n          say \"GPU UNUSABLE on $(hostname) after ${CELL_TRIES:-3}\
+    \ tries \u2014 failing so the Job reschedules\"\n          exit 1\n        fi\n\
+    \        if [ \"$cell_ok\" = 1 ]; then\n          \"$PY\" /cfg/audit_episode.py\
+    \ \"$OUT\" \"$DATA_ROOT\" \"$SEED\" \"$SLUG\" || exit 1\n          done_n=$((done_n+1));\
+    \ consec_fail=0\n        else\n          # One arm/model failing is not the scenario's\
+    \ fault -- a different\n          # arm of the same scenario may well be fine,\
+    \ and dropping the whole\n          # token would take 94 good cells with it.\
+    \ Record and move on.\n          fail_n=$((fail_n+1)); consec_fail=$((consec_fail+1))\n\
+    \          say \"    FAILED after ${CELL_TRIES:-3} tries (see $LOG)\"\n      \
+    \    tail -5 /tmp/serve.log > \"$OUT.serve.log\" 2>/dev/null\n          if [ \"\
+    $consec_fail\" -ge 20 ]; then\n            say \"ABORT: $consec_fail consecutive\
+    \ failures \u2014 this node looks unusable\"\n            exit 1\n          fi\n\
+    \        fi\n      done\n    done\n  done\ndone\n\nfor ROW in \"${MY_ROWS[@]}\"\
+    ; do\n  IFS=$'\\t' read -r LEAF T REST <<< \"$ROW\"\n  \"$PY\" /cfg/plot_scenario.py\
+    \ \"$OUTROOT\" \"$LEAF\" \"$T\" || exit 1\ndone\n\nsay \"WORKER DONE ok=$done_n\
+    \ skipped=$skip_n failed=$fail_n\"\n[ \"$fail_n\" -eq 0 ]\n"
+  selection.json: "{\n  \"grid\": {\n    \"arms\": [\n      {\n        \"id\": \"\
+    base\",\n        \"lat\": 0,\n        \"lon\": 0,\n        \"yaw\": 0\n      }\n\
+    \    ]\n  },\n  \"leaves\": {\n    \"C-1\": {\n      \"picked\": [\n        {\n\
+    \          \"token\": \"087023402a695ba3\",\n          \"handoff\": 0,\n     \
+    \     \"data_root\": \"/avl-west/navsafe_eval/dataset/087023402a695ba3/arrow\"\
+    ,\n          \"recipe\": null,\n          \"nurec_work_dir\": null,\n        \
+    \  \"ego_frames\": 200,\n          \"bundle\": \"/avl-west/navsafe_eval/dataset/087023402a695ba3\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"C-2\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"f077a062ad9b55e9\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow\",\n       \
+    \   \"recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 200,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"C-3\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"273f424fa2fc55ad\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad/arrow\",\n       \
+    \   \"recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 200,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"C-4\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"0670d0c81a5550c4\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/0670d0c81a5550c4/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/0670d0c81a5550c4\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"C-5\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"58d69daf413c5d5a\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/58d69daf413c5d5a/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/58d69daf413c5d5a\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"C-6\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"0122ce98b2735558\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/0122ce98b2735558/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/0122ce98b2735558\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"C-7\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"1e9350ac2bc25f59\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/1e9350ac2bc25f59/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/C-7.1e9350ac2bc25f59.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/1e9350ac2bc25f59\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"C-8\": {\n      \"picked\": [\n        {\n          \"token\":\
+    \ \"1961d1075a085a1d\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/1961d1075a085a1d/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/1961d1075a085a1d\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"C-9\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"918b6721bcf75d38\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_dev/full_test_mirror/918b6721bcf75d38/arrow\",\n          \"\
+    recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 201,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/918b6721bcf75d38\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"C-10\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"2bd04a0902095129\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/2bd04a0902095129/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/2bd04a0902095129\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"I-1\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"9605af7df76f5ba3\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_dev/full_test_mirror/9605af7df76f5ba3/arrow\",\n          \"\
+    recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 200,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/9605af7df76f5ba3\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"I-2\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"0d5b8da00d505be0\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/0d5b8da00d505be0/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/0d5b8da00d505be0\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"I-3\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"84acc78da95f56d3\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/84acc78da95f56d3/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/I-3.84acc78da95f56d3.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/84acc78da95f56d3\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"R-1\": {\n      \"picked\": [\n        {\n          \"token\":\
+    \ \"0a51eebaccc95c36\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/0a51eebaccc95c36/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/0a51eebaccc95c36\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"R-2\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"20cc0fdb7e2d5c3f\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-2.20cc0fdb7e2d5c3f.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"R-3\": {\n      \"picked\": [\n        {\n          \"token\":\
+    \ \"132307b3c1a55f97\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/132307b3c1a55f97/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-3.132307b3c1a55f97.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/132307b3c1a55f97\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"R-4\": {\n      \"picked\": [\n        {\n          \"token\":\
+    \ \"173369dc059d5fe9\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/173369dc059d5fe9/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-4.173369dc059d5fe9.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/173369dc059d5fe9\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"V-1\": {\n      \"picked\": [\n        {\n          \"token\":\
+    \ \"42af8e33480d53b3\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3/arrow\",\n          \"\
+    recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 200,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"V-2\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"3d324bda0cec57ab\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/3d324bda0cec57ab/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/3d324bda0cec57ab\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"V-3\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"3a6525cd871a5fff\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_dev/full_test_mirror/3a6525cd871a5fff/arrow\",\n          \"\
+    recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 201,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/3a6525cd871a5fff\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"V-4\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"2ad17379a25d55d9\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/2ad17379a25d55d9/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/2ad17379a25d55d9\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"V-5\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"07c5114fdb395f8b\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/07c5114fdb395f8b/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/07c5114fdb395f8b\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"V-6\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"8661a7e9b4a95042\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/8661a7e9b4a95042/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/8661a7e9b4a95042\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"V-7\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"a12d1a61d7cc50fe\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    },\n    \"V-9\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"0b1a626ef31150b3\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3/arrow\",\n          \"\
+    recipe\": null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\"\
+    : 201,\n          \"bundle\": \"/avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3\"\
+    ,\n          \"arms_run\": [\n            \"base\"\n          ]\n        }\n \
+    \     ]\n    },\n    \"V-10\": {\n      \"picked\": [\n        {\n          \"\
+    token\": \"63c145828c3b5fd8\",\n          \"handoff\": 0,\n          \"data_root\"\
+    : \"/avl-west/navsafe_eval/dataset/63c145828c3b5fd8/arrow\",\n          \"recipe\"\
+    : \"/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/V-10.63c145828c3b5fd8.yaml\"\
+    ,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 200,\n     \
+    \     \"bundle\": \"/avl-west/navsafe_eval/dataset/63c145828c3b5fd8\",\n     \
+    \     \"arms_run\": [\n            \"base\"\n          ]\n        }\n      ]\n\
+    \    },\n    \"V-11\": {\n      \"picked\": [\n        {\n          \"token\"\
+    : \"32d85d373126537e\",\n          \"handoff\": 0,\n          \"data_root\": \"\
+    /avl-west/navsafe_eval/dataset/32d85d373126537e/arrow\",\n          \"recipe\"\
+    : null,\n          \"nurec_work_dir\": null,\n          \"ego_frames\": 201,\n\
+    \          \"bundle\": \"/avl-west/navsafe_eval/dataset/32d85d373126537e\",\n\
+    \          \"arms_run\": [\n            \"base\"\n          ]\n        }\n   \
+    \   ]\n    }\n  }\n}"
+  models.tsv: "drivor\tdrivor\tdrivor/drivor_Nav1_25epochs.pth\ndrivor_simscale\t\
+    drivor\t/avl-west/navsafe_eval/aug_zoo/SimScale/DrivoR/nav1_30epochs_with_134k_simscale_bis_103ktrainval.pth\n"
+  audit_episode.py: "\"\"\"Validate frame alignment and retain raw inputs for per-scenario\
+    \ MC-return plots.\"\"\"\nimport json,sys\nfrom pathlib import Path\nimport numpy\
+    \ as np\nfrom nexussim.navsafe.trace import from_eval\np=Path(sys.argv[1]); data_root=sys.argv[2]\n\
+    for name in ('plan_records.json','vehicle_states.npy','driving_score_summary.csv','navsafe_metrics.json'):\n\
+    \ assert (p/name).is_file(),f'missing {name}'\nr=json.loads((p/'plan_records.json').read_text());m=json.loads((p/'navsafe_metrics.json').read_text())\n\
+    assert r['handoff_frame']==0, 'recipe overrode zero replay'\nassert abs(r['sim_dt']-.1)<1e-9\n\
+    ref=next(q for q in r['predictions'] if q['frame']==0)\na=np.array(ref['ego_position'][:2]);h=ref['ego_heading'];c,s=np.cos(h),np.sin(h);rot=np.array([[c,-s],[s,c]])\n\
+    sd=from_eval.scenario_from_arrow(data_root)\nego_id=(sd.get('metadata',{}) or\
+    \ {}).get('sdc_id') or sd.get('sdc_id')\nst=sd['tracks'][ego_id]['state'];log=np.asarray(st['position'])[:,:2];lh=float(np.asarray(st['heading']).reshape(-1)[0]);lc,ls=np.cos(lh),np.sin(lh);lr=np.array([[lc,-ls],[ls,lc]])\n\
+    # Each trajectory uses the identical physical frame-0 vehicle pose, allowing\n\
+    # scenario loader world recentering without mixing coordinate conventions.\nresult={'seed':int(sys.argv[3]),'model':sys.argv[4],'reference_frame':0,'dt':.1,'gamma':.99,'rollout_limit_s':4,'termination':m.get('termination'),'reference_position':a.tolist(),'reference_heading':h,'states':{}}\n\
+    for f in (20,40):\n result['states'][str(f)]={'t_s':f*.1,'ol_log_xy':((log[f]-log[0])@lr).tolist(),'cl_xy':None}\n\
+    \ if len(r['executed'])>=f:\n  q=r['executed'][f-1];assert q['frame']==f-1\n \
+    \ result['states'][str(f)]['cl_xy']=((np.array(q['position'][:2])-a)@rot).tolist()\n\
+    result['mc_status']='pending DS-prefix validation; never substitute episode DS\
+    \ for MC return'\nfrom types import SimpleNamespace\nfrom nexussim.navsafe.scoring\
+    \ import route,metrics\ntry:\n    saved=m;warm=0;end=saved['termination']['frame'];reason=saved['termination']['reason'];GAMMA=.99\n\
+    \    if reason in ('hold_satisfied','red_light_run','illegal_turn'):\n       \
+    \ raise ValueError('special terminal DS rule requires separate prefix handling')\n\
+    \    route_xy=log\n    ego_xy=np.load(p/'vehicle_states.npy')[:,:2]\n    drivable=bool(sd.get('map_features'))\n\
+    \    pf=from_eval.read_per_frame_epdms(p)\n    rebuilt=[]\n    for j,xy in enumerate(ego_xy):\n\
+    \      row=pf.get(j,{})\n      contacts=[]\n      if j>=warm and row.get('COLL',0)>0:\n\
+    \        if not row.get('COLL_KIND'): raise ValueError('contact kind missing;\
+    \ cannot reconstruct exact penalty')\n        contacts=[{'agent_id':row.get('COLL_ID',''),'kind':row['COLL_KIND'],'at_fault':row.get('COLL_AF',0)>0}]\n\
+    \      rebuilt.append({'phase':'scored' if j>=warm else 'warmup','ego_x':float(xy[0]),'ego_y':float(xy[1]),\n\
+    \        'on_drivable':not drivable or row.get('DAC',1)>=1,'contacts':contacts,\n\
+    \        'signal_state':('red' if row['TL']<1 else 'unknown') if 'TL' in row else\
+    \ ''})\n    run=SimpleNamespace(route_xy=route_xy,ego_xy=ego_xy,frames=rebuilt,drivable_known=drivable)\n\
+    \    progress=route.route_progress(run.route_xy,run.ego_xy).per_frame_pct\n  \
+    \  frames=run.frames[warm:end+1]\n    if not frames: raise ValueError('empty scored\
+    \ window')\n    pairs={(c['agent_id'],c['kind']) for f in frames for c in f['contacts']\
+    \ if c['at_fault']}\n    saved_contacts={c['channel']:c['count'] for c in saved['driving_score_breakdown']['channels']\
+    \ if c['channel'].startswith('collisions_') and c['count']}\n    # With exactly\
+    \ one observed fault event and one stored collision, the\n    # saved channel\
+    \ resolves the participant class (e.g. front impact on a\n    # pedestrian) while\
+    \ the CSV still supplies the event's actual timestamp.\n    single_contact_channel=(next(iter(saved_contacts))\
+    \ if len(pairs)==1 and sum(saved_contacts.values())==1 else None)\n    # Prefix\
+    \ event counters; do not reclassify prefixes as terminated episodes.\n    ds=[float(progress[warm-1])\
+    \ if warm else 0.0]\n    for i in range(len(frames)):\n      prefix=frames[:i+1]\n\
+    \      counts=metrics.infractions_from_trace(prefix,at_fault_only=True)\n    \
+    \  if single_contact_channel and any(c.get('at_fault') for f in prefix for c in\
+    \ f['contacts']):\n        counts={k:v for k,v in counts.items() if not k.startswith('collisions_')}\n\
+    \        counts[single_contact_channel]=1\n      red=np.array([f.get('signal_state')=='red'\
+    \ for f in prefix],dtype=bool)\n      counts['red_light']=int(np.sum(red & ~np.r_[False,red[:-1]]))\n\
+    \      penalty=1.0\n      for channel,coef in metrics.PENALTY_COEFFICIENTS.items():\
+    \ penalty*=coef**counts.get(channel,0)\n      if run.drivable_known:\n       \
+    \ xy=[[f['ego_x'],f['ego_y']] for f in prefix]\n        penalty*=1-route.outside_route_lanes_pct(xy,[f['on_drivable']\
+    \ for f in prefix])/100\n      completion=progress[warm+i]\n      if warm+i==end\
+    \ and reason=='goal_reached': completion=100.0\n      ds.append(max(0.0,float(completion*penalty)))\n\
+    \    expected=saved['metrics']['driving_score']\n    gap=abs(ds[-1]-expected)\n\
+    \    if gap>.00051: raise ValueError(f'final DS mismatch: reconstructed={ds[-1]},\
+    \ stored={expected}')\n    reward=np.diff(ds); ret=np.zeros(len(reward)+1)\n \
+    \   for i in range(len(reward)-1,-1,-1): ret[i]=reward[i]+GAMMA*ret[i+1]\n   \
+    \ assert abs(reward.sum()-(ds[-1]-ds[0]))<1e-8\n    undiscounted=np.r_[np.cumsum(reward[::-1])[::-1],0]\n\
+    \    assert np.max(np.abs(undiscounted-(ds[-1]-np.array(ds))))<1e-8\n    result['ds']=ds\n\
+    \    result['rewards']=reward.tolist()\n    result['mc_returns']=ret.tolist()\n\
+    \    result['final_ds_error']=gap\n    result['mc_status']='validated'\n    for\
+    \ f in (20,40):\n        if result['states'][str(f)]['cl_xy'] is not None and\
+    \ f<len(ret):\n            result['states'][str(f)]['mc_return']=float(ret[f])\n\
+    except Exception as exc:\n    result['mc_status']='unvalidated'\n    result['mc_error']=str(exc)\n\
+    \n(p/'heatmap_episode.json').write_text(json.dumps(result,indent=2))\nprint('HEATMAP_AUDIT',sys.argv[4],sys.argv[3],len(r['executed']),m.get('termination'))\n"
+  plot_scenario.py: "import json,sys\nfrom pathlib import Path\nimport numpy as np\n\
+    import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\nfrom\
+    \ matplotlib.lines import Line2D\nroot=Path(sys.argv[1]);leaf,token=sys.argv[2:4]\n\
+    rows={model:[json.loads((root/f'seed{seed}'/leaf/token/'base'/model/'heatmap_episode.json').read_text())\
+    \ for seed in range(30)] for model in ('drivor','drivor_simscale')}\nout=root/'figures';out.mkdir(exist_ok=True)\n\
+    for frame in (20,40):\n fig,ax=plt.subplots(figsize=(7,5));fig.subplots_adjust(bottom=.28,right=.85)\n\
+    \ vals=[r['states'][str(frame)]['mc_return'] for rr in rows.values() for r in\
+    \ rr if r['states'][str(frame)].get('mc_return') is not None]\n norm=matplotlib.colors.Normalize(min([0]+vals),max([1]+vals))\n\
+    \ ol=rows['drivor'][0]['states'][str(frame)]['ol_log_xy']\n for model,rr in rows.items():\n\
+    \  for r in rr:assert np.allclose(r['states'][str(frame)]['ol_log_xy'],ol)\n counts=[]\n\
+    \ for (model,rr),marker in zip(rows.items(),('o','^')):\n  valid=[r['states'][str(frame)]\
+    \ for r in rr if r['states'][str(frame)].get('mc_return') is not None and r['states'][str(frame)]['cl_xy']\
+    \ is not None]\n  counts.append(len(valid))\n  if valid:\n   xy=np.array([v['cl_xy']\
+    \ for v in valid]);ax.scatter(*xy.T,c=[v['mc_return'] for v in valid],norm=norm,cmap='viridis',marker=marker,s=36,edgecolors='white',linewidths=.5)\n\
+    \ ax.scatter(*ol,marker='D',s=65,facecolors='none',edgecolors='black',zorder=5)\n\
+    \ ax.set(xlabel='Forward x (m)',ylabel='Leftward y (m)',title=f'{leaf} | {token}\
+    \ | t = {frame/10:g} s')\n ax.grid(alpha=.15);ax.margins(.2)\n fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm,cmap='viridis'),ax=ax,label='Future\
+    \ discounted \u0394DS return')\n handles=[Line2D([],[],marker='D',color='black',mfc='none',ls='',label='OL:\
+    \ one logged state'),Line2D([],[],marker='o',color='#31878d',ls='',label=f'DrivoR\
+    \ CL: {counts[0]}/30 valid'),Line2D([],[],marker='^',color='#31878d',ls='',label=f'DrivoR-SimScale\
+    \ CL: {counts[1]}/30 valid')]\n fig.legend(handles=handles,loc='lower center',fontsize=8,title=f'Reference:\
+    \ frame 0; state: frame {frame} (+{frame/10:g} s)\\n30 seeds/model; overlapping\
+    \ points retained; \u03B3=0.99; terminal horizon=4 s',title_fontsize=8,frameon=True)\n\
+    \ for ext in ('png','svg'):fig.savefig(out/f'{leaf}_{token}_t{frame//10}.{ext}',dpi=200)\n\
+    \ plt.close(fig)\nprint('SCENARIO_PLOTS_SAVED',leaf,token)\n"

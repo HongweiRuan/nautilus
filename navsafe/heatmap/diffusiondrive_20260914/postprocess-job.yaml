@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-dd-heatmap-postprocess-20260914
+  namespace: cogrob
+spec:
+  backoffLimit: 10
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-dd-heatmap-postprocess-20260914
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: postprocess
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, /cfg/run_postprocess.sh]
+        resources:
+          requests:
+            cpu: "8"
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: "8"
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+        volumeMounts:
+        - {name: avl, mountPath: /avl-west}
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cfg, mountPath: /cfg, readOnly: true}
+      volumes:
+      - name: avl
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cfg
+        configMap: {name: navsafe-dd-heatmap-postprocess-20260914-cfg}

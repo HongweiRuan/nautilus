@@ -1,0 +1,126 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ns-envpert-drivor-c3-noharm-r100
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-env-perturb-ablation
+    model: drivor
+spec:
+  completionMode: Indexed
+  completions: 1
+  parallelism: 1
+  backoffLimitPerIndex: 0
+  maxFailedIndexes: 1
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        args:
+        - /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/ablations/c3-noharm-r100/run_worker.sh
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: INPUT_ROOT
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1
+        - name: MODEL_TSV
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/drivor/model.tsv
+        - name: CELLS_JSON
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/drivor/cells.json
+        - name: RUN_TOKENS
+          value: 273f424fa2fc55ad
+        - name: RUN_EVENTS
+          value: cut_in
+        - name: EXPECTED_CELLS
+          value: '1'
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/proxy_set_state_perturbation_ablations/no_harmonizer_replace100
+        - name: ENABLE_HARMONIZER
+          value: '0'
+        - name: NUREC_GRPC_ASSET_REPLACE_MAX
+          value: '100'
+        - name: RUNTIME_TAR
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/runtime-v2.tar.gz
+        - name: RUNTIME_PATCH
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/original_car_takeover.patch
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        resources:
+          requests:
+            cpu: '3'
+            memory: 76Gi
+            nvidia.com/gpu: '2'
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '3'
+            memory: 91Gi
+            nvidia.com/gpu: '2'
+            ephemeral-storage: 100Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - hcc-chase-shor-c4705.unl.edu
+                - hcc-chase-shor-c4709.unl.edu

@@ -1,0 +1,371 @@
+diff --git a/nexussim/render/nurec_grpc.py b/nexussim/render/nurec_grpc.py
+index 8dc92f8..c5f5bd9 100644
+--- a/nexussim/render/nurec_grpc.py
++++ b/nexussim/render/nurec_grpc.py
+@@ -666,6 +666,8 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+         # replaced — is indistinguishable in the metrics from the run that was
+         # wanted.
+         if self._renderable:
++            from nexussim.render.harvest_takeover import required_harvest_tracks
++            self._required_harvest_tracks = required_harvest_tracks(scenario_data)
+             self._replace_harvested_assets()
+ 
+     # ------------------------------------------------------------------
+@@ -1107,7 +1109,7 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+         return self._decode(self._send_render(req, int(t0)))
+ 
+     def _send_render(self, req, t0: int) -> bytes:
+-        """One render call, with a single retry for a frame that was never baked.
++        """One render call, with bounded retries for known recoverable failures.
+ 
+         A recon's BAKED coverage can end before the log's last frame:
+         2ccebcdb0da25be5's fourth sub-clip stops 75-100 us short, so the final
+@@ -1130,6 +1132,24 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+             # an enum this module cannot name here.
+             code = getattr(exc, "code", None)
+             status = getattr(code() if callable(code) else code, "name", "")
++            details_fn = getattr(exc, "details", None)
++            details = str(details_fn() if callable(details_fn) else details_fn or exc)
++            # A cold NRend backend may spend more than gRPC's HTTP/2 ping
++            # watchdog compiling its first camera kernel.  The RPC then ends
++            # as UNAVAILABLE/ping timeout even though the server finishes the
++            # compile moments later.  Rendering is idempotent, and a second
++            # RPC reconnects the channel and consumes the now-warm backend.
++            # Keep this to one retry and to this exact transport failure so a
++            # dead server or a real rendering exception still fails promptly.
++            if status == "UNAVAILABLE" and "ping timeout" in details.lower():
++                logger.warning(
++                    "nurec_grpc: first render lost its HTTP/2 transport during "
++                    "cold JIT (ping timeout); reconnecting once")
++                ret = self._stub.render_rgb(req, timeout=self._timeout)
++                if not hasattr(self, "_last_ok_us"):
++                    self._last_ok_us = {}
++                self._last_ok_us[self._scene_id] = int(t0)
++                return ret.image_bytes
+             last_ok = getattr(self, "_last_ok_us", {}).get(self._scene_id)
+             if status != "OUT_OF_RANGE" or last_ok is None or int(last_ok) == int(t0):
+                 raise
+@@ -1999,7 +2019,10 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+         provided path ... not a file``.
+         """
+         spec = os.environ.get("NUREC_GRPC_ASSET_REPLACE")
++        required = getattr(self, "_required_harvest_tracks", set())
+         if not spec:
++            if required:
++                raise RuntimeError("Takeover requires --asset-harvester-replace for original tracks: " + ", ".join(sorted(required)))
+             return
+         # Imported here, not at module scope: a generic render backend should
+         # not pull a benchmark package in on every import, and this is the only
+@@ -2047,7 +2070,10 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+         _src_of = {tid: (a or {}).get("source_window")
+                    for tid, a in (doc.get("assets") or {}).items()} \
+             if isinstance(doc, dict) else {}
++        if required and _scope:
++            raise RuntimeError("Required harvester takeover cannot use partial NAVSAFE_REPLACE_SCOPE")
+         applied: Dict[str, int] = {}
++        applied_tracks = {}
+         for sid in scene_ids:
+             here = self._dyn_track_ids_by_scene.get(sid, set())
+             sizes = self._dyn_track_size_by_scene.get(sid, {})
+@@ -2072,12 +2098,30 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+                     f"{getattr(resp, 'message', '') or resp}")
+             self._replaced_asset_ids.update(a.original_id for a in actions)
+             applied[sid] = len(actions)
++            applied_tracks[sid] = [a.original_id for a in actions]
+         if not applied:
+             raise RuntimeError(
+                 f"asset-harvester replace: none of the {len(plys)} manifest "
+                 f"track id(s) exist in any served scene ({', '.join(scene_ids)}). "
+                 f"The bank at {spec} was harvested from a different "
+                 f"reconstruction than the one being rendered.")
++        if required:
++            replaced = set().union(*(set(v) for v in applied_tracks.values()))
++            missing = required - replaced
++            if missing:
++                raise RuntimeError(
++                    "Takeover was not replaced in any scene: " + str(sorted(missing)))
++            report = {"manifest": str(spec), "required_tracks": sorted(required),
++                      "budget_instances": int(os.environ.get("NUREC_GRPC_ASSET_REPLACE_MAX", "10") or 0),
++                      "applied_tracks_by_scene": applied_tracks,
++                      "asset_by_track": {t: plys[t] for t in sorted(required)}}
++            logger.warning("nurec_grpc: verified original-track harvester takeover: %s", report)
++            audit_path = os.environ.get("NUREC_GRPC_ASSET_REPLACE_REPORT")
++            if audit_path:
++                import json
++                audit = Path(audit_path)
++                audit.parent.mkdir(parents=True, exist_ok=True)
++                audit.write_text(json.dumps(report, indent=2))
+         logger.info("nurec_grpc: replaced %d baked actor(s) with harvested "
+                     "assets across %d scene(s): %s",
+                     len(self._replaced_asset_ids), len(applied), applied)
+@@ -2110,6 +2154,11 @@ class NuRecGrpcSceneRenderer(SceneRenderer):
+         Returns the surviving ``{track: ply}``.
+         """
+         cap = int(os.environ.get("NUREC_GRPC_ASSET_REPLACE_MAX", "10") or 0)
++        required = getattr(self, "_required_harvest_tracks", set())
++        if required:
++            from nexussim.render.harvest_takeover import select_takeover_replacements
++            return select_takeover_replacements(doc, plys, self._dyn_track_ids_by_scene,
++                                                scene_ids, cap, required)
+         if cap <= 0:
+             return plys
+ 
+diff --git a/nexussim/scenario/edits.py b/nexussim/scenario/edits.py
+index 1f0de6e..12fbf8a 100644
+--- a/nexussim/scenario/edits.py
++++ b/nexussim/scenario/edits.py
+@@ -818,13 +818,18 @@ def spawn_reactive_actor(
+             remove_tracks(sd, [src_id])
+             logger.info("spawn_reactive_actor: %s removed %s", where, src_id)
+             continue
++        keep_source = op == "relocate" and bool(spec.get("keep_appearance"))
++        source = tracks.get(src_id) if keep_source else None
++        if keep_source and spec.get("nurec_asset_id"):
++            raise ValueError(f"{where}: kept appearance cannot insert a different asset")
+         if op in ("replace", "relocate"):
+             # The host's own actor is re-tasked: it stops being itself and
+             # becomes this one, driven by a policy. Its logged track goes, so
+             # the two cannot both be in the scene.
+             if src_id not in tracks:
+                 raise ValueError(f"spawn_reactive_actor: {where} source track {src_id!r} not found")
+-            del tracks[src_id]
++            if not keep_source:
++                del tracks[src_id]
+         elif op != "insert":
+             raise ValueError(f"spawn_reactive_actor: {where} unknown op {op!r}")
+ 
+@@ -840,24 +845,35 @@ def spawn_reactive_actor(
+         velocity = np.asarray(spawn.get("velocity", (0.0, 0.0)), np.float64)[:2]
+ 
+         dims = spec.get("dims")
++        if keep_source:
++            state = source["state"]
++            valid = np.flatnonzero(np.asarray(state.get("valid", np.ones(host_T)), bool))
++            if not len(valid):
++                raise ValueError(f"{where}: source track has no valid states")
++            k = int(valid[0])
++            dims = [float(np.asarray(state[key]).reshape(-1)[k]) for key in ("length", "width", "height")]
+         if dims is None:
+             raise ValueError(
+                 f"spawn_reactive_actor: {where} needs asset dims [length, width, height]")
+         length, width, height = (float(v) for v in dims)
+ 
+         track_type = str(spec.get("track_type", "VEHICLE"))
+-        obj_id = f"navsafe_{name}"
++        obj_id = src_id if keep_source else f"navsafe_{name}"
+         track_meta = {
+             "track_length": host_T,
+             "type": track_type,
+             "object_id": obj_id,
+-            "injected_obstacle": True,
++            "injected_obstacle": not keep_source,
+             "navsafe_actor": name,
+             "navsafe_recipe_id": recipe_id,
+             "navsafe_op": op,
+             "navsafe_policy": str(policy.get("kind")),
+         }
+-        if src_id:
++        if keep_source:
++            track_type = str(source["type"])
++            track_meta = {**source.get("metadata", {}), **track_meta, "type": track_type,
++                          "navsafe_keep_appearance": True}
++        elif src_id:
+             track_meta["replaced_track_id"] = src_id
+         if variant:
+             track_meta["navsafe_variant"] = variant
+@@ -889,6 +905,7 @@ def spawn_reactive_actor(
+             "metadata": track_meta,
+         }
+         reactive.append({
++            "require_harvested_asset": bool(keep_source and policy.get("require_harvested_asset")),
+             "name": name,
+             # Keyed by TRACK id, not actor name: the manager publishes
+             # pose_overrides into the agent list, which is keyed by track id.
+diff --git a/scripts/tools/eval_py123d.py b/scripts/tools/eval_py123d.py
+index 64bdd9c..2e8acd9 100644
+--- a/scripts/tools/eval_py123d.py
++++ b/scripts/tools/eval_py123d.py
+@@ -861,6 +861,13 @@ if args.recipe:
+     # Checksums are verified here, before anything reaches the env: a corrupted
+     # or hand-edited recipe must fail at load, not halfway through an episode.
+     _recipe, _recipe_edits = edits_from_recipe_file(args.recipe, variant=args.recipe_variant)
++    _takeover_ids = [a.source_track_id for a in _recipe.actors.values()
++                     if a.op == "relocate" and a.keep_appearance
++                     and a.policy.get("require_harvested_asset")]
++    if _takeover_ids:
++        if not os.environ.get("NUREC_GRPC_ASSET_REPLACE"):
++            ap.error("Original-car takeover requires --asset-harvester-replace; tracks=" + ",".join(_takeover_ids))
++        os.environ["NUREC_GRPC_ASSET_REPLACE_REPORT"] = str(Path(args.output_dir) / "harvester_takeover_audit.json")
+     _edits.extend(_recipe_edits)
+     if args.eval_frames is not None and int(args.eval_frames) <= 0:
+         # A pure log-replay render has no policy and no hand-off: the ego
+diff --git a/tests/render/test_nurec_grpc.py b/tests/render/test_nurec_grpc.py
+index 75c437b..c950e4f 100644
+--- a/tests/render/test_nurec_grpc.py
++++ b/tests/render/test_nurec_grpc.py
+@@ -176,8 +176,10 @@ class TestAFrameTheReconNeverBaked:
+         def __init__(self, name): self.name = name
+ 
+     class _RpcError(Exception):
+-        def __init__(self, name): self.name = name
++        def __init__(self, name, details=""):
++            self.name, self._details = name, details
+         def code(self): return TestAFrameTheReconNeverBaked._Status(self.name)
++        def details(self): return self._details
+ 
+     @staticmethod
+     def _renderer(fail_on):
+@@ -222,6 +224,22 @@ class TestAFrameTheReconNeverBaked:
+         with pytest.raises(TestAFrameTheReconNeverBaked._RpcError):
+             r._send_render(self._req(200), 200)
+ 
++    def test_ping_timeout_is_retried_once_after_cold_jit(self):
++        r = self._renderer(fail_on=set())
++        calls = []
++
++        class _Stub:
++            def render_rgb(_s, req, timeout=None):
++                calls.append(req.frame_start_us)
++                if len(calls) == 1:
++                    raise TestAFrameTheReconNeverBaked._RpcError(
++                        "UNAVAILABLE", "ping timeout")
++                return type("R", (), {"image_bytes": b"jpeg"})()
++
++        r._stub = _Stub()
++        assert r._send_render(self._req(200), 200) == b"jpeg"
++        assert calls == [200, 200]
++
+ 
+ # ── NUREC_GRPC_RENDER_STEPS ──────────────────────────────────────────────────
+ # A fidelity campaign scores the 2 Hz navsim timestamps but has to STEP at the
+diff --git a/nexussim/render/harvest_takeover.py b/nexussim/render/harvest_takeover.py
+new file mode 100644
+index 0000000..34f6bab
+--- /dev/null
++++ b/nexussim/render/harvest_takeover.py
+@@ -0,0 +1,39 @@
++"""Strict original-track appearance contract for BEV-authored takeovers."""
++
++def required_harvest_tracks(scenario):
++    return {str(row['track_id']) for row in scenario.get('metadata', {}).get('navsafe_reactive', [])
++            if row.get('require_harvested_asset')}
++
++
++def select_takeover_replacements(doc, plys, scene_tracks, scene_ids, cap, required):
++    required = set(required)
++    missing = required - set(plys)
++    if missing:
++        raise ValueError(f"Takeover has no original harvested asset in manifest: {sorted(missing)}")
++    # A 20 s handoff is four independently reconstructed 5 s scenes.  A logged
++    # actor commonly exists in only some of them; absence from another window
++    # means there is no baked actor there to replace.  What must never happen is
++    # silently selecting a manifest that does not contain the takeover in any
++    # served scene.
++    served = set().union(*(set(scene_tracks.get(sid, ())) for sid in scene_ids))
++    missing = required - served
++    if missing:
++        raise ValueError(
++            f"Takeover track absent from every controllable scene: {sorted(missing)}")
++    cost = lambda tid: sum(tid in scene_tracks.get(sid, ()) for sid in scene_ids)
++    used = sum(cost(t) for t in required)
++    if cap > 0 and used > cap:
++        raise ValueError(f"Required takeover tracks need {used} instances, over harvester budget {cap}")
++    if cap <= 0:
++        return dict(plys)
++    kept = set(required)
++    near = sorted((t for t in plys if t not in required),
++                  key=lambda t: (doc['assets'][t].get('min_ego_dist_m') if doc['assets'][t].get('min_ego_dist_m') is not None else float('inf'),t))
++    for tid in near:
++        n = cost(tid)
++        if not n:
++            continue
++        if used+n > cap:
++            break
++        kept.add(tid); used+=n
++    return {t:p for t,p in plys.items() if t in kept}
+diff --git a/tests/render/test_harvest_takeover.py b/tests/render/test_harvest_takeover.py
+new file mode 100644
+index 0000000..074a879
+--- /dev/null
++++ b/tests/render/test_harvest_takeover.py
+@@ -0,0 +1,80 @@
++import copy,importlib.util,json,os,sys
++from pathlib import Path
++import numpy as np
++import pytest
++from nexussim.navsafe.editing.recipe.schema import spec_digest
++patch=os.environ.get('NAVSAFE_PATCH_DIR')
++if patch:
++ def load(name,file):
++  spec=importlib.util.spec_from_file_location(name,Path(patch)/file);m=importlib.util.module_from_spec(spec);sys.modules[name]=m;code=(Path(patch)/file).read_text();code=code.replace('@register_renderer("nurec_grpc")','') if name=='patched_grpc' else code;exec(compile(code,str(Path(patch)/file),'exec'),m.__dict__);return m
++ load('nexussim.render.harvest_takeover','harvest_takeover.py')
++ spawn_reactive_actor=load('patched_edits','navsafe-edits-after.py').spawn_reactive_actor
++ Renderer=load('patched_grpc','navsafe-grpc-after.py').NuRecGrpcSceneRenderer
++ sys.modules['nexussim.render.nurec_grpc'].NuRecGrpcSceneRenderer=Renderer
++else:
++ from nexussim.scenario.edits import spawn_reactive_actor
++ from nexussim.render.nurec_grpc import NuRecGrpcSceneRenderer as Renderer
++from nexussim.render.harvest_takeover import select_takeover_replacements,required_harvest_tracks
++from tests.render.test_nurec_grpc_replace import _bank
++from tests.render.test_nurec_grpc_insert import _fake_bundle,_FakeStub
++
++def renderer(scenes):
++ r=Renderer();r._g=_fake_bundle();r._stub=_FakeStub();r._scene_id=next(iter(scenes));r._dyn_track_ids_by_scene={s:set(v) for s,v in scenes.items()};r._dyn_track_ids=set().union(*r._dyn_track_ids_by_scene.values());r._dyn_track_size_by_scene={s:{t:(8.2,2.1,2.7) for t in v} for s,v in scenes.items()};return r
++
++def host():
++ def track(length):return {'type':'VEHICLE','state':{'position':np.zeros((8,3)),'heading':np.zeros(8),'velocity':np.zeros((8,2)),'valid':np.ones(8,bool),'length':np.full(8,length),'width':np.full(8,2.1),'height':np.full(8,2.7)},'metadata':{'original':'yes'}}
++ return {'metadata':{'sdc_id':'ego'},'tracks':{'ego':track(4.5),'source-car':track(8.2),'neighbor':track(5)}}
++
++def actor(keep=True):
++ s={'name':'edit','op':'relocate' if keep else 'replace','source_track_id':'source-car','track_type':'VEHICLE','spawn':{'position':[1,2,0],'heading':0,'velocity':[3,0]},'policy':{'kind':'authored_path','require_harvested_asset':True}}
++ if keep:s['keep_appearance']=True
++ else:s['dims']=[4,2,1.5]
++ s['sha256']=spec_digest(s);return s
++
++def test_preserve_id_dimensions_and_only_one_actor():
++ h=host();neighbor=copy.deepcopy(h['tracks']['neighbor']);result=spawn_reactive_actor(h,actors=[actor()],frames={'T':8,'dt_s':.1})
++ assert set(result['tracks'])=={'ego','source-car','neighbor'}
++ assert not result['tracks']['source-car']['metadata']['injected_obstacle']
++ assert 'nurec_asset_id' not in result['tracks']['source-car']['metadata']
++ assert np.all(result['tracks']['source-car']['state']['length']==8.2)
++ np.testing.assert_array_equal(result['tracks']['neighbor']['state']['position'],neighbor['state']['position'])
++ assert required_harvest_tracks(result)=={'source-car'}
++ assert result['metadata']['navsafe_reactive'][0]['track_id']=='source-car'
++
++def test_old_replace_still_creates_new_asset():
++ result=spawn_reactive_actor(host(),actors=[actor(False)],frames={'T':8,'dt_s':.1})
++ assert 'source-car' not in result['tracks'] and 'navsafe_edit' in result['tracks']
++
++def test_keep_rejects_generic_asset():
++ s=actor();s['nurec_asset_id']='wrong-car.ply';s['sha256']=spec_digest(s)
++ with pytest.raises(ValueError,match='different asset'):spawn_reactive_actor(host(),actors=[s],frames={'T':8})
++
++def test_required_actor_prioritized_under_instance_cap():
++ p={t:t+'.ply' for t in ['near','source','far']};doc={'assets':{t:{'min_ego_dist_m':i} for i,t in enumerate(p)}};scenes={f's{i}':set(p) for i in range(4)}
++ assert select_takeover_replacements(doc,p,scenes,list(scenes),4,{'source'})=={'source':'source.ply'}
++ with pytest.raises(ValueError,match='budget'):select_takeover_replacements(doc,p,scenes,list(scenes),3,{'source'})
++ with pytest.raises(ValueError,match='manifest'):select_takeover_replacements(doc,p,scenes,list(scenes),10,{'absent'})
++ scenes['s3'].remove('source')
++ assert 'source' in select_takeover_replacements(doc,p,scenes,list(scenes),10,{'source'})
++ for tracks in scenes.values():tracks.discard('source')
++ with pytest.raises(ValueError,match='every controllable scene'):select_takeover_replacements(doc,p,scenes,list(scenes),10,{'source'})
++
++def test_renderer_uses_own_asset_without_insert_and_writes_audit(tmp_path,monkeypatch):
++ bank=_bank(tmp_path,['source','near']);monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE',bank);monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE_MAX','2');monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE_REPORT',str(tmp_path/'audit.json'));monkeypatch.delenv('NAVSAFE_REPLACE_SCOPE',raising=False)
++ r=renderer({'s1':['source','near'],'s2':['source','near']});r._handoff=[['s1',None,None,None],['s2',None,None,None]];r._required_harvest_tracks={'source'};r._replace_harvested_assets()
++ for req in r._stub.edit_requests:
++  assert len(req.replace)==1 and req.replace[0].original_id=='source'
++  assert req.replace[0].replacement_id.endswith('/source/gaussians.ply')
++  assert not getattr(req,'insert',[])
++ report=json.loads((tmp_path/'audit.json').read_text());assert report['applied_tracks_by_scene']=={'s1':['source'],'s2':['source']}
++
++def test_renderer_accepts_takeover_present_in_only_one_handoff_window(tmp_path,monkeypatch):
++ bank=_bank(tmp_path,['source','near']);monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE',bank);monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE_MAX','2');monkeypatch.setenv('NUREC_GRPC_ASSET_REPLACE_REPORT',str(tmp_path/'audit.json'));monkeypatch.delenv('NAVSAFE_REPLACE_SCOPE',raising=False)
++ r=renderer({'s1':['source','near'],'s2':['near']});r._handoff=[['s1',None,None,None],['s2',None,None,None]];r._required_harvest_tracks={'source'};r._replace_harvested_assets()
++ report=json.loads((tmp_path/'audit.json').read_text())
++ assert report['applied_tracks_by_scene']['s1']==['source']
++ assert 'source' not in report['applied_tracks_by_scene'].get('s2',[])
++
++def test_renderer_cannot_silently_skip_required_bank(monkeypatch):
++ monkeypatch.delenv('NUREC_GRPC_ASSET_REPLACE',raising=False);r=renderer({'s1':['source']});r._required_harvest_tracks={'source'}
++ with pytest.raises(RuntimeError,match='requires --asset'):r._replace_harvested_assets()

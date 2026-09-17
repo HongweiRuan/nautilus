@@ -1,0 +1,123 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-heatmap-27x30-20260913
+  namespace: cogrob
+  labels:
+    app: navsafe-heatmap-27x30-20260913
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 604800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-heatmap-27x30-20260913
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: WORKERS
+          value: '27'
+        - name: SEEDS
+          value: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+            25 26 27 28 29
+        - name: NEXUSSIM_SHA
+          value: 31ff7e48922962f2f19f9b2b4bce79171eccac3a
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: SELECTION
+          value: /cfg/selection.json
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/heatmap/20260913_27x30_t0_4s
+        - name: CELL_TRIES
+          value: '1'
+        - name: CELL_TIMEOUT
+          value: 30m
+        - name: NUREC_GRPC_STRICT
+          value: '1'
+        - name: ACCEPT_EULA
+          value: 'Y'
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: 'YES'
+        - name: WORKER_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        resources:
+          requests:
+            cpu: '6'
+            memory: 48Gi
+            nvidia.com/gpu: 2
+            ephemeral-storage: 150Gi
+          limits:
+            cpu: '6'
+            memory: 48Gi
+            nvidia.com/gpu: 2
+            ephemeral-storage: 150Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl
+          mountPath: /avl-west
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: cfg
+          mountPath: /cfg
+          readOnly: true
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: cfg
+        configMap:
+          name: navsafe-heatmap-27x30-20260913-cfg
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+  completions: 27
+  parallelism: 20
+  completionMode: Indexed

@@ -1,0 +1,23 @@
+{
+  "models": [
+    "autovla",
+    "diffusiondrive",
+    "diffusiondrive_beyonddrive",
+    "diffusiondrive_simscale",
+    "drivelaw",
+    "drivevla_w0",
+    "ltf",
+    "mtdrive_mtgrpo",
+    "mtdrive_sft",
+    "rap",
+    "sparsedrivev2",
+    "drivor",
+    "recogdrive_il",
+    "recogdrive_rl",
+    "simwam",
+    "simwam_base"
+  ],
+  "currently_requested": "drivor",
+  "events": 56,
+  "scenarios": 28
+}

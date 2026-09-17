@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ns-envpert-diffusiondrive-simscale-s0
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-env-perturb
+    model: diffusiondrive_simscale
+spec:
+  completionMode: Indexed
+  completions: 28
+  parallelism: 14
+  backoffLimitPerIndex: 1
+  maxFailedIndexes: 28
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        args:
+        - /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/diffusiondrive_simscale/run_worker.sh
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: INPUT_ROOT
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1
+        - name: MODEL_TSV
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/diffusiondrive_simscale/model.tsv
+        - name: CELLS_JSON
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/diffusiondrive_simscale/cells.json
+        - name: RUNTIME_TAR
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/runtime.tar.gz
+        - name: RUNTIME_PATCH
+          value: /avl-west/navsafe_eval/section4_env_perturb/20260912-v1/original_car_takeover.patch
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        resources:
+          requests:
+            cpu: '3'
+            memory: 76Gi
+            nvidia.com/gpu: '2'
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '3'
+            memory: 91Gi
+            nvidia.com/gpu: '2'
+            ephemeral-storage: 100Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090

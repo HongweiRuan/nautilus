@@ -41,9 +41,10 @@ class GTRSDenseAdapter(SensorPolicy):
             prefix = "agent.model."
             clean[key[len(prefix):] if key.startswith(prefix) else key] = value
 
+        vocab_size = int(os.environ.get("NAVSAFE_GTRS_VOCAB_SIZE", "8192"))
         config = HydraConfig(
             vocab_path=vocab_path,
-            vocab_size=8192,
+            vocab_size=vocab_size,
             lidar_seq_len=4,
             sigma=0.5,
             trajectory_imi_weight=1.0,
@@ -102,17 +103,23 @@ class GTRSDenseAdapter(SensorPolicy):
         missing, unexpected = self.model.load_state_dict(clean, strict=False)
         allowed_missing = {"_trajectory_head.vocab"}
         bad_missing = set(missing) - allowed_missing
+        # The released 16,384-way GTRS checkpoint comes from the original
+        # NVlabs topology, which registered ``_query_embedding`` but never
+        # consumed it in forward().  SimScale's fork removed that dead module.
+        # Dropping exactly this tensor is therefore topology parity, while any
+        # other mismatch remains fatal.
         allowed_unexpected = {"_query_embedding.weight"}
         bad_unexpected = set(unexpected) - allowed_unexpected
         if bad_missing or bad_unexpected:
             raise RuntimeError(
                 "GTRS-Dense checkpoint mismatch: "
-                f"missing={sorted(bad_missing)[:12]}, unexpected={sorted(bad_unexpected)[:12]}"
+                f"missing={sorted(bad_missing)[:12]}, "
+                f"unexpected={sorted(bad_unexpected)[:12]}"
             )
         self.model.to(self.device).eval()
         print(
             f"GTRS-Dense loaded exactly: backbone={self.backbone}, "
-            f"checkpoint={self.checkpoint_path}, vocab={vocab_path}"
+            f"checkpoint={self.checkpoint_path}, vocab={vocab_path}, vocab_size={vocab_size}"
         )
 
     def get_camera_configs(self) -> Dict[str, Dict[str, float]]:

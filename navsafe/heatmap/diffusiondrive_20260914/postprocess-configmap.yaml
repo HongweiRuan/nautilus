@@ -1,0 +1,666 @@
+apiVersion: v1
+data:
+  plot_scenario.py: |
+    import json,sys
+    from pathlib import Path
+    import numpy as np
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    root=Path(sys.argv[1]);leaf,token=sys.argv[2:4]
+    rows={model:[json.loads((root/f'seed{seed}'/leaf/token/'base'/model/'heatmap_episode.json').read_text()) for seed in range(30)] for model in ('diffusiondrive','diffusiondrive_simscale')}
+    out=root/'figures';out.mkdir(exist_ok=True)
+    for frame in (20,40):
+     fig,ax=plt.subplots(figsize=(7,5));fig.subplots_adjust(bottom=.28,right=.85)
+     vals=[r['states'][str(frame)]['mc_return'] for rr in rows.values() for r in rr if r['states'][str(frame)].get('mc_return') is not None]
+     norm=matplotlib.colors.Normalize(min([0]+vals),max([1]+vals))
+     ol=rows['diffusiondrive'][0]['states'][str(frame)]['ol_log_xy']
+     for model,rr in rows.items():
+      for r in rr:assert np.allclose(r['states'][str(frame)]['ol_log_xy'],ol)
+     counts=[]
+     for (model,rr),marker in zip(rows.items(),('o','^')):
+      valid=[r['states'][str(frame)] for r in rr if r['states'][str(frame)].get('mc_return') is not None and r['states'][str(frame)]['cl_xy'] is not None]
+      counts.append(len(valid))
+      if valid:
+       xy=np.array([v['cl_xy'] for v in valid]);ax.scatter(*xy.T,c=[v['mc_return'] for v in valid],norm=norm,cmap='viridis',marker=marker,s=36,edgecolors='white',linewidths=.5)
+     ax.scatter(*ol,marker='D',s=65,facecolors='none',edgecolors='black',zorder=5)
+     ax.set(xlabel='Forward x (m)',ylabel='Leftward y (m)',title=f'{leaf} | {token} | t = {frame/10:g} s')
+     ax.grid(alpha=.15);ax.margins(.2)
+     fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm,cmap='viridis'),ax=ax,label='Future discounted ΔDS return')
+     handles=[Line2D([],[],marker='D',color='black',mfc='none',ls='',label='OL: one logged state'),Line2D([],[],marker='o',color='#31878d',ls='',label=f'DiffusionDrive CL: {counts[0]}/30 valid'),Line2D([],[],marker='^',color='#31878d',ls='',label=f'DiffusionDrive-SimScale CL: {counts[1]}/30 valid')]
+     fig.legend(handles=handles,loc='lower center',fontsize=8,title=f'Reference: frame 0; state: frame {frame} (+{frame/10:g} s)\n30 seeds/model; overlapping points retained; γ=0.99; terminal horizon=4 s',title_fontsize=8,frameon=True)
+     for ext in ('png','svg'):fig.savefig(out/f'{leaf}_{token}_t{frame//10}.{ext}',dpi=200)
+     plt.close(fig)
+    print('SCENARIO_PLOTS_SAVED',leaf,token)
+  recompute_diffusiondrive_mc.py: |
+    import csv
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import numpy as np
+    from nexussim.navsafe.trace import from_eval
+    from nexussim.navsafe.scoring import route, metrics
+
+    root = Path(sys.argv[1])
+    selection = json.loads(Path(sys.argv[2]).read_text())
+    gamma = 0.99
+    failures = []
+    counts = {"validated": 0, "unvalidated": 0}
+
+    for leaf, block in selection["leaves"].items():
+        for picked in block["picked"]:
+            token = picked["token"]
+            data_root = picked["data_root"]
+            sd = from_eval.scenario_from_arrow(data_root)
+            ego_id = (sd.get("metadata", {}) or {}).get("sdc_id") or sd.get("sdc_id")
+            log = np.asarray(sd["tracks"][ego_id]["state"]["position"])[:, :2]
+            drivable = bool(sd.get("map_features"))
+            for seed in range(30):
+                for model in ("diffusiondrive", "diffusiondrive_simscale"):
+                    p = root / f"seed{seed}" / leaf / token / "base" / model
+                    hp = p / "heatmap_episode.json"
+                    result = json.loads(hp.read_text())
+                    saved = json.loads((p / "navsafe_metrics.json").read_text())
+                    try:
+                        warm = 0
+                        end = saved["termination"]["frame"]
+                        reason = saved["termination"]["reason"]
+                        if reason in ("hold_satisfied", "red_light_run", "illegal_turn"):
+                            raise ValueError("special terminal DS rule requires separate prefix handling")
+                        ego_xy = np.load(p / "vehicle_states.npy")[:, :2]
+                        pf = from_eval.read_per_frame_epdms(p)
+                        rebuilt = []
+                        for j, xy in enumerate(ego_xy):
+                            row = pf.get(j, {})
+                            contacts = []
+                            if j >= warm and row.get("COLL", 0) > 0:
+                                if not row.get("COLL_KIND"):
+                                    raise ValueError("contact kind missing; cannot reconstruct exact penalty")
+                                contacts = [{
+                                    "agent_id": row.get("COLL_ID", ""),
+                                    "kind": row["COLL_KIND"],
+                                    "at_fault": row.get("COLL_AF", 0) > 0,
+                                }]
+                            rebuilt.append({
+                                "phase": "scored" if j >= warm else "warmup",
+                                "ego_x": float(xy[0]), "ego_y": float(xy[1]),
+                                "on_drivable": not drivable or row.get("DAC", 1) >= 1,
+                                "contacts": contacts,
+                                "signal_state": ("red" if row["TL"] < 1 else "unknown") if "TL" in row else "",
+                            })
+                        run = SimpleNamespace(
+                            route_xy=log, ego_xy=ego_xy, frames=rebuilt,
+                            drivable_known=drivable,
+                        )
+                        progress = route.route_progress(run.route_xy, run.ego_xy).per_frame_pct
+                        frames = run.frames[warm:end + 1]
+                        if not frames:
+                            raise ValueError("empty scored window")
+                        pairs = {
+                            (c["agent_id"], c["kind"])
+                            for f in frames for c in f["contacts"] if c["at_fault"]
+                        }
+                        saved_contacts = {
+                            c["channel"]: c["count"]
+                            for c in saved["driving_score_breakdown"]["channels"]
+                            if c["channel"].startswith("collisions_") and c["count"]
+                        }
+                        single_contact_channel = (
+                            next(iter(saved_contacts))
+                            if len(pairs) == 1 and sum(saved_contacts.values()) == 1 else None
+                        )
+                        ds = [float(progress[warm - 1]) if warm else 0.0]
+                        for i in range(len(frames)):
+                            prefix = frames[:i + 1]
+                            infraction_counts = metrics.infractions_from_trace(prefix, at_fault_only=True)
+                            if single_contact_channel and any(
+                                c.get("at_fault") for f in prefix for c in f["contacts"]
+                            ):
+                                infraction_counts = {
+                                    k: v for k, v in infraction_counts.items()
+                                    if not k.startswith("collisions_")
+                                }
+                                infraction_counts[single_contact_channel] = 1
+                            red = np.array(
+                                [f.get("signal_state") == "red" for f in prefix], dtype=bool
+                            )
+                            infraction_counts["red_light"] = int(
+                                np.sum(red & ~np.r_[False, red[:-1]])
+                            )
+                            penalty = 1.0
+                            for channel, coef in metrics.PENALTY_COEFFICIENTS.items():
+                                penalty *= coef ** infraction_counts.get(channel, 0)
+                            if run.drivable_known:
+                                xy = [[f["ego_x"], f["ego_y"]] for f in prefix]
+                                penalty *= 1 - route.outside_route_lanes_pct(
+                                    xy, [f["on_drivable"] for f in prefix]
+                                ) / 100
+                            completion = progress[warm + i]
+                            if warm + i == end and reason == "goal_reached":
+                                completion = 100.0
+                            ds.append(max(0.0, float(completion * penalty)))
+                        expected = saved["metrics"].get("driving_score")
+                        if expected is None:
+                            br = saved["driving_score_breakdown"]
+                            expected = float(br["route_completion_pct"]) * float(br["penalty"])
+                        gap = abs(ds[-1] - float(expected))
+                        # Excluded 4 s horizons store route completion and penalty
+                        # rounded in the JSON breakdown, so their product is only
+                        # comparable to the reconstructed DS within half a 0.01 unit.
+                        if gap > 0.0051:
+                            raise ValueError(
+                                f"final DS mismatch: reconstructed={ds[-1]}, expected={expected}"
+                            )
+                        reward = np.diff(ds)
+                        ret = np.zeros(len(reward) + 1)
+                        for i in range(len(reward) - 1, -1, -1):
+                            ret[i] = reward[i] + gamma * ret[i + 1]
+                        if abs(reward.sum() - (ds[-1] - ds[0])) >= 1e-8:
+                            raise ValueError("reward telescoping check failed")
+                        result["ds"] = ds
+                        result["rewards"] = reward.tolist()
+                        result["mc_returns"] = ret.tolist()
+                        result["final_ds_error"] = gap
+                        result["mc_status"] = "validated"
+                        result.pop("mc_error", None)
+                        for frame in (20, 40):
+                            state = result["states"][str(frame)]
+                            state.pop("mc_return", None)
+                            if state.get("cl_xy") is not None and frame < len(ret):
+                                state["mc_return"] = float(ret[frame])
+                        counts["validated"] += 1
+                    except Exception as exc:
+                        result["mc_status"] = "unvalidated"
+                        result["mc_error"] = str(exc)
+                        counts["unvalidated"] += 1
+                        failures.append(f"{leaf}/{token}/seed{seed}/{model}: {exc}")
+                    hp.write_text(json.dumps(result, indent=2))
+
+    for leaf, block in selection["leaves"].items():
+        for picked in block["picked"]:
+            subprocess.run(
+                [sys.executable, "/cfg/plot_scenario.py", str(root), leaf, picked["token"]],
+                check=True,
+            )
+
+    report = {"counts": counts, "failure_count": len(failures), "failures": failures}
+    (root / "mc_recompute_report.json").write_text(json.dumps(report, indent=2))
+    print(json.dumps(report, indent=2))
+    if failures:
+        raise SystemExit(1)
+  run_postprocess.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -y -qq git curl python3-venv python3-dev libgomp1 >/dev/null
+    export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
+    export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/ns-venv
+    for i in 1 2 3 4; do
+      command -v uv >/dev/null && break
+      python -m pip install --quiet --user uv 2>/dev/null || pip install --quiet --user uv 2>/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+      hash -r
+      sleep 5
+    done
+    REPO=/root/ns
+    git clone --quiet --no-hardlinks /hugsim-storage/NexusSim "$REPO"
+    git -C "$REPO" checkout --quiet 31ff7e48922962f2f19f9b2b4bce79171eccac3a
+    cd "$REPO"
+    uv sync --all-extras --python 3.12
+    export PYTHONPATH="$REPO:$REPO/third_party/nurec_protos"
+    /root/ns-venv/bin/python /cfg/recompute_diffusiondrive_mc.py /avl-west/navsafe_eval/heatmap/20260914_diffusiondrive_27x30_t0_4s /cfg/selection.json
+  selection.json: |-
+    {
+      "grid": {
+        "arms": [
+          {
+            "id": "base",
+            "lat": 0,
+            "lon": 0,
+            "yaw": 0
+          }
+        ]
+      },
+      "leaves": {
+        "C-1": {
+          "picked": [
+            {
+              "token": "087023402a695ba3",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/087023402a695ba3/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/087023402a695ba3",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-2": {
+          "picked": [
+            {
+              "token": "f077a062ad9b55e9",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-3": {
+          "picked": [
+            {
+              "token": "273f424fa2fc55ad",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-4": {
+          "picked": [
+            {
+              "token": "0670d0c81a5550c4",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/0670d0c81a5550c4/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/0670d0c81a5550c4",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-5": {
+          "picked": [
+            {
+              "token": "58d69daf413c5d5a",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/58d69daf413c5d5a/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/58d69daf413c5d5a",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-6": {
+          "picked": [
+            {
+              "token": "0122ce98b2735558",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/0122ce98b2735558/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/0122ce98b2735558",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-7": {
+          "picked": [
+            {
+              "token": "1e9350ac2bc25f59",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/1e9350ac2bc25f59/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/C-7.1e9350ac2bc25f59.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/1e9350ac2bc25f59",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-8": {
+          "picked": [
+            {
+              "token": "1961d1075a085a1d",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/1961d1075a085a1d/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/1961d1075a085a1d",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-9": {
+          "picked": [
+            {
+              "token": "918b6721bcf75d38",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/918b6721bcf75d38/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/918b6721bcf75d38",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "C-10": {
+          "picked": [
+            {
+              "token": "2bd04a0902095129",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/2bd04a0902095129/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/2bd04a0902095129",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "I-1": {
+          "picked": [
+            {
+              "token": "9605af7df76f5ba3",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/9605af7df76f5ba3/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/9605af7df76f5ba3",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "I-2": {
+          "picked": [
+            {
+              "token": "0d5b8da00d505be0",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/0d5b8da00d505be0/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/0d5b8da00d505be0",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "I-3": {
+          "picked": [
+            {
+              "token": "84acc78da95f56d3",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/84acc78da95f56d3/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/I-3.84acc78da95f56d3.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/84acc78da95f56d3",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "R-1": {
+          "picked": [
+            {
+              "token": "0a51eebaccc95c36",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/0a51eebaccc95c36/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/0a51eebaccc95c36",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "R-2": {
+          "picked": [
+            {
+              "token": "20cc0fdb7e2d5c3f",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-2.20cc0fdb7e2d5c3f.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/20cc0fdb7e2d5c3f",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "R-3": {
+          "picked": [
+            {
+              "token": "132307b3c1a55f97",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/132307b3c1a55f97/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-3.132307b3c1a55f97.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/132307b3c1a55f97",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "R-4": {
+          "picked": [
+            {
+              "token": "173369dc059d5fe9",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/173369dc059d5fe9/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/R-4.173369dc059d5fe9.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/173369dc059d5fe9",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-1": {
+          "picked": [
+            {
+              "token": "42af8e33480d53b3",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/42af8e33480d53b3",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-2": {
+          "picked": [
+            {
+              "token": "3d324bda0cec57ab",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/3d324bda0cec57ab/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/3d324bda0cec57ab",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-3": {
+          "picked": [
+            {
+              "token": "3a6525cd871a5fff",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/3a6525cd871a5fff/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/3a6525cd871a5fff",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-4": {
+          "picked": [
+            {
+              "token": "2ad17379a25d55d9",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/2ad17379a25d55d9/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/2ad17379a25d55d9",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-5": {
+          "picked": [
+            {
+              "token": "07c5114fdb395f8b",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/07c5114fdb395f8b/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/07c5114fdb395f8b",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-6": {
+          "picked": [
+            {
+              "token": "8661a7e9b4a95042",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-7": {
+          "picked": [
+            {
+              "token": "a12d1a61d7cc50fe",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/a12d1a61d7cc50fe",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-9": {
+          "picked": [
+            {
+              "token": "0b1a626ef31150b3",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_dev/full_test_mirror/0b1a626ef31150b3",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-10": {
+          "picked": [
+            {
+              "token": "63c145828c3b5fd8",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/63c145828c3b5fd8/arrow",
+              "recipe": "/hugsim-storage/NexusSim/nexussim/navsafe/recipes/benchmark/V-10.63c145828c3b5fd8.yaml",
+              "nurec_work_dir": null,
+              "ego_frames": 200,
+              "bundle": "/avl-west/navsafe_eval/dataset/63c145828c3b5fd8",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        },
+        "V-11": {
+          "picked": [
+            {
+              "token": "32d85d373126537e",
+              "handoff": 0,
+              "data_root": "/avl-west/navsafe_eval/dataset/32d85d373126537e/arrow",
+              "recipe": null,
+              "nurec_work_dir": null,
+              "ego_frames": 201,
+              "bundle": "/avl-west/navsafe_eval/dataset/32d85d373126537e",
+              "arms_run": [
+                "base"
+              ]
+            }
+          ]
+        }
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: navsafe-dd-heatmap-postprocess-20260914-cfg
+  namespace: cogrob

@@ -1,0 +1,279 @@
+[
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "lead_brake",
+    "recipe": "I-1.6fc91bf02f225d1b.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "drivor_simscale_134k",
+    "model_type": "drivor",
+    "checkpoint": "/closed-loop-e2e/weights/navsimv2/DrivoR/nav1_30epochs_with_134k_simscale_bis_103ktrainval.pth",
+    "extra_env": "",
+    "why": [
+      "unscored"
+    ]
+  },
+  {
+    "leaf": "V-7",
+    "token": "97dcc120f4695080",
+    "event": "cut_in",
+    "recipe": "V-7.97dcc120f4695080.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/97dcc120f4695080/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "V-7",
+    "token": "97dcc120f4695080",
+    "event": "lead_brake",
+    "recipe": "V-7.97dcc120f4695080.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/97dcc120f4695080/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "cut_in",
+    "recipe": "I-1.6fc91bf02f225d1b.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "lead_brake",
+    "recipe": "I-1.6fc91bf02f225d1b.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "V-6",
+    "token": "8661a7e9b4a95042",
+    "event": "cut_in",
+    "recipe": "V-6.8661a7e9b4a95042.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/8661a7e9b4a95042_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "V-6",
+    "token": "8661a7e9b4a95042",
+    "event": "lead_brake",
+    "recipe": "V-6.8661a7e9b4a95042.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/8661a7e9b4a95042/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/8661a7e9b4a95042_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_baseline",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy,NAVSAFE_GTRS_VOCAB_SIZE=16384",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "cut_in",
+    "recipe": "I-1.6fc91bf02f225d1b.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_expert_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "lead_brake",
+    "recipe": "I-1.6fc91bf02f225d1b.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_expert_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "cut_in",
+    "recipe": "C-2.f077a062ad9b55e9.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_expert_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip"
+    ]
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "vru_cross",
+    "recipe": "C-2.f077a062ad9b55e9.vru_cross.event.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_expert_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "C-3",
+    "token": "273f424fa2fc55ad",
+    "event": "lead_brake",
+    "recipe": "C-3.273f424fa2fc55ad.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_dev/full_test_mirror/273f424fa2fc55ad/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_reward_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "unscored"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "cut_in",
+    "recipe": "I-1.6fc91bf02f225d1b.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_reward_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "I-1",
+    "token": "6fc91bf02f225d1b",
+    "event": "lead_brake",
+    "recipe": "I-1.6fc91bf02f225d1b.lead_brake.event.yaml",
+    "data_root": "/avl-west/navsafe_eval/dataset/6fc91bf02f225d1b/arrow",
+    "asset_harvester_manifest": "/avl-west/navsafe_5s_500/6fc91bf02f225d1b_20s/ah_assets/replace_manifest.json",
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_reward_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "cut_in",
+    "recipe": "C-2.f077a062ad9b55e9.cut_in.event.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_reward_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  },
+  {
+    "leaf": "C-2",
+    "token": "f077a062ad9b55e9",
+    "event": "vru_cross",
+    "recipe": "C-2.f077a062ad9b55e9.vru_cross.event.yaml",
+    "data_root": "/avl-west/navsafe_dev/full_test_mirror/f077a062ad9b55e9/arrow",
+    "asset_harvester_manifest": null,
+    "replay_frames": 8,
+    "model_slug": "gtrs_dense_vov_reward_simscale",
+    "model_type": "gtrs_dense",
+    "checkpoint": "/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt",
+    "extra_env": "NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy,NAVSAFE_GTRS_VOCAB_SIZE=8192",
+    "why": [
+      "missing:navsafe_metrics.json",
+      "missing:reactivity_trace.zip",
+      "missing:eval.log"
+    ]
+  }
+]
