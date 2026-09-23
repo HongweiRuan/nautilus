@@ -1,0 +1,39 @@
+token	leaf	recipe	run	DS	route_completion_pct	penalty	termination	frame	detail	warmup	frames	outside_route_pct	veh_collisions	ped_collisions	layout_collisions	red_light
+0027991369e05ab2	R-1	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	304	goal region entered	20	305	0.0	0	0	0	0
+0027991369e05ab2	R-1	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	313	goal region entered	20	314	0.0	0	0	0	0
+0027991369e05ab2	R-1	-	best_before (LQR)	21.27	21.43	0.992549	off_drivable	61	off drivable for 0.5 s through frame 61	20	62	0.745	0	0	0	0
+0027991369e05ab2	R-1	-	best_after (LQR)	22.09	22.22	0.994295	off_drivable	63	off drivable for 0.5 s through frame 63	20	64	0.57	0	0	0	0
+0122ce98b2735558	C-6	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	329	goal region entered	20	330	0.0	0	0	0	0
+0122ce98b2735558	C-6	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	450	goal region entered	20	451	0.0	0	0	0	0
+0122ce98b2735558	C-6	-	best_before (LQR)	41.4	43.01	0.962498	off_drivable	80	off drivable for 0.5 s through frame 80	20	81	3.75	0	0	0	0
+0122ce98b2735558	C-6	-	best_after (LQR)	42.06	43.74	0.961568	off_drivable	81	off drivable for 0.5 s through frame 81	20	82	3.843	0	0	0	0
+02902d180b405100	C-1	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	356	goal region entered	20	357	0.0	0	0	0	0
+02902d180b405100	C-1	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	353	goal region entered	20	354	0.0	0	0	0	0
+02902d180b405100	C-1	-	best_before (LQR)	39.39	65.65	0.6	contact_at_fault	245	front with 83d20455cdc75b71	20	246	0.0	1	0	0	0
+02902d180b405100	C-1	-	best_after (LQR)	100.0	100.0	1.0	goal_reached	355	goal region entered	20	356	0.0	0	0	0	0
+07c5114fdb395f8b	V-5	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	324	goal region entered	20	325	0.0	0	0	0	0
+07c5114fdb395f8b	V-5	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	287	goal region entered	20	288	0.0	0	0	0	0
+07c5114fdb395f8b	V-5	-	best_before (LQR)	100.0	100.0	1.0	goal_reached	313	goal region entered	20	314	0.0	0	0	0	0
+07c5114fdb395f8b	V-5	-	best_after (LQR)	100.0	100.0	1.0	goal_reached	313	goal region entered	20	314	0.0	0	0	0	0
+089e3eac4f7e5c5c	V-4	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	192	goal region entered	20	193	0.0	0	0	0	0
+089e3eac4f7e5c5c	V-4	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	188	goal region entered	20	189	0.0	0	0	0	0
+089e3eac4f7e5c5c	V-4	-	best_before (LQR)	100.0	100.0	1.0	goal_reached	232	goal region entered	20	233	0.0	0	0	0	0
+089e3eac4f7e5c5c	V-4	-	best_after (LQR)	100.0	100.0	1.0	goal_reached	244	goal region entered	20	245	0.0	0	0	0	0
+0d5b8da00d505be0	I-2	-	DrivoR s0/s1024 (lqr_outputs)	100.0	100.0	1.0	goal_reached	332	goal region entered	20	333	0.0	0	0	0	0
+0d5b8da00d505be0	I-2	-	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	328	goal region entered	20	329	0.0	0	0	0	0
+0d5b8da00d505be0	I-2	-	best_before (LQR)	100.0	100.0	1.0	goal_reached	389	goal region entered	20	390	0.0	0	0	0	0
+0d5b8da00d505be0	I-2	-	best_after (LQR)	100.0	100.0	1.0	goal_reached	391	goal region entered	20	392	0.0	0	0	0	0
+132307b3c1a55f97	R-3	R-3	DrivoR s0/s1024 (lqr_outputs)	10.35	10.93	0.947017	off_drivable	60	off drivable for 0.5 s through frame 60	8	61	5.298	0	0	0	0
+132307b3c1a55f97	R-3	R-3	DrivoR s1 (final_outputs)	100.0	100.0	1.0	goal_reached	393	goal region entered	8	394	0.0	0	0	0	0
+132307b3c1a55f97	R-3	R-3	best_before (LQR)	10.17	10.55	0.963571	off_drivable	60	off drivable for 0.5 s through frame 60	8	61	3.643	0	0	0	0
+132307b3c1a55f97	R-3	R-3	best_after (LQR)	10.16	10.55	0.963104	off_drivable	63	off drivable for 0.5 s through frame 63	8	64	3.69	0	0	0	0
+1e9350ac2bc25f59	C-7	C-7	DrivoR s0/s1024 (lqr_outputs)	21.0	21.0	1.0	off_drivable	68	off drivable for 0.5 s through frame 68	8	69	0.0	0	0	0	0
+1e9350ac2bc25f59	C-7	C-7	DrivoR s1 (final_outputs)	42.4	43.14	0.982959	off_drivable	194	off drivable for 0.5 s through frame 194	8	195	1.704	0	0	0	0
+1e9350ac2bc25f59	C-7	C-7	best_before (LQR)	20.7	21.0	0.985721	off_drivable	123	off drivable for 0.5 s through frame 123	8	124	1.428	0	0	0	0
+1e9350ac2bc25f59	C-7	C-7	best_after (LQR)	20.72	21.0	0.986687	off_drivable	128	off drivable for 0.5 s through frame 128	8	129	1.331	0	0	0	0
+14c0a657ac3e5bb7	V-8	V-8	best_before (LQR)	21.12	21.43	0.985554	off_drivable	110	off drivable for 0.5 s through frame 110	8	111	1.445	0	0	0	0
+14c0a657ac3e5bb7	V-8	V-8	best_after (LQR)	21.08	21.43	0.983943	off_drivable	110	off drivable for 0.5 s through frame 110	8	111	1.606	0	0	0	0
+225eb6e22af55972	R-4	R-4	DrivoR s0/s1024 (lqr_outputs)	15.79	45.11	0.35	contact_at_fault	60	vru with navsafe_animal	8	61	0.0	0	1	0	1
+225eb6e22af55972	R-4	R-4	DrivoR s1 (final_outputs)	68.04	100.0	0.680416	off_drivable	360	off drivable for 0.5 s through frame 360	8	361	2.798	0	0	0	1
+225eb6e22af55972	R-4	R-4	best_before (LQR)	17.21	49.18	0.35	contact_at_fault	72	vru with navsafe_animal	8	73	0.0	0	1	0	1
+225eb6e22af55972	R-4	R-4	best_after (LQR)	17.44	49.84	0.35	contact_at_fault	73	vru with navsafe_animal	8	74	0.0	0	1	0	1

@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-bosch-dinov2-before-r3
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        k8s-app: job-bosch-dinov2-before-r3
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: gpu-container
+          image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+          env:
+            - name: SETTING
+              value: "dinov2"
+            - name: MODE
+              value: "before"
+            - name: PROCS
+              value: "8"
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -o pipefail
+              LOG=/hugsim-storage/bosch-summer/exp/hongwei_runs/logs/dinov2_before_$(date -u +%m%d_%H%M).log
+              mkdir -p $(dirname $LOG)
+              bash /hugsim-storage/bosch-summer/exp/hongwei_runs/run_eval.sh 2>&1 | tee $LOG
+          resources:
+            requests:
+              cpu: "14"
+              memory: "64Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: "40Gi"
+            limits:
+              cpu: "16"
+              memory: "64Gi"
+              nvidia.com/gpu: "1"
+              ephemeral-storage: "60Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: avl-west-vol
+              mountPath: /avl-west
+            - name: closed-loop-e2e
+              mountPath: /closed-loop-e2e
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "32Gi"
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+        - name: closed-loop-e2e
+          persistentVolumeClaim:
+            claimName: closed-loop-e2e
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: ["NVIDIA-L40", "NVIDIA-RTX-A6000", "NVIDIA-GeForce-RTX-3090"]

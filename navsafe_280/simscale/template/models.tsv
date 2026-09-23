@@ -1,0 +1,6 @@
+# label	model_type	checkpoint	extra_env
+ltf_simscale	ltf	/avl-west/navsafe_eval/aug_zoo/SimScale/LTF/ltf_sim_navhard.ckpt
+gtrs_dense_resnet_expert_simscale	gtrs_dense	/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_resnet_sim_expert_navhard.ckpt	NAVSAFE_GTRS_BACKBONE=resnet,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy
+gtrs_dense_resnet_reward_simscale	gtrs_dense	/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_resnet_sim_reward_navhard.ckpt	NAVSAFE_GTRS_BACKBONE=resnet,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy
+gtrs_dense_vov_expert_simscale	gtrs_dense	/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_expert_navhard.ckpt	NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy
+gtrs_dense_vov_reward_simscale	gtrs_dense	/avl-west/navsafe_eval/aug_zoo/SimScale/GTRS_Dense/gtrs_dense_vov_sim_reward_navhard.ckpt	NAVSAFE_GTRS_BACKBONE=vov,NAVSAFE_GTRS_VOCAB=/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/8192.npy

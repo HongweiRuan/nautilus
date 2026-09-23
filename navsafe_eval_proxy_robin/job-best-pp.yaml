@@ -1,0 +1,115 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-proxy-robin-best-pp
+  namespace: cogrob
+  annotations:
+    navsafe.ai/evaluation: "28-scenario proxy set; original benchmark edits retained; no additional hazard injection; Robin drivor_action best-PDMS before/after; controller pure_pursuit"
+  labels: &labels
+    app: navsafe-proxy-robin-best-pp
+    campaign: 20260922-v2
+spec:
+  completionMode: Indexed
+  completions: 2
+  parallelism: 2
+  backoffLimitPerIndex: 0
+  maxFailedIndexes: 2
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, -lc]
+        # Reuse the frozen, validated campaign runtime, but enable benchmark
+        # recipe auto-selection, take the controller from $CONTROLLER, and source
+        # robin_setup.sh (Robin's drivor_action adapter + agent) after the venv. This preserves the seven proxy scenarios whose
+        # original NavSafe definition inserts actors, without adding cut-in,
+        # lead-brake, or VRU-crossing intervention recipes.
+        args:
+        - |
+          set -euo pipefail
+          src="$CAMPAIGN_ROOT/run_worker.sh"
+          dst=/tmp/run_worker.proxy-nominal.sh
+          python3 - "$src" "$dst" <<'PY'
+          from pathlib import Path
+          import sys
+
+          src, dst = map(Path, sys.argv[1:])
+          text = src.read_text()
+          needle = '          --traffic-mode semi_reactive \\\n'
+          replacement = (
+              needle
+              + '          --recipe-dir "$REPO/nexussim/navsafe/recipes/benchmark" \\\n'
+          )
+          if text.count(needle) != 1:
+              raise SystemExit(
+                  f"expected one traffic-mode invocation in {src}, found {text.count(needle)}"
+              )
+          text = text.replace(needle, replacement)
+          ctl = '--controller lqr --execution-mode controller'
+          if text.count(ctl) != 1:
+              raise SystemExit(f"expected one lqr controller flag in {src}, found {text.count(ctl)}")
+          text = text.replace(ctl, '--controller "$CONTROLLER" --execution-mode controller')
+          hook = '[ -f "$INC/Python.h" ] || { say "missing Python.h under $INC"; exit 1; }\n'
+          if text.count(hook) != 1:
+              raise SystemExit(f"expected one Python.h check in {src}, found {text.count(hook)}")
+          text = text.replace(hook, hook + 'source /avl-west/navsafe_eval/robin_proxy_eval/robin_setup.sh\n')
+          dst.write_text(text)
+          dst.chmod(0o755)
+          PY
+          exec "$dst"
+        env:
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+        - {name: WORKERS, value: '2'}
+        - {name: CAMPAIGN_ROOT, value: /avl-west/navsafe_eval/reactivity_nohazard_eval/20260917-v1}
+        - {name: OUTROOT, value: /avl-west/navsafe_eval/proxy_nominal_outputs/robin_drivor_action_best/pure_pursuit}
+        - {name: CONTROLLER, value: pure_pursuit}
+        - {name: MODELS_TSV_PATH, value: /avl-west/navsafe_eval/robin_proxy_eval/models_best.tsv}
+        - name: JOB_COMPLETION_INDEX
+          valueFrom: {fieldRef: {fieldPath: "metadata.annotations['batch.kubernetes.io/job-completion-index']"}}
+        - {name: HYDRA_FULL_ERROR, value: '1'}
+        - {name: ACCEPT_EULA, value: 'Y'}
+        - {name: OMNI_KIT_ACCEPT_EULA, value: 'Y'}
+        resources:
+          requests: {cpu: '4', memory: 76Gi, nvidia.com/gpu: '2', ephemeral-storage: 100Gi}
+          limits: {cpu: '4', memory: 91Gi, nvidia.com/gpu: '2', ephemeral-storage: 100Gi}
+        volumeMounts:
+        - {name: dshm, mountPath: /dev/shm}
+        - {name: avl-west-vol, mountPath: /avl-west}
+        - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+        - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 24Gi}
+      - name: avl-west-vol
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: closed-loop-e2e
+        persistentVolumeClaim: {claimName: closed-loop-e2e}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+              - {key: nvidia.com/cuda.driver-version.full, operator: In, values: ['595.71.05']}
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net

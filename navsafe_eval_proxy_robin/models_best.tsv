@@ -1,0 +1,2 @@
+drivor_action_best_before	drivor_action	/root/bosch-summer/deploy_files_best/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=best,NAVSAFE_DA_REFINE=0
+drivor_action_best_after	drivor_action	/root/bosch-summer/deploy_files_best/policy/v_linear_demo_ft_imp_lr3_s2.ckpt	NAVSAFE_DA_SETTING=best,NAVSAFE_DA_REFINE=1

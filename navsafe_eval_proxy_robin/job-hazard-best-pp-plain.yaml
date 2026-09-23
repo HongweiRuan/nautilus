@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-hazard-robin-best-pp-plain
+  namespace: cogrob
+  annotations:
+    navsafe.ai/evaluation: "56 injected-hazard cells; Robin drivor_action best-PDMS before/after; controller pure_pursuit; plain eval (single renderer per worker, no trace)"
+  labels: &labels
+    app: navsafe-hazard-robin-best-pp-plain
+    campaign: robin-best-20260923-v1
+spec:
+  completionMode: Indexed
+  completions: 4
+  parallelism: 4
+  backoffLimitPerIndex: 0
+  maxFailedIndexes: 4
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, -lc]
+        # The frozen 56-cell hazard worker (its runtime + recipes + event timing,
+        # unchanged), patched by hazard_plain_patch.py into the plain eval used by
+        # every other Robin run: controller from $CONTROLLER, Robin's drivor_action
+        # adapter via robin_setup.sh, ONE renderer per worker reused across cells
+        # (restarted only if it died), and no reactivity trace / trace audit.
+        args:
+        - |
+          set -euo pipefail
+          dst=/tmp/run_worker.robin-hazard-plain.sh
+          python3 /avl-west/navsafe_eval/robin_proxy_eval/hazard_plain_patch.py "$CAMPAIGN_ROOT/run_worker.sh" "$dst"
+          exec "$dst"
+        env:
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+        - {name: WORKERS, value: '4'}
+        - {name: CAMPAIGN_ROOT, value: /avl-west/navsafe_eval/reactivity_hazard_eval/20260913-v1}
+        - {name: OUTROOT, value: /avl-west/navsafe_eval/reactivity_hazard_outputs/robin_drivor_action_best_plain/pure_pursuit}
+        - {name: MODELS_TSV_PATH, value: /avl-west/navsafe_eval/robin_proxy_eval/models_best.tsv}
+        - {name: CONTROLLER, value: pure_pursuit}
+        - name: JOB_COMPLETION_INDEX
+          valueFrom: {fieldRef: {fieldPath: "metadata.annotations['batch.kubernetes.io/job-completion-index']"}}
+        - {name: HYDRA_FULL_ERROR, value: '1'}
+        - {name: ACCEPT_EULA, value: 'Y'}
+        - {name: OMNI_KIT_ACCEPT_EULA, value: 'Y'}
+        resources:
+          requests: {cpu: '4', memory: 76Gi, nvidia.com/gpu: '2', ephemeral-storage: 100Gi}
+          limits: {cpu: '4', memory: 91Gi, nvidia.com/gpu: '2', ephemeral-storage: 100Gi}
+        volumeMounts:
+        - {name: dshm, mountPath: /dev/shm}
+        - {name: avl-west-vol, mountPath: /avl-west}
+        - {name: closed-loop-e2e, mountPath: /closed-loop-e2e}
+        - {name: hugsim-storage, mountPath: /hugsim-storage}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 24Gi}
+      - name: avl-west-vol
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: closed-loop-e2e
+        persistentVolumeClaim: {claimName: closed-loop-e2e}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: topology.kubernetes.io/region, operator: In, values: [us-west]}
+              - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+              - {key: nvidia.com/cuda.driver-version.full, operator: In, values: ['595.71.05']}
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net, ry-gpu-11.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}

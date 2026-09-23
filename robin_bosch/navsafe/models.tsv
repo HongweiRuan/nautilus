@@ -1,0 +1,7 @@
+# label	model_type	checkpoint	extra_env
+drivor_action_dinov2_before	drivor_action	/root/bosch-summer/deploy_files/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=dinov2,NAVSAFE_DA_REFINE=0
+drivor_action_dinov2_after	drivor_action	/root/bosch-summer/deploy_files/policy/v_linear_demo_ft_reg_pdms_lr3_s1.ckpt	NAVSAFE_DA_SETTING=dinov2,NAVSAFE_DA_REFINE=1
+drivor_action_best_before	drivor_action	/root/bosch-summer/deploy_files_best/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=best,NAVSAFE_DA_REFINE=0
+drivor_action_best_after	drivor_action	/root/bosch-summer/deploy_files_best/policy/v_linear_demo_ft_imp_lr3_s2.ckpt	NAVSAFE_DA_SETTING=best,NAVSAFE_DA_REFINE=1
+drivor_action_ext_drivor_before	drivor_action	/root/bosch-summer/deploy_files_ext_drivor/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=ext_drivor,NAVSAFE_DA_REFINE=0
+drivor_action_ext_drivor_after	drivor_action	/root/bosch-summer/deploy_files_ext_drivor/policy/v_linear_demo_ft_drivor_imp_lr3_s2.ckpt	NAVSAFE_DA_SETTING=ext_drivor,NAVSAFE_DA_REFINE=1

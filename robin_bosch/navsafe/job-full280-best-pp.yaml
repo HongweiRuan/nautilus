@@ -1,0 +1,140 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: robin-drivor-action-full280-best-pp
+  namespace: cogrob
+  labels:
+    app: robin-drivor-action-navsafe
+    navsafe-batch: robin-drivor-action-full280-best-pp
+spec:
+  podReplacementPolicy: TerminatingOrFailed
+  ttlSecondsAfterFinished: 259200
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels:
+        app: robin-drivor-action-navsafe
+        navsafe-batch: robin-drivor-action-full280-best-pp
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: WORKER_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: WORKERS
+          value: '13'
+        - name: EXPECTED_TOKENS
+          value: '280'
+        - name: CONTROLLER
+          value: pure_pursuit
+        - name: MODEL_FILTER
+          value: drivor_action_best_(before|after)
+        - name: SEEDS
+          value: '0'
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/robin_drivor_action_full280/pure_pursuit
+        - name: CELL_TRIES
+          value: '4'
+        - name: CELL_TIMEOUT
+          value: 45m
+        - name: RETRY_EXCLUDED
+          value: '1'
+        - name: DATASET
+          value: /avl-west/navsafe_eval/full_test
+        - name: TOKENS_FILE
+          value: /cfg/full_test_tokens.txt
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: MODELS_TSV
+          value: /cfg/models.tsv
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: 'Y'
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: 'Y'
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        - name: NAVSAFE_GAIT_BANK
+          value: /avl-west/navsafe_eval/gait_bank
+        resources:
+          requests: &id001
+            cpu: '3'
+            memory: 115Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *id001
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: robin-drivor-action-navsafe-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+  completionMode: Indexed
+  completions: 13
+  parallelism: 13
+  backoffLimitPerIndex: 2
+  maxFailedIndexes: 13
