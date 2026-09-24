@@ -1,0 +1,106 @@
+{
+  "source": "/avl-west/navsafe_eval/robin_drivor_action_full280/pure_pursuit/drivor_action_best_before/seed0/0a51eb8adf8e5391",
+  "metric_family": "navsafe",
+  "status": "scored",
+  "scenario": {
+    "token": "0a51eb8adf8e5391",
+    "scenario_types": [
+      "low_magnitude_speed",
+      "on_stopline_crosswalk",
+      "on_stopline_stop_sign"
+    ],
+    "taxonomy_leaves": [
+      "R-3"
+    ],
+    "taxonomy_leaf_names": [
+      "Micromobility-Involved"
+    ],
+    "has_inserted_actors": true,
+    "signal_override": null
+  },
+  "scenario_rules": {
+    "leaf": "V-1",
+    "disabled_terminations": [],
+    "disabled_infractions": [],
+    "require_lane_change": false,
+    "hold_region": null,
+    "hold_tolerance_m": 2.0,
+    "stop_sign_dwell_s": 3.0,
+    "note": "Stop-Sign: default goal and default success, plus stop_infraction when the ego crosses the line without 3 s below 0.3 m/s first. The check is SKIPPED, not passed, on a trace with no approach to the line."
+  },
+  "frames": {
+    "total": 104,
+    "scored": 96,
+    "warmup_excluded": 8,
+    "scored_window_s": 9.6,
+    "t_max_s": 60.0
+  },
+  "termination": {
+    "reason": "contact_not_at_fault",
+    "frame": 103,
+    "detail": "rear_end with c614f0a08c235bed",
+    "policy_attributed": false,
+    "collision_count": 1
+  },
+  "metrics": {
+    "driving_score": 30.21,
+    "success": false,
+    "efficiency_pct": null,
+    "comfort": 0.0
+  },
+  "driving_score_breakdown": {
+    "route_completion_pct": 32.84,
+    "penalty": 0.919949,
+    "formula": "driving_score = route_completion_pct * penalty",
+    "channels": [
+      {
+        "channel": "collisions_pedestrian",
+        "coefficient": 0.5,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kind 'vru'"
+      },
+      {
+        "channel": "collisions_vehicle",
+        "coefficient": 0.6,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kinds rear_end/angle/sideswipe, or the evaluator's collision count"
+      },
+      {
+        "channel": "collisions_layout",
+        "coefficient": 0.65,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kind 'single'"
+      },
+      {
+        "channel": "red_light",
+        "coefficient": 0.7,
+        "count": 0,
+        "factor": 1.0,
+        "source": "frames the evaluator's TL column flagged as a red-light violation (not the rubric comply() predicate)"
+      },
+      {
+        "channel": "outside_route_lanes",
+        "coefficient": "1 - pct/100",
+        "pct": 8.005,
+        "factor": 0.919949,
+        "source": "off-route distance (needs a map)"
+      }
+    ],
+    "penalty_channels_evaluated": 5,
+    "penalty_channels_skipped": [
+      "scenario_timeouts",
+      "yield_emergency_vehicle_infractions",
+      "stop_infraction"
+    ],
+    "not_in_penalty": null
+  },
+  "notes": [
+    "efficiency not reported: background traffic median 0.35 m/s is below the 1.5 m/s floor (or no checkpoint had moving traffic), so the ratio has no denominator \u2014 this scenario cannot measure efficiency, it is not a slow policy",
+    "stop sign: trace carries no approach to the stop line (no dist_to_stopline_m > 0 on a scored frame)",
+    "scored window is 9.6 s but t_max is 60.0 s \u2014 no policy was tested against its budget here; run with --eval-frames 600 or declare the window as the budget",
+    "metrics.json, driving_score_summary.csv and run_meta.json were pruned after scoring (--navsafe-prune-artifacts); re-scoring this directory loses the per-frame EPDMS flags (contacts fall back to the run total) and the TL column the red_light channel is measured from"
+  ]
+}

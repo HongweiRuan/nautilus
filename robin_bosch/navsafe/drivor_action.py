@@ -6,6 +6,9 @@ candidates, and optionally merged safety-RL adapters that re-decode the picked n
   NAVSAFE_DA_SETTING=dinov2  the picker reads the policy's own DINOv2-S registers (deploy doc sections 1-7)
   NAVSAFE_DA_SETTING=best    the picker reads a separate GeoUP encoder, front camera x 4 frames (section 8)
   NAVSAFE_DA_SETTING=ext_drivor  no picker: DrivoR's released scorer ranks the 64 candidates (section 10a; policy/vocab of section 8)
+  NAVSAFE_DA_SETTING=il19    section 9: the epoch-19 plain-IL policy with section 8's GeoUP picker, free_ids=true
+  NAVSAFE_DA_SETTING=ext_gtrs    section 10b: GTRS-Dense V2-99 (NVlabs release) ranks the 64 candidates (policy/vocab of section 8)
+  NAVSAFE_DA_ASSETS=<dir>    where picker/, geoup/, vocab/ live when they are not beside the checkpoint (il19: section 8's deploy dir)
   NAVSAFE_DA_REFINE=1        the checkpoint carries merged adapters: enable refine_pick (the AFTER system)
 
 Nothing about the model is reimplemented here. The adapter builds Robin's `DrivorActionAgent` from his own hydra agent
@@ -43,12 +46,16 @@ ALL_NAVSIM_KEYS = ("cam_f0", "cam_l0", "cam_l1", "cam_l2", "cam_r0", "cam_r1", "
 NUM_HISTORY = 4  # navsim AgentInput history: 4 frames at 2 Hz, the current one last
 
 
+GTRS_CKPT = "/avl-west/navsafe_eval/aug_zoo/GTRS/gtrs_dense_vov.ckpt"   # = HF Zzxxxxxxxx/gtrs gtrs_dense_vov.ckpt (sha256 8bab5fb8...)
+GTRS_VOCAB = "/avl-west/navsafe_eval/aug_zoo/SimScale/source/traj_final/16384.npy"
+
+
 def _overrides(deploy: Path, setting: str, refine: bool, dinov2_weights: str) -> tuple[list[str], list[str]]:
-    """The agent overrides of run_pdm_score in docs/deploy/dinov2_only_setting.md sections 4, 5 and 8.2."""
+    """The agent overrides of run_pdm_score in docs/deploy/dinov2_only_setting.md sections 4, 5, 8.2, 9.2 and 10.2."""
     if setting == "dinov2":
         members = [f"picker_full_kd1_s{s}" for s in range(3)] + [f"picker_reg_cpo_s{s}" for s in range(3)]
         scene = ["config.ext_scorer.vocab_picker.scene_source=policy"]
-    elif setting == "best":
+    elif setting in ("best", "il19"):
         members = [f"picker_geoup_kd1_cpoworst03_s{s}" for s in range(6)]
         scene = [
             "config.ext_scorer.vocab_picker.scene_source=geoup",
@@ -56,10 +63,12 @@ def _overrides(deploy: Path, setting: str, refine: bool, dinov2_weights: str) ->
             "config.ext_scorer.vocab_picker.geoup_prediction_type=v",
             "config.ext_scorer.vocab_picker.geoup_schedule=gvp",
         ]
-    elif setting == "ext_drivor":
+    elif setting in ("ext_drivor", "ext_gtrs"):
         members, scene = [], []
     else:
-        raise ValueError(f"NAVSAFE_DA_SETTING must be dinov2, best or ext_drivor, got {setting!r}")
+        raise ValueError(f"NAVSAFE_DA_SETTING must be dinov2, best, il19, ext_drivor or ext_gtrs, got {setting!r}")
+    if setting == "il19":
+        scene = scene + ["config.ext_scorer.vocab_picker.free_ids=true"]   # section 9.2: the picker on another policy's decodes
     models = [str(deploy / "picker" / m / "picker_best.pt") for m in members]
     for p in models:
         if not Path(p).is_file():
@@ -70,6 +79,15 @@ def _overrides(deploy: Path, setting: str, refine: bool, dinov2_weights: str) ->
             raise FileNotFoundError(scorer)
         ext = ["config.ext_scorer.kind=drivor", f"config.ext_scorer.checkpoint_path={scorer}",
                "config.ext_scorer.select=proposals", "config.ext_scorer.drivor.context=none"]
+    elif setting == "ext_gtrs":
+        scorer = Path(os.environ.get("NAVSAFE_DA_GTRS_CKPT", GTRS_CKPT))
+        for f in (scorer, Path(GTRS_VOCAB)):
+            if not f.is_file():
+                raise FileNotFoundError(f)
+        ext = ["config.ext_scorer.kind=gtrs", f"config.ext_scorer.checkpoint_path={scorer}", "config.ext_scorer.select=proposals",
+               "config.ext_scorer.gtrs.backbone_type=vov", "config.ext_scorer.gtrs.context=vocab",
+               "config.ext_scorer.gtrs.select_weights=dp", "config.ext_scorer.gtrs.context_size=0",
+               f"config.ext_scorer.gtrs.vocab_path={GTRS_VOCAB}"]
     else:
         ext = ["config.ext_scorer.kind=vocab_picker", f"config.ext_scorer.checkpoint_path={models[0]}",
                "config.ext_scorer.select=proposals",
@@ -121,7 +139,7 @@ class DrivorActionAdapter(SensorPolicy):
         assert Path(navsim.__file__).resolve().is_relative_to(fork.resolve()), f"wrong navsim: {navsim.__file__}"
 
         ckpt = Path(self.checkpoint_path)
-        deploy = ckpt.parent.parent  # <deploy>/policy/<ckpt>
+        deploy = Path(os.environ.get("NAVSAFE_DA_ASSETS") or ckpt.parent.parent)  # <deploy>/policy/<ckpt> unless assets live elsewhere
         weights = fork / "weights" / "vit_small_patch14_reg4_dinov2.lvd142m" / "model.safetensors"
         if not weights.is_file():
             raise FileNotFoundError(weights)

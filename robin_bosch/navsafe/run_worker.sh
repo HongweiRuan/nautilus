@@ -195,14 +195,16 @@ PY=/root/ns-venv/bin/python
 # their relative layout), the DINOv2-S backbone weights and both W&B deploy packages, copied to local disk once per pod:
 # every cell loads the checkpoints (6.3 GB GeoUP for the best-PDMS rows) and must not read them off CephFS each time.
 # The only package his agent needs that ns-venv lacks is pytorch-lightning; --no-deps so torch 2.10 stays as locked.
-BOSCH=/hugsim-storage/bosch-summer
+BOSCH=/hugsim-storage/bosch-summer                # deploy packages + DINOv2 weights
+BOSCH_CODE=${BOSCH_CODE:-$BOSCH}                  # the DrivoR fork + scripts (bosch-summer-v2 = + Robin's 4e0e6ab free_ids + third_party/SimScale)
 DA_ROOT=/root/bosch-summer
-say "staging bosch-summer DrivoR fork + deploy packages to $DA_ROOT"
-rm -rf "$DA_ROOT" && mkdir -p "$DA_ROOT" && cp -r "$BOSCH/DrivoR" "$BOSCH/scripts" "$DA_ROOT/" || { say "copy of the DrivoR fork FAILED"; exit 1; }
+say "staging bosch-summer DrivoR fork ($BOSCH_CODE) + deploy packages to $DA_ROOT"
+rm -rf "$DA_ROOT" && mkdir -p "$DA_ROOT" && cp -r "$BOSCH_CODE/DrivoR" "$BOSCH_CODE/scripts" "$DA_ROOT/" || { say "copy of the DrivoR fork FAILED"; exit 1; }
+[ -e "$BOSCH_CODE/third_party" ] && cp -r "$BOSCH_CODE/third_party" "$DA_ROOT/"   # GTRS: navsim/agents/gtrs_dense etc. symlink into third_party/SimScale
 mkdir -p "$DA_ROOT/DrivoR/weights/vit_small_patch14_reg4_dinov2.lvd142m"
 cp "$BOSCH/exp/hongwei_runs/dinov2/model.safetensors" "$DA_ROOT/DrivoR/weights/vit_small_patch14_reg4_dinov2.lvd142m/" || { say "DINOv2 weights missing"; exit 1; }
-for d in deploy_files deploy_files_best deploy_files_ext_drivor; do
-  grep -q "$DA_ROOT/$d/" "$MODELS_TSV" || continue
+for d in deploy_files deploy_files_best deploy_files_ext_drivor deploy_files_il19; do
+  grep -qE "$DA_ROOT/$d(/|,|[[:space:]]|$)" "$MODELS_TSV" || continue
   cp -r "$BOSCH/$d" "$DA_ROOT/$d" || { say "copy of $d FAILED"; exit 1; }
 done
 du -sh "$DA_ROOT"

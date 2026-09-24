@@ -5,3 +5,6 @@ drivor_action_best_before	drivor_action	/root/bosch-summer/deploy_files_best/pol
 drivor_action_best_after	drivor_action	/root/bosch-summer/deploy_files_best/policy/v_linear_demo_ft_imp_lr3_s2.ckpt	NAVSAFE_DA_SETTING=best,NAVSAFE_DA_REFINE=1
 drivor_action_ext_drivor_before	drivor_action	/root/bosch-summer/deploy_files_ext_drivor/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=ext_drivor,NAVSAFE_DA_REFINE=0
 drivor_action_ext_drivor_after	drivor_action	/root/bosch-summer/deploy_files_ext_drivor/policy/v_linear_demo_ft_drivor_imp_lr3_s2.ckpt	NAVSAFE_DA_SETTING=ext_drivor,NAVSAFE_DA_REFINE=1
+drivor_action_il19_before	drivor_action	/root/bosch-summer/deploy_files_il19/policy/v_linear_ep19.ema_bf16.ckpt	NAVSAFE_DA_SETTING=il19,NAVSAFE_DA_REFINE=0,NAVSAFE_DA_ASSETS=/root/bosch-summer/deploy_files_best
+drivor_action_il19_after	drivor_action	/root/bosch-summer/deploy_files_il19/policy/v_linear_ep19_imp_lr3_s3.ckpt	NAVSAFE_DA_SETTING=il19,NAVSAFE_DA_REFINE=1,NAVSAFE_DA_ASSETS=/root/bosch-summer/deploy_files_best
+drivor_action_gtrs_before	drivor_action	/root/bosch-summer/deploy_files_best/policy/last.ema_bf16.ckpt	NAVSAFE_DA_SETTING=ext_gtrs,NAVSAFE_DA_REFINE=0,NAVSAFE_DA_ASSETS=/root/bosch-summer/deploy_files_best

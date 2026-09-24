@@ -1,0 +1,111 @@
+{
+  "source": "/avl-west/navsafe_eval/robin_drivor_action_full280/pure_pursuit/drivor_action_best_before/seed0/5bd8cf3fa67a524f",
+  "metric_family": "navsafe",
+  "status": "scored",
+  "scenario": {
+    "token": "5bd8cf3fa67a524f",
+    "scenario_types": [
+      "near_construction_zone_sign",
+      "on_intersection",
+      "on_traffic_light_intersection",
+      "traversing_crosswalk",
+      "traversing_intersection",
+      "traversing_traffic_light_intersection"
+    ],
+    "taxonomy_leaves": [
+      "I-2"
+    ],
+    "taxonomy_leaf_names": [
+      "Work-Zone"
+    ],
+    "has_inserted_actors": false,
+    "signal_override": null
+  },
+  "scenario_rules": {
+    "leaf": "I-2",
+    "disabled_terminations": [
+      "wrong_way"
+    ],
+    "disabled_infractions": [
+      "wrong_way"
+    ],
+    "require_lane_change": false,
+    "hold_region": null,
+    "hold_tolerance_m": 2.0,
+    "stop_sign_dwell_s": null,
+    "note": "Work-Zone Incident: bypassing the construction zone requires the opposing lane, so wrong-way is the manoeuvre and not the violation. Contacts, off-drivable and the time budget are unchanged."
+  },
+  "frames": {
+    "total": 392,
+    "scored": 372,
+    "warmup_excluded": 20,
+    "scored_window_s": 37.2,
+    "t_max_s": 60.0
+  },
+  "termination": {
+    "reason": "goal_reached",
+    "frame": 391,
+    "detail": "goal region entered",
+    "policy_attributed": true,
+    "collision_count": 0
+  },
+  "metrics": {
+    "driving_score": 100.0,
+    "success": true,
+    "efficiency_pct": 307.4,
+    "comfort": 0.2778
+  },
+  "driving_score_breakdown": {
+    "route_completion_pct": 100.0,
+    "penalty": 1.0,
+    "formula": "driving_score = route_completion_pct * penalty",
+    "channels": [
+      {
+        "channel": "collisions_pedestrian",
+        "coefficient": 0.5,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kind 'vru'"
+      },
+      {
+        "channel": "collisions_vehicle",
+        "coefficient": 0.6,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kinds rear_end/angle/sideswipe, or the evaluator's collision count"
+      },
+      {
+        "channel": "collisions_layout",
+        "coefficient": 0.65,
+        "count": 0,
+        "factor": 1.0,
+        "source": "contact kind 'single'"
+      },
+      {
+        "channel": "red_light",
+        "coefficient": 0.7,
+        "count": 0,
+        "factor": 1.0,
+        "source": "frames the evaluator's TL column flagged as a red-light violation (not the rubric comply() predicate)"
+      },
+      {
+        "channel": "outside_route_lanes",
+        "coefficient": "1 - pct/100",
+        "pct": 0.0,
+        "factor": 1.0,
+        "source": "off-route distance (needs a map)"
+      }
+    ],
+    "penalty_channels_evaluated": 5,
+    "penalty_channels_skipped": [
+      "scenario_timeouts",
+      "yield_emergency_vehicle_infractions",
+      "stop_infraction"
+    ],
+    "not_in_penalty": null
+  },
+  "notes": [
+    "scored window is 37.2 s but t_max is 60.0 s \u2014 no policy was tested against its budget here; run with --eval-frames 600 or declare the window as the budget",
+    "metrics.json, driving_score_summary.csv and run_meta.json were pruned after scoring (--navsafe-prune-artifacts); re-scoring this directory loses the per-frame EPDMS flags (contacts fall back to the run total) and the TL column the red_light channel is measured from"
+  ]
+}
