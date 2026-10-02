@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-10-02T02:27:02.831332-07:00",
+  "running_training": 2,
+  "pending_gpu": 2,
+  "withheld_other_recovery_jobs": 13,
+  "runs": [
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg1-v2",
+      "state": "Training",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "observed_step": 112,
+      "target_steps": 160000,
+      "cuda_failure_observed": false
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg5-v2",
+      "state": "Training",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "observed_step": 167,
+      "target_steps": 160000,
+      "cuda_failure_observed": false
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg1-v2",
+      "state": "Pending GPU",
+      "node": null,
+      "target_steps": 160000
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg5-v2",
+      "state": "Pending GPU",
+      "node": null,
+      "target_steps": 160000
+    }
+  ],
+  "first_real_training_iterations_verified": true
+}

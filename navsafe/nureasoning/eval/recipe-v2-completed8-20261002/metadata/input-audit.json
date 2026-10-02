@@ -1,0 +1,231 @@
+{
+  "input_count": 8,
+  "reports": [
+    {
+      "experiment_id": "660c2f7a-3m-40k-background-time-dim5",
+      "usdz_bytes": 1327410186,
+      "origin": {
+        "offset_xy_utm": [
+          666184.7754625235,
+          4002712.2116363095
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "660c2f7a-3m-40k-background-time-dim5",
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "train_steps": 40000,
+        "scene_gaussian_budget_max": 3000000,
+        "variant": "background-time-dim5",
+        "background_fourier_dim": 5,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "954ab1ddce44c1eaf7e334a53e15048236d89b90be56e905410f759553548975",
+        "usdz_bytes": 1327410186,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "660c2f7a-5m-80k-background-time-dim1",
+      "usdz_bytes": 1919944469,
+      "origin": {
+        "offset_xy_utm": [
+          666184.7754625235,
+          4002712.2116363095
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "660c2f7a-5m-80k-background-time-dim1",
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "train_steps": 80000,
+        "scene_gaussian_budget_max": 5000000,
+        "variant": "background-time-dim1",
+        "background_fourier_dim": 1,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "865074cfce391f5384512b9c60b66c568e9ca082c7ebc087b7aae8f7d0f06f58",
+        "usdz_bytes": 1919944469,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "660c2f7a-5m-80k-background-time-dim5",
+      "usdz_bytes": 2092744974,
+      "origin": {
+        "offset_xy_utm": [
+          666184.7754625235,
+          4002712.2116363095
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "660c2f7a-5m-80k-background-time-dim5",
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "train_steps": 80000,
+        "scene_gaussian_budget_max": 5000000,
+        "variant": "background-time-dim5",
+        "background_fourier_dim": 5,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "3de2af66d37d421a88c87ab9654ddb47fd59b7ad8c9ab05646b24b6de019e052",
+        "usdz_bytes": 2092744974,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "660c2f7a-3m-160k-background-time-dim1",
+      "usdz_bytes": 1223524267,
+      "origin": {
+        "offset_xy_utm": [
+          666184.7754625235,
+          4002712.2116363095
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "660c2f7a-3m-160k-background-time-dim1",
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "train_steps": 160000,
+        "scene_gaussian_budget_max": 3000000,
+        "variant": "background-time-dim1",
+        "background_fourier_dim": 1,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "9784350ff49635c16bf82a76f7b4841ff89f5d68a9596ff2f5f69642be6f07a4",
+        "usdz_bytes": 1223524267,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "660c2f7a-2p5m-80k-background-time-dim1",
+      "usdz_bytes": 1049584059,
+      "origin": {
+        "offset_xy_utm": [
+          666184.7754625235,
+          4002712.2116363095
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "660c2f7a-2p5m-80k-background-time-dim1",
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "train_steps": 80000,
+        "scene_gaussian_budget_max": 2500000,
+        "variant": "background-time-dim1",
+        "background_fourier_dim": 1,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "908e612e2a6cbd889112dcd4c7331354fef32c434edc8e59f7f5405660b60fe4",
+        "usdz_bytes": 1049584059,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "e08a9f05-3m-40k-background-time-dim1",
+      "usdz_bytes": 1222414136,
+      "origin": {
+        "offset_xy_utm": [
+          664493.0791907235,
+          3995844.12008782
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "e08a9f05-3m-40k-background-time-dim1",
+        "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+        "train_steps": 40000,
+        "scene_gaussian_budget_max": 3000000,
+        "variant": "background-time-dim1",
+        "background_fourier_dim": 1,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "c1e9b6c5e305aa04244cc28dd7061ca707db6ad2d72ccfe39bfc0d3cd77353ad",
+        "usdz_bytes": 1222414136,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "e08a9f05-3m-40k-background-time-dim5",
+      "usdz_bytes": 1326094877,
+      "origin": {
+        "offset_xy_utm": [
+          664493.0791907235,
+          3995844.12008782
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "e08a9f05-3m-40k-background-time-dim5",
+        "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+        "train_steps": 40000,
+        "scene_gaussian_budget_max": 3000000,
+        "variant": "background-time-dim5",
+        "background_fourier_dim": 5,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "84d317853db93904d569fea9166c3860796f448cf3a70bbdca07d0d80b37b5f5",
+        "usdz_bytes": 1326094877,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    },
+    {
+      "experiment_id": "e08a9f05-5m-80k-background-time-dim1",
+      "usdz_bytes": 1899187030,
+      "origin": {
+        "offset_xy_utm": [
+          664493.0791907235,
+          3995844.12008782
+        ],
+        "frame": "rig_world_frame0",
+        "note": "absolute_utm = local + offset"
+      },
+      "train_success": {
+        "experiment_id": "e08a9f05-5m-80k-background-time-dim1",
+        "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+        "train_steps": 80000,
+        "scene_gaussian_budget_max": 5000000,
+        "variant": "background-time-dim1",
+        "background_fourier_dim": 1,
+        "seed": 42,
+        "lidar_initialization": true,
+        "lidar_supervision": false,
+        "temporal_splitting": false,
+        "recipe_sha256": "c6a9a33660d3a9625bd07a9b3186fcf3807533e76fff2a09d12041a7d2d0a169",
+        "usdz_bytes": 1899187030,
+        "quality_validation": "native validation saved; cross-run comparison pending"
+      },
+      "arrow_exists": true
+    }
+  ],
+  "checkpoint_exists": true,
+  "warm_cache_exists": true
+}

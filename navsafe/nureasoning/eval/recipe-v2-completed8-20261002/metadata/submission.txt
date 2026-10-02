@@ -1,0 +1,8 @@
+job.batch/navsafe-nur-eval8-660c2f7a-2p5m-80k-bg1 created
+job.batch/navsafe-nur-eval8-660c2f7a-3m-160k-bg1 created
+job.batch/navsafe-nur-eval8-660c2f7a-3m-40k-bg5 created
+job.batch/navsafe-nur-eval8-660c2f7a-5m-80k-bg1 created
+job.batch/navsafe-nur-eval8-660c2f7a-5m-80k-bg5 created
+job.batch/navsafe-nur-eval8-e08a9f05-3m-40k-bg1 created
+job.batch/navsafe-nur-eval8-e08a9f05-3m-40k-bg5 created
+job.batch/navsafe-nur-eval8-e08a9f05-5m-80k-bg1 created

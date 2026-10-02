@@ -1,6 +1,6 @@
 # Recipe v2: 5M / 160k 补充实验
 
-**状态：原生NRE预检4/4通过；集群server dry-run因账号资源利用率过低拒绝4/4，未创建任何Job。待解除准入限制后提交。** 记录见[metadata/submission.json](metadata/submission.json)。
+**最新状态：用户已提交原4个Job，均在节点CUDA故障时失败；恢复Job已提交，见[恢复批次](../recovery-20261002/README.md)。** 最初账号准入被拒的历史尝试保留在metadata/submission.json。
 
 两个场景（660c2f7a、e08a9f05）各跑 background Fourier dim=1 / 5，共4个 Job。与当前 recipe-v2 的5M/80k配置相比，只延长训练及相关调度；seed=42，FP32，每个Job一张3090，CPU2核、内存64Gi。
 

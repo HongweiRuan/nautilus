@@ -1,0 +1,174 @@
+{
+  "inspected_at_utc": "2026-10-02T08:55:41.797886+00:00",
+  "runs": [
+    {
+      "job": "navsafe-nur20-660c2f7a-2p5m-80k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "last_logged_step": 9335,
+      "target_steps": 80000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-660c2f7a-3m-160k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "last_logged_step": 8793,
+      "target_steps": 160000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-660c2f7a-3m-40k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 39895,
+      "target_steps": 40000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-660c2f7a-3m-80k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 43387,
+      "target_steps": 80000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-660c2f7a-3m-80k-bg5",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 40000,
+      "target_steps": 80000,
+      "errors": [
+        "CUDA driver error: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-2p5m-80k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 11365,
+      "target_steps": 80000,
+      "errors": [
+        "[NuRec::NRend][ERROR] ::: GRUTRenderer : cannot get cuda resource on the device 0.",
+        "CUDA error: unspecified launch failure"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-2p5m-80k-bg5",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 11939,
+      "target_steps": 80000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-3m-160k-bg1",
+      "node": "ry-gpu-12.sdsc.optiputer.net",
+      "last_logged_step": 51779,
+      "target_steps": 160000,
+      "errors": [
+        "[NuRec::NRend][ERROR] ::: GRUTRenderer : cannot get cuda resource on the device 0.",
+        "CUDA error: unspecified launch failure"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-3m-160k-bg5",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 11973,
+      "target_steps": 160000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-3m-80k-bg1",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "last_logged_step": 8147,
+      "target_steps": 80000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-3m-80k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "last_logged_step": 7647,
+      "target_steps": 80000,
+      "errors": [
+        "Epoch 0:  10%|\u2589         | 7647/80000 [27:07<4:10:42,  4.81it/s, v_num=89dd, train/psnr=20.90, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6][NuRec::NRend][ERROR] ::: cudaMemcpyAsync(&gutForwardContextPtr->numParticleTileIntersections, static_cast<uint32_t*>(gutForwardContextPtr->particlesTilesOffset.data()) + numParticles - 1, sizeof(uint32_t), cudaMemcpyDeviceToHost, cudaStream) failed: 719: cudaErrorLaunchFailure - unspecified launch failure at libs/nrend/src/gutRenderer.cu:944",
+        "CUDA error: unspecified launch failure"
+      ]
+    },
+    {
+      "job": "navsafe-nur20-e08a9f05-5m-80k-bg5",
+      "node": "ry-gpu-12.sdsc.optiputer.net",
+      "last_logged_step": 49600,
+      "target_steps": 80000,
+      "errors": [
+        "CUDA driver error: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur24-660c2f7a-5m-160k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "last_logged_step": 12777,
+      "target_steps": 160000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur24-660c2f7a-5m-160k-bg5",
+      "node": "ry-gpu-06.sdsc.optiputer.net",
+      "last_logged_step": 20433,
+      "target_steps": 160000,
+      "errors": [
+        "Could not allocate memory: /tiny-cuda-nn/include/tiny-cuda-nn/gpu_memory.h:111 cudaMalloc((void**)&rawptr, n_bytes+DEBUG_GUARD_SIZE*2) failed: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur24-e08a9f05-5m-160k-bg1",
+      "node": "ry-gpu-06.sdsc.optiputer.net",
+      "last_logged_step": 17900,
+      "target_steps": 160000,
+      "errors": [
+        "CUDA driver error: unknown error"
+      ]
+    },
+    {
+      "job": "navsafe-nur24-e08a9f05-5m-160k-bg5",
+      "node": "ry-gpu-06.sdsc.optiputer.net",
+      "last_logged_step": 14301,
+      "target_steps": 160000,
+      "errors": [
+        "[NuRec::NRend][ERROR] ::: GRUTRenderer : cannot get cuda resource on the device 0.",
+        "CUDA error: unspecified launch failure"
+      ]
+    },
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-3m-160k",
+      "node": "ry-gpu-12.sdsc.optiputer.net",
+      "last_logged_step": 123200,
+      "target_steps": 160000,
+      "errors": [
+        "CUDA driver error: unknown error"
+      ]
+    }
+  ],
+  "safe_nodes": [
+    "ry-gpu-07.sdsc.optiputer.net",
+    "ry-gpu-11.sdsc.optiputer.net"
+  ],
+  "excluded_nodes": [
+    "ry-gpu-06.sdsc.optiputer.net",
+    "ry-gpu-08.sdsc.optiputer.net",
+    "ry-gpu-12.sdsc.optiputer.net",
+    "ry-gpu-13.sdsc.optiputer.net",
+    "ry-gpu-14.sdsc.optiputer.net"
+  ],
+  "interpretation": "CUDA failures cluster within seconds per node; nodes subsequently remediation NoSchedule. Does not independently establish hardware versus driver root cause."
+}

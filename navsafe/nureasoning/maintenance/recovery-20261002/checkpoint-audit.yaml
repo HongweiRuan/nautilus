@@ -1,0 +1,117 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-checkpoint-audit-20261002
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning-recovery
+    batch: nureasoning-recovery-20261002
+    purpose: checkpoint-audit
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: OMP_NUM_THREADS
+          value: '1'
+        - name: MKL_NUM_THREADS
+          value: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        name: audit
+        args:
+        - |
+          set -euo pipefail
+          cd /hugsim-storage/NavSafe-infty
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'CHECKPOINT_AUDIT'
+          import pathlib,json,torch,gc,zipfile,datetime
+          records=json.loads('[{"job": "navsafe-nur20-660c2f7a-2p5m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-2p5m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg5.yaml", "last_logged_step": 9335}, {"job": "navsafe-nur20-660c2f7a-3m-160k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-160k-background-time-dim5", "target_steps": 160000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg5.yaml", "last_logged_step": 8793}, {"job": "navsafe-nur20-660c2f7a-3m-40k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-40k-background-time-dim1", "target_steps": 40000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg1.yaml", "last_logged_step": 39895}, {"job": "navsafe-nur20-660c2f7a-3m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg1.yaml", "last_logged_step": 43387}, {"job": "navsafe-nur20-660c2f7a-3m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg5.yaml", "last_logged_step": 40000}, {"job": "navsafe-nur20-e08a9f05-2p5m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-2p5m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg1.yaml", "last_logged_step": 11365}, {"job": "navsafe-nur20-e08a9f05-2p5m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-2p5m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg5.yaml", "last_logged_step": 11939}, {"job": "navsafe-nur20-e08a9f05-3m-160k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-160k-background-time-dim1", "target_steps": 160000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg1.yaml", "last_logged_step": 51779}, {"job": "navsafe-nur20-e08a9f05-3m-160k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-160k-background-time-dim5", "target_steps": 160000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg5.yaml", "last_logged_step": 11973}, {"job": "navsafe-nur20-e08a9f05-3m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg1.yaml", "last_logged_step": 8147}, {"job": "navsafe-nur20-e08a9f05-3m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg5.yaml", "last_logged_step": 7647}, {"job": "navsafe-nur20-e08a9f05-5m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-5m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg5.yaml", "last_logged_step": 49600}, {"job": "navsafe-nur24-660c2f7a-5m-160k-bg1", "dest": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim1", "target_steps": 160000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg1.yaml", "last_logged_step": 12777}, {"job": "navsafe-nur24-660c2f7a-5m-160k-bg5", "dest": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim5", "target_steps": 160000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg5.yaml", "last_logged_step": 20433}, {"job": "navsafe-nur24-e08a9f05-5m-160k-bg1", "dest": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim1", "target_steps": 160000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg1.yaml", "last_logged_step": 17900}, {"job": "navsafe-nur24-e08a9f05-5m-160k-bg5", "dest": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim5", "target_steps": 160000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg5.yaml", "last_logged_step": 14301}, {"job": "navsafe-nureasoning-sweep-e08a9f05-3m-160k", "dest": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "target_steps": 160000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-160k.yaml", "last_logged_step": 123200}, {"job": "navsafe-nur20-660c2f7a-2p5m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-2p5m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg1.yaml", "completed": true}, {"job": "navsafe-nur20-660c2f7a-3m-160k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-160k-background-time-dim1", "target_steps": 160000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg1.yaml", "completed": true}, {"job": "navsafe-nur20-660c2f7a-3m-40k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-40k-background-time-dim5", "target_steps": 40000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg5.yaml", "completed": true}, {"job": "navsafe-nur20-660c2f7a-5m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-5m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/5m-80k-bg1.yaml", "completed": true}, {"job": "navsafe-nur20-660c2f7a-5m-80k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-5m-80k-background-time-dim5", "target_steps": 80000, "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/5m-80k-bg5.yaml", "completed": true}, {"job": "navsafe-nur20-e08a9f05-3m-40k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-40k-background-time-dim1", "target_steps": 40000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-40k-bg1.yaml", "completed": true}, {"job": "navsafe-nur20-e08a9f05-3m-40k-bg5", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-40k-background-time-dim5", "target_steps": 40000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-40k-bg5.yaml", "completed": true}, {"job": "navsafe-nur20-e08a9f05-5m-80k-bg1", "dest": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-5m-80k-background-time-dim1", "target_steps": 80000, "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd", "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg1.yaml", "completed": true}]')
+          for r in records:
+           p=pathlib.Path(r['dest']);r['success_json']=(p/'SUCCESS.json').is_file()
+           r['artifact_bytes']=(p/'artifacts/last.usdz').stat().st_size if (p/'artifacts/last.usdz').is_file() else 0
+           candidates=sorted((p/'checkpoints').glob('*.ckpt'),key=lambda x:x.stat().st_mtime,reverse=True) if (p/'checkpoints').is_dir() else []
+           r['checkpoints']=[]
+           for c in candidates:
+            a={'path':str(c),'bytes':c.stat().st_size}
+            try:
+             k=torch.load(c,map_location='cpu',weights_only=False,mmap=True)
+             a.update(global_step=k.get('global_step'),epoch=k.get('epoch'),has_optimizer=bool(k.get('optimizer_states')),has_schedulers=bool(k.get('lr_schedulers')),has_loops=bool(k.get('loops')))
+             a['optimizer_state_count']=len(k.get('optimizer_states',[]))
+             a['scheduler_state_count']=len(k.get('lr_schedulers',[]))
+             del k;gc.collect()
+            except Exception as e:a['error']=repr(e)
+            r['checkpoints'].append(a)
+           print('AUDIT',r['job'],json.dumps(r['checkpoints']),flush=True)
+          pathlib.Path('/avl-west/navsafe_nureasoning/recovery-20261002').mkdir(exist_ok=True)
+          pathlib.Path('/avl-west/navsafe_nureasoning/recovery-20261002/checkpoint-audit.json').write_text(json.dumps({'checked_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'runs':records},indent=2)+'\n')
+          # Print minimal native resume implementation excerpts for verification, without copying SDK source to storage.
+          count=0
+          for base in [pathlib.Path('/app/run.runfiles/_main'),pathlib.Path('/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main')]:
+           for f in base.rglob('*.py'):
+            try:s=f.read_text()
+            except (OSError,UnicodeError):continue
+            if 'resume_weights_only' not in s:continue
+            lines=s.splitlines();print('RESUME_IMPLEMENTATION_FILE',f,flush=True)
+            indices=[i for i,l in enumerate(lines) if 'resume_weights_only' in l or 'ckpt_path' in l or 'trainer.fit' in l or 'resume is' in l]
+            shown=set()
+            for i in indices:
+             for n in range(max(0,i-7),min(len(lines),i+12)):
+              if n not in shown:print(str(n+1)+':'+lines[n]);shown.add(n)
+            count+=1
+            if count>=8:break
+           if count>=8:break
+          print('CHECKPOINT_AUDIT_DONE',len(records),flush=True)
+
+          CHECKPOINT_AUDIT
+        resources:
+          requests:
+            cpu: '1'
+            memory: 2Gi
+          limits:
+            cpu: '1'
+            memory: 2Gi
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule

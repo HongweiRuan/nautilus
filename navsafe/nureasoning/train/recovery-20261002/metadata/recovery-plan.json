@@ -1,0 +1,325 @@
+{
+  "batch": "nureasoning-recovery-20261002",
+  "jobs": [
+    {
+      "original_job": "navsafe-nur20-660c2f7a-2p5m-80k-bg5",
+      "job_name": "navsafe-nur-retry-660c2f7a-2p5m-80k-bg5-v2",
+      "local_manifest": "jobs/660c2f7a/2p5m-80k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "5b4f63aba5fd8d5f05dfac62f1461e8f2185a5f83c8f6226b2a16c6b86da3b6a",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-2p5m-80k-background-time-dim5",
+      "target_steps": 80000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "5ecf53214b1b3043658bdd93a64f5495ad51b65908cda0ed54e2c72a5243a685"
+    },
+    {
+      "original_job": "navsafe-nur20-660c2f7a-3m-160k-bg5",
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-160k-bg5-v2",
+      "local_manifest": "jobs/660c2f7a/3m-160k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "4dde89ba62621be77ccd50ef317ae246526f9c12802d8ee61942993020ae94c1",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-160k-background-time-dim5",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "0ddd602316195264daa5a9bea98c52bfd1d1be428949060e0366b4bfa8d655af"
+    },
+    {
+      "original_job": "navsafe-nur20-660c2f7a-3m-40k-bg1",
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-40k-bg1-v2",
+      "local_manifest": "jobs/660c2f7a/3m-40k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "0d7674fafd0902d0cb56c55db1186a3c6ecc9567c4a493f02a3a49959993c1f6",
+      "recipe_changes": [],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-40k-background-time-dim1",
+      "target_steps": 40000,
+      "resume_step": 30000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-40k-background-time-dim1/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "7e315f5b2b870d1212abc497ba38bb1efeaa6f01532177f8a351528f2b7c89bc"
+    },
+    {
+      "original_job": "navsafe-nur20-660c2f7a-3m-80k-bg1",
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-80k-bg1-v2",
+      "local_manifest": "jobs/660c2f7a/3m-80k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "1cfb772f78b66aa81fed424374ed20eabefe1e26c634ba47e93b03a9dc5db0aa",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim1",
+      "target_steps": 80000,
+      "resume_step": 40000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim1/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "a973b4faf98f620ef987327dcf57fca3a9400d0d85e94b82af801c6dd7e648c9"
+    },
+    {
+      "original_job": "navsafe-nur20-660c2f7a-3m-80k-bg5",
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-80k-bg5-v2",
+      "local_manifest": "jobs/660c2f7a/3m-80k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "34caf2917659f4c43a72c70690335c5c46aee9aa380c9901ee428f99ee51fc3c",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim5",
+      "target_steps": 80000,
+      "resume_step": 40000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/660c2f7a-3m-80k-background-time-dim5/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "7ba3d8cebacb549315d6bf2777c8d6396e8a1d670409ae5339b2a8104ee85bb3"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-2p5m-80k-bg1",
+      "job_name": "navsafe-nur-retry-e08a9f05-2p5m-80k-bg1-v2",
+      "local_manifest": "jobs/e08a9f05/2p5m-80k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "573ac33a3358eb818da8226a86e26c5a3c27f8b11ceabd7ef7fcd78f3f584f1c",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-2p5m-80k-background-time-dim1",
+      "target_steps": 80000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "a35a50816774622c212c9fe668f9532b2030d76f5601ccfca982577ae6ca68c3"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-2p5m-80k-bg5",
+      "job_name": "navsafe-nur-retry-e08a9f05-2p5m-80k-bg5-v2",
+      "local_manifest": "jobs/e08a9f05/2p5m-80k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "73d7371c0fd14f80fc0f16ef8361916046b1d7c77705a1fd694b12bc10141a49",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-2p5m-80k-background-time-dim5",
+      "target_steps": 80000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "07cade9e9298f9300a731fc50b9e97b2646150541df272e05d62697c9af1e609"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-3m-160k-bg1",
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg1-v2",
+      "local_manifest": "jobs/e08a9f05/3m-160k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "0b7343f0caf955e754544a5ac6e63f5de3a70b063f8bd8e49af352104a4fa0d3",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-160k-background-time-dim1",
+      "target_steps": 160000,
+      "resume_step": 40000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-160k-background-time-dim1/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "1bdf0c9f32340442bb59744dc6d80012e57812864b46a5d02b76327f061c2ddd"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-3m-160k-bg5",
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg5-v2",
+      "local_manifest": "jobs/e08a9f05/3m-160k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "b2cc3c039ad68d3e92c48b478c45f7bc37378c95847bce9f59bd0aae1f0d4e11",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-160k-background-time-dim5",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "e644230a235095096f2244a5a6375a63f2a40853c7f0e08c84c006e24fd0f8c0"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-3m-80k-bg1",
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-80k-bg1-v2",
+      "local_manifest": "jobs/e08a9f05/3m-80k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "92d19a234265d6ba5b82caf00ddfa3bc4bb7a254f17247bf69e824daeecebc76",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-80k-background-time-dim1",
+      "target_steps": 80000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "6b635ac3be3b08bcca8f2298ef2556eaab48d77531856f86b50fff7751502ba3"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-3m-80k-bg5",
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-80k-bg5-v2",
+      "local_manifest": "jobs/e08a9f05/3m-80k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "672bc4bdb23e65f9ce27236271ddfe7d14d4bb3d0d518e009789be02824d474d",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-80k-background-time-dim5",
+      "target_steps": 80000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "0e556bd507f52791bae85763c592a1e102ff3772e32a4b794587f0d60d6cdbb5"
+    },
+    {
+      "original_job": "navsafe-nur20-e08a9f05-5m-80k-bg5",
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-80k-bg5-v2",
+      "local_manifest": "jobs/e08a9f05/5m-80k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "68e22e92fc34ee65bd8288497e0ab7f242260bb80a271c1d29876755f343cad3",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-5m-80k-background-time-dim5",
+      "target_steps": 80000,
+      "resume_step": 40000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-5m-80k-background-time-dim5/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "41623ec72b93bd3475f0b4e7bb4935e92c23cd54125fc69f4f622899d50aa18d"
+    },
+    {
+      "original_job": "navsafe-nur24-660c2f7a-5m-160k-bg1",
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg1-v2",
+      "local_manifest": "jobs/660c2f7a/5m-160k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "ea5919b2879c89908af3d966ae691b1a7053bf54d75ddd07252f6f5d5fd7fc6b",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim1",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "107f72a033b32c702db0ef6e4c624c7961568bca96f9eb6feceda1b90dd654d6"
+    },
+    {
+      "original_job": "navsafe-nur24-660c2f7a-5m-160k-bg5",
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg5-v2",
+      "local_manifest": "jobs/660c2f7a/5m-160k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "07f14ad36a48392b1e013fc36d6511af00dbbb94c3b2c7274cda7e69cac31faa",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim5",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "5201119d1784fec4d2036e8bb86e8ecddfbb334ba937d24deed7364e35b1b90d"
+    },
+    {
+      "original_job": "navsafe-nur24-e08a9f05-5m-160k-bg1",
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg1-v2",
+      "local_manifest": "jobs/e08a9f05/5m-160k-bg1-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "b680db3a0f6a3ed03391da5be86da00690e7337d4b398d77aebbb2d035018118",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim1",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg1.yaml",
+      "syntax_checked": true,
+      "sha256": "fd980a56e2259d3bd1629867acf86603ef1a057d1f27f871670e910551b95e7c"
+    },
+    {
+      "original_job": "navsafe-nur24-e08a9f05-5m-160k-bg5",
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg5-v2",
+      "local_manifest": "jobs/e08a9f05/5m-160k-bg5-v2.yaml",
+      "recipe_family": "v2",
+      "recipe_sha256": "c6e9a6267e5f9624f8148098fddcc86c249307308422751d6078e8d0853be1ab",
+      "recipe_changes": [
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim5",
+      "target_steps": 160000,
+      "resume_step": 0,
+      "resume_checkpoint": null,
+      "mode": "restart-original-recipe",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg5.yaml",
+      "syntax_checked": true,
+      "sha256": "c6546f0f97c4ff95cb8a49321f67cb697aa1ba409305295a7a3fd1ff3fdc516f"
+    },
+    {
+      "original_job": "navsafe-nureasoning-sweep-e08a9f05-3m-160k",
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg5-old",
+      "local_manifest": "jobs/e08a9f05/3m-160k-bg5-old.yaml",
+      "recipe_family": "old",
+      "recipe_sha256": "a0ca369466ce1ca58fb3c6352060e2075d22b18817926b578d4d9131d80e264c",
+      "recipe_changes": [
+        "out_dir",
+        "checkpoint.every_n_train_steps"
+      ],
+      "output_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+      "target_steps": 160000,
+      "resume_step": 120000,
+      "resume_checkpoint": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints/last.ckpt",
+      "mode": "full-state-resume",
+      "source_manifest": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-160k.yaml",
+      "syntax_checked": true,
+      "sha256": "1f78e53cdad43d4bedfbf4fe1ae37c39e316d42cfed3c65df0f57d4a2a4e5611"
+    }
+  ],
+  "eligible_nodes": [
+    "ry-gpu-06.sdsc.optiputer.net",
+    "ry-gpu-07.sdsc.optiputer.net",
+    "ry-gpu-11.sdsc.optiputer.net",
+    "ry-gpu-12.sdsc.optiputer.net",
+    "ry-gpu-13.sdsc.optiputer.net",
+    "ry-gpu-14.sdsc.optiputer.net"
+  ],
+  "gaussian_budget_and_training_schedule": "unchanged",
+  "checkpoint_interval": 10000,
+  "cpu": 2,
+  "memory": "32Gi",
+  "gpu": 1,
+  "resumes": 6,
+  "restarts": 11
+}

@@ -1,0 +1,61 @@
+{
+  "checked_utc": "2026-10-02T09:47:41.169958+00:00",
+  "pods": [
+    {
+      "pod": "navsafe-nur-eval8-660c2f7a-2p5m-80k-bg1-958mf",
+      "job": "navsafe-nur-eval8-660c2f7a-2p5m-80k-bg1",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-660c2f7a-3m-160k-bg1-6qpbg",
+      "job": "navsafe-nur-eval8-660c2f7a-3m-160k-bg1",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-660c2f7a-3m-40k-bg5-8q9k4",
+      "job": "navsafe-nur-eval8-660c2f7a-3m-40k-bg5",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-660c2f7a-5m-80k-bg1-5kmcg",
+      "job": "navsafe-nur-eval8-660c2f7a-5m-80k-bg1",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-660c2f7a-5m-80k-bg5-bhwgh",
+      "job": "navsafe-nur-eval8-660c2f7a-5m-80k-bg5",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-e08a9f05-3m-40k-bg1-zcgqb",
+      "job": "navsafe-nur-eval8-e08a9f05-3m-40k-bg1",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-e08a9f05-3m-40k-bg5-zv2v6",
+      "job": "navsafe-nur-eval8-e08a9f05-3m-40k-bg5",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    },
+    {
+      "pod": "navsafe-nur-eval8-e08a9f05-5m-80k-bg1-htk4p",
+      "job": "navsafe-nur-eval8-e08a9f05-5m-80k-bg1",
+      "phase": "Pending",
+      "node": null,
+      "scheduling": "0/533 nodes are available: 18 Insufficient memory, 19 node(s) were unschedulable, 219 node(s) had untolerated taint(s), 265 node(s) didn't match Pod's node affinity/selector, 28 Insufficient cpu, 30 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 16 No preemption victims found for incoming pod, 4 Insufficient cpu, 4 Insufficient memory, 511 Preemption is not helpful for scheduling, 6 Insufficient nvidia.com/gpu."
+    }
+  ]
+}

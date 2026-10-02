@@ -6,11 +6,14 @@
 |---|---:|---|
 | [train/recipe-v2-sweep20-20261001](train/recipe-v2-sweep20-20261001/README.md) | 20 | 当前两场景 × 五预算/步数 × background Fourier dim1/5 实验 |
 | [train/recipe-v2-5m160k-20261001](train/recipe-v2-5m160k-20261001/README.md) | 4 | 新增两场景 × 5M/160k × background Fourier dim1/5 |
+| [train/recovery-20261002](train/recovery-20261002/README.md) | 17 | 本轮失败实验恢复：6个完整状态续训、11个重跑；recipe和训练预算不变 |
+| maintenance/recovery-20261002 | 2 | 有限CPU checkpoint审查和原生配置预检 |
 | [train/car2sim-sweep5-20261001](train/car2sim-sweep5-20261001/README.md) | 5 | 旧 car2sim 派生 recipe 的五组合对照；保留运行中的3M/160k配置 |
 | [train/car2sim-full8-20261001](train/car2sim-full8-20261001/README.md) | 8 | 成功的最终 full8 版本，保留 convert/aux/reconstruction 完整流程参考 |
+| [eval/recipe-v2-completed8-20261002](eval/recipe-v2-completed8-20261002/README.md) | 8 | 新recipe完成的8组：每组200帧ego replay + 20帧replay后DrivOR，visualization、warm cache、保留训练物体轨迹 |
 | [eval/replay200-drivor20-20261001](eval/replay200-drivor20-20261001/README.md) | 5 | visualization、200帧ego replay、20帧replay后DrivOR控制、warm Kit cache |
 
-共42个不同的 Job。当前recipe-v2实验共24组（原20组加新增4组5M/160k）。按批次、场景、setting查找；当前20组的文件形式是 jobs/<clip hash>/<budget>-<steps>-bg<dim>.yaml。
+共69个不同的 Job（含2个CPU诊断Job）。当前recipe-v2实验共24组（原20组加新增4组5M/160k）。按批次、场景、setting查找；当前20组的文件形式是 jobs/<clip hash>/<budget>-<steps>-bg<dim>.yaml。
 
 ## 查看和提交
 
@@ -40,6 +43,6 @@ kubectl apply -f train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg1.yaml
 
 [文件清单和校验](inventory.json)记录来源、Job 名称及SHA256。原目录整理没有修改38份 Job 的任何字节，也没有操作集群资源或训练结果；随后新增4份5M/160k训练配置，单独保存于补充实验批次。metadata/中的旧状态与validation是历史记录，按各自时间理解；Job内容校验以inventory.json为准。
 
-本轮失败的4份实验配置仍包含在20组中，便于定位和后续修复。它们都运行于ry13，报CUDA分配/launch错误，节点原因尚未确认。失败证据已保存在NavSafe repo的cleanup-old-jobs-20261001.json。
+本轮失败的4份实验配置仍包含在20组中，便于定位和后续修复。最初4个失败都运行于ry13；后续06/12/14也发生按节点集中失败并被remediation隔离。恢复诊断与处理见train/recovery-20261002。失败证据已保存在NavSafe repo的cleanup-old-jobs-20261001.json。
 
 后续新增 nuReasoning Job 也放在本目录对应train/或eval/批次中，更新该批次kustomization.yaml。

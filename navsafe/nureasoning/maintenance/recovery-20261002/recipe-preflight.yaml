@@ -1,0 +1,118 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-recovery-preflight-20261002-r1
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning-recovery
+    batch: nureasoning-recovery-20261002
+    purpose: recipe-preflight
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: OMP_NUM_THREADS
+          value: '1'
+        - name: MKL_NUM_THREADS
+          value: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        name: audit
+        args:
+        - |
+          set -euo pipefail
+          cd /hugsim-storage/NavSafe-infty
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'RECIPE_PREFLIGHT'
+          import pathlib,json,hashlib,datetime,yaml
+          from nre.config.parse import parse_typed_config
+          from omegaconf import OmegaConf
+          import gzip,base64
+          rows=json.loads(gzip.decompress(base64.b64decode('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')))
+          root=pathlib.Path('/hugsim-storage/NavSafe-infty/deploy/nautilus/nureasoning_recovery_20261002')
+          (root/'recipes').mkdir(parents=True,exist_ok=True)
+          checks=[]
+          for r in rows:
+           f=root/'recipes'/(r['job_name']+'.yaml');f.write_text(r['recipe'])
+           assert hashlib.sha256(f.read_bytes()).hexdigest()==r['recipe_sha256']
+           args=["logger.run_id='"+r['clip_id']+"'",'dataset.path='+r['dataset_path']]
+           if r['job_name'].endswith('-old'):args.extend(['mode=train','logger=dummy','system.optimizers.0.scheduler.args.T_max=160000'])
+           if r['resume_checkpoint']:args.extend(['resume='+r['resume_checkpoint'],'resume_weights_only=false'])
+           cfg=parse_typed_config(str(f),args)
+           d=json.loads(json.dumps(cfg.model_dump(),default=lambda v:OmegaConf.to_container(v,resolve=True) if OmegaConf.is_config(v) else str(v)))
+           assert d['dataset']['n_samples_per_epoch']==r['target_steps']
+           assert d['trainer']['max_epochs']==1 and d['checkpoint']['every_n_train_steps']==10000
+           assert d['out_dir']==r['output_dir']+'/native'
+           assert not d['resume_weights_only']
+           assert d['system']['optimizers'][0]['scheduler']['args']['T_max']==r['target_steps']
+           previous=pathlib.Path(r['output_dir'])/'native'/r['clip_id']/'config/parsed.yaml'
+           assert previous.is_file(),previous
+           old=yaml.safe_load(previous.read_text())
+           for field in ['model','loss','system']:
+            assert d[field]==old[field],(r['job_name'],field)
+           for field in ['dataset','trainer']:
+            a=dict(d[field]);b=dict(old[field])
+            for k in (['path'] if field=='dataset' else ['device_count','world_size','num_nodes']):a.pop(k,None);b.pop(k,None)
+            assert a==b,(r['job_name'],field,[(k,a.get(k),b.get(k)) for k in a.keys()|b.keys() if a.get(k)!=b.get(k)])
+           (root/'parsed').mkdir(exist_ok=True)
+           (root/'parsed'/(r['job_name']+'.yaml')).write_text(yaml.safe_dump(d,sort_keys=False))
+           checks.append({'job_name':r['job_name'],'native_typed_config':'passed','model_loss_system_dataset_trainer':'identical_to_original_native_config','resume_step':r['resume_step']})
+           print('PREFLIGHT_PASS',r['job_name'],'resume',r['resume_step'],flush=True)
+          report={'checked_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'checks_passed':len(checks),'runs':checks,'native_version':'26.4.146','training_started_by_preflight':False}
+          (root/'validation.json').write_text(json.dumps(report,indent=2)+'\n')
+          pathlib.Path('/avl-west/navsafe_nureasoning/recovery-20261002/validation.json').write_text(json.dumps(report,indent=2)+'\n')
+          print('RECOVERY_NATIVE_PREFLIGHT_PASS',len(checks),flush=True)
+
+          RECIPE_PREFLIGHT
+        resources:
+          requests:
+            cpu: '1'
+            memory: 2Gi
+          limits:
+            cpu: '1'
+            memory: 2Gi
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule

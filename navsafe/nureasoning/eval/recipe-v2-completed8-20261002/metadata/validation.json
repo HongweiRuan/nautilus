@@ -1,0 +1,11 @@
+{
+  "bash_syntax": "16 container scripts passed",
+  "inline_python": "all heredocs parsed",
+  "renderer_client_tests": "65 passed inside Nautilus pod",
+  "actor_pose_policy": "baked training trajectories; editing disabled and verified by RPC",
+  "render_client_sha256": "ec2320412cbb554097999c3a282eaba03e7628e55a4f483dda7532e8c389fec4",
+  "server_dry_run": "8 Jobs passed",
+  "submitted": "8 Jobs created",
+  "input_validation": "8 USDZ archives, SUCCESS metadata, origin sidecars, Arrow logs, DrivOR checkpoint, known Kit cache passed",
+  "validated_utc": "2026-10-02T09:47:41.169958+00:00"
+}

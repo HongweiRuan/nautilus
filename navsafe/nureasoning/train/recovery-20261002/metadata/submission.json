@@ -1,0 +1,74 @@
+{
+  "checked_at": "2026-10-02T02:22:56.301157-07:00",
+  "native_preflight_passed": 17,
+  "server_dry_run_passed": 17,
+  "submitted": 4,
+  "not_submitted": 13,
+  "priority": "new recipe v2 5M/160k only, per latest user steering",
+  "submitted_job_names": [
+    "navsafe-nur-retry-660c2f7a-5m-160k-bg1-v2",
+    "navsafe-nur-retry-660c2f7a-5m-160k-bg5-v2",
+    "navsafe-nur-retry-e08a9f05-5m-160k-bg1-v2",
+    "navsafe-nur-retry-e08a9f05-5m-160k-bg5-v2"
+  ],
+  "early_startup_snapshot": "2 actual Training verified beyond100 steps on ry11;2 Pending GPU",
+  "completed_original_experiments_verified": 8,
+  "resume_candidates": 6,
+  "restart_candidates": 11,
+  "checkpoint_interval": 10000,
+  "recipe_model_and_schedule": "same as original frozen native configuration",
+  "node_candidates": [
+    "ry-gpu-06.sdsc.optiputer.net",
+    "ry-gpu-07.sdsc.optiputer.net",
+    "ry-gpu-11.sdsc.optiputer.net",
+    "ry-gpu-12.sdsc.optiputer.net",
+    "ry-gpu-13.sdsc.optiputer.net",
+    "ry-gpu-14.sdsc.optiputer.net"
+  ],
+  "currently_no_schedule_remediation": [
+    "06",
+    "12",
+    "13",
+    "14"
+  ],
+  "excluded_always": [
+    "08"
+  ],
+  "startup_status": {
+    "checked_at": "2026-10-02T02:27:02.831332-07:00",
+    "running_training": 2,
+    "pending_gpu": 2,
+    "withheld_other_recovery_jobs": 13,
+    "runs": [
+      {
+        "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg1-v2",
+        "state": "Training",
+        "node": "ry-gpu-11.sdsc.optiputer.net",
+        "observed_step": 112,
+        "target_steps": 160000,
+        "cuda_failure_observed": false
+      },
+      {
+        "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg5-v2",
+        "state": "Training",
+        "node": "ry-gpu-11.sdsc.optiputer.net",
+        "observed_step": 167,
+        "target_steps": 160000,
+        "cuda_failure_observed": false
+      },
+      {
+        "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg1-v2",
+        "state": "Pending GPU",
+        "node": null,
+        "target_steps": 160000
+      },
+      {
+        "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg5-v2",
+        "state": "Pending GPU",
+        "node": null,
+        "target_steps": 160000
+      }
+    ],
+    "first_real_training_iterations_verified": true
+  }
+}

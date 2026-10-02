@@ -1,16 +1,19 @@
 {
   "organized_at": "2026-10-01T19:14:15.977288-07:00",
-  "job_count": 42,
+  "job_count": 69,
   "groups": {
     "train/recipe-v2-sweep20-20261001": 20,
     "train/car2sim-sweep5-20261001": 5,
     "train/car2sim-full8-20261001": 8,
     "eval/replay200-drivor20-20261001": 5,
-    "train/recipe-v2-5m160k-20261001": 4
+    "train/recipe-v2-5m160k-20261001": 4,
+    "train/recovery-20261002": 17,
+    "maintenance/recovery-20261002": 2,
+    "eval/recipe-v2-completed8-20261002": 8
   },
   "job_yaml_bytes_unchanged": true,
-  "inline_bash_syntax": "42/42 Jobs passed",
-  "cluster_mutations": false,
+  "inline_bash_syntax": "67 training/eval and 2 finite CPU Jobs; new 16 container scripts validated",
+  "cluster_mutations": true,
   "original_directories": [
     "navsafe_nureasoning_8",
     "navsafe_nureasoning_eval5_20261001",
@@ -328,7 +331,8 @@
       "purpose": "additional 5M/160k experiment",
       "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-660c2f7a-5m-160k-bg1.yaml",
       "sha256": "bc8a24c9be0bd94a3ebef03fabc8df26ccd3993ed13211fd82e1820a6b4ab194",
-      "cluster_status_at_addition": "Admission blocked; not created"
+      "cluster_status_at_addition": "Admission blocked; not created",
+      "last_known_cluster_status": "Original Failed; replacement retry submitted"
     },
     {
       "job_name": "navsafe-nur24-660c2f7a-5m-160k-bg5",
@@ -336,7 +340,8 @@
       "purpose": "additional 5M/160k experiment",
       "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-660c2f7a-5m-160k-bg5.yaml",
       "sha256": "fc3d6cd052f04cd035a851c34fd39b79440ac74e797ca08670a19a6256e31327",
-      "cluster_status_at_addition": "Admission blocked; not created"
+      "cluster_status_at_addition": "Admission blocked; not created",
+      "last_known_cluster_status": "Original Failed; replacement retry submitted"
     },
     {
       "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg1",
@@ -344,7 +349,8 @@
       "purpose": "additional 5M/160k experiment",
       "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-e08a9f05-5m-160k-bg1.yaml",
       "sha256": "077fad44fa32c2adf6022a0ba3c6c9d2a010d50e7223b29d09102bd921aef518",
-      "cluster_status_at_addition": "Admission blocked; not created"
+      "cluster_status_at_addition": "Admission blocked; not created",
+      "last_known_cluster_status": "Original Failed; replacement retry submitted"
     },
     {
       "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg5",
@@ -352,9 +358,249 @@
       "purpose": "additional 5M/160k experiment",
       "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-e08a9f05-5m-160k-bg5.yaml",
       "sha256": "66202d32a7e7f998c2b7f60411a986990867ad4192894ca671d834c40c5fae60",
-      "cluster_status_at_addition": "Admission blocked; not created"
+      "cluster_status_at_addition": "Admission blocked; not created",
+      "last_known_cluster_status": "Original Failed; replacement retry submitted"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-2p5m-80k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/2p5m-80k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg5.yaml",
+      "sha256": "5ecf53214b1b3043658bdd93a64f5495ad51b65908cda0ed54e2c72a5243a685",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-160k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/3m-160k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg5.yaml",
+      "sha256": "0ddd602316195264daa5a9bea98c52bfd1d1be428949060e0366b4bfa8d655af",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-40k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/3m-40k-bg1-v2.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg1.yaml",
+      "sha256": "7e315f5b2b870d1212abc497ba38bb1efeaa6f01532177f8a351528f2b7c89bc",
+      "resume_step": 30000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-80k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/3m-80k-bg1-v2.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg1.yaml",
+      "sha256": "a973b4faf98f620ef987327dcf57fca3a9400d0d85e94b82af801c6dd7e648c9",
+      "resume_step": 40000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-3m-80k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/3m-80k-bg5-v2.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg5.yaml",
+      "sha256": "7ba3d8cebacb549315d6bf2777c8d6396e8a1d670409ae5339b2a8104ee85bb3",
+      "resume_step": 40000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-2p5m-80k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/2p5m-80k-bg1-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg1.yaml",
+      "sha256": "a35a50816774622c212c9fe668f9532b2030d76f5601ccfca982577ae6ca68c3",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-2p5m-80k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/2p5m-80k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg5.yaml",
+      "sha256": "07cade9e9298f9300a731fc50b9e97b2646150541df272e05d62697c9af1e609",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/3m-160k-bg1-v2.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg1.yaml",
+      "sha256": "1bdf0c9f32340442bb59744dc6d80012e57812864b46a5d02b76327f061c2ddd",
+      "resume_step": 40000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/3m-160k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg5.yaml",
+      "sha256": "e644230a235095096f2244a5a6375a63f2a40853c7f0e08c84c006e24fd0f8c0",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-80k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/3m-80k-bg1-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg1.yaml",
+      "sha256": "6b635ac3be3b08bcca8f2298ef2556eaab48d77531856f86b50fff7751502ba3",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-80k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/3m-80k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg5.yaml",
+      "sha256": "0e556bd507f52791bae85763c592a1e102ff3772e32a4b794587f0d60d6cdbb5",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-80k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/5m-80k-bg5-v2.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg5.yaml",
+      "sha256": "41623ec72b93bd3475f0b4e7bb4935e92c23cd54125fc69f4f622899d50aa18d",
+      "resume_step": 40000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/5m-160k-bg1-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg1.yaml",
+      "sha256": "107f72a033b32c702db0ef6e4c624c7961568bca96f9eb6feceda1b90dd654d6",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Submitted, GPU startup/queue",
+      "last_known_cluster_status": "Training"
+    },
+    {
+      "job_name": "navsafe-nur-retry-660c2f7a-5m-160k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/660c2f7a/5m-160k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg5.yaml",
+      "sha256": "5201119d1784fec4d2036e8bb86e8ecddfbb334ba937d24deed7364e35b1b90d",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Submitted, GPU startup/queue",
+      "last_known_cluster_status": "Training"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg1-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/5m-160k-bg1-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg1.yaml",
+      "sha256": "fd980a56e2259d3bd1629867acf86603ef1a057d1f27f871670e910551b95e7c",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Submitted, GPU startup/queue",
+      "last_known_cluster_status": "Pending GPU"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-5m-160k-bg5-v2",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/5m-160k-bg5-v2.yaml",
+      "purpose": "failed experiment restart",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg5.yaml",
+      "sha256": "c6546f0f97c4ff95cb8a49321f67cb697aa1ba409305295a7a3fd1ff3fdc516f",
+      "resume_step": 0,
+      "cluster_status_at_addition": "Submitted, GPU startup/queue",
+      "last_known_cluster_status": "Pending GPU"
+    },
+    {
+      "job_name": "navsafe-nur-retry-e08a9f05-3m-160k-bg5-old",
+      "manifest": "train/recovery-20261002/jobs/e08a9f05/3m-160k-bg5-old.yaml",
+      "purpose": "failed experiment full-state recovery",
+      "source": "/Users/hongwei/Desktop/avl/nautilus/navsafe/nureasoning/train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-160k.yaml",
+      "sha256": "1f78e53cdad43d4bedfbf4fe1ae37c39e316d42cfed3c65df0f57d4a2a4e5611",
+      "resume_step": 120000,
+      "cluster_status_at_addition": "Prepared, withheld to prioritize 5M160k"
+    },
+    {
+      "job_name": "navsafe-nur-checkpoint-audit-20261002",
+      "manifest": "maintenance/recovery-20261002/checkpoint-audit.yaml",
+      "purpose": "finite CPU recovery diagnosis",
+      "sha256": "f74bcb15831b6abbc7d91020c52b401491f2cc2d95f29979c53dbc9f01777516",
+      "cluster_status_at_addition": "Submitted",
+      "last_known_cluster_status": "Succeeded"
+    },
+    {
+      "job_name": "navsafe-nur-recovery-preflight-20261002-r1",
+      "manifest": "maintenance/recovery-20261002/recipe-preflight.yaml",
+      "purpose": "finite CPU recovery diagnosis",
+      "sha256": "9a6fe03fc2e45d598d54cfb9dc7d21483dd3c3af1bf82282b6383254df112459",
+      "cluster_status_at_addition": "Submitted",
+      "last_known_cluster_status": "Succeeded"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-660c2f7a-3m-40k-bg5",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/660c2f7a/3m-40k-bg5.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "70485f4bffe3e537a72caa405790b7a2ebac3e32c8e059a81135951f162cb929",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-660c2f7a-5m-80k-bg1",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/660c2f7a/5m-80k-bg1.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "23ff7b5d165f5a9914ae92a5ab75739fa21ed7af0d3343bcaca30d75411c4b3e",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-660c2f7a-5m-80k-bg5",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/660c2f7a/5m-80k-bg5.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "ad4a7e4b9fe8ca4389ee83a24bd3aecf0e174c2789c2a62b3cc971f7ecd1daf9",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-660c2f7a-3m-160k-bg1",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/660c2f7a/3m-160k-bg1.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "d93e47ca632c5e1a3602cf570ddaa6ae9e9f1e1218cd900cf293ba0cb14cba85",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-660c2f7a-2p5m-80k-bg1",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/660c2f7a/2p5m-80k-bg1.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "b893a85ed034d5688cce8ef431e26f7b37301cb374deb2aeef7aaeb2d840c3eb",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-e08a9f05-3m-40k-bg1",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/e08a9f05/3m-40k-bg1.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "63249ed18845c7e376c99035b5b2a3b3013f14378780fb18abbe7801bba2f914",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-e08a9f05-3m-40k-bg5",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/e08a9f05/3m-40k-bg5.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "e6ba23d3685badf1716a4ac112d61b145c71a1f9f8fe225720e5036034ddfee9",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
+    },
+    {
+      "job_name": "navsafe-nur-eval8-e08a9f05-5m-80k-bg1",
+      "manifest": "eval/recipe-v2-completed8-20261002/jobs/e08a9f05/5m-80k-bg1.yaml",
+      "purpose": "completed recipe-v2 ego replay200 and replay20 plus DrivOR180 eval",
+      "source": "known working replay200-drivor20 template with setting staging and baked-actor capability fix",
+      "sha256": "69f7b0bd57c0a54229e7976823e02781ba40dec9f3053d2a77cd3200c3486eeb",
+      "cluster_status_at_organization": "Pending (submitted 2026-10-02T09:47:41.169958+00:00)"
     }
   ],
-  "kustomize_builds": "5/5 built successfully; original4 equivalent verified, new4 NRE preflight passed but server admission denied",
-  "last_added_at": "2026-10-01T19:34:50.758679-07:00"
+  "kustomize_builds": "6/6 training/evaluation batches built; new recovery17 native preflight and server dry-run passed",
+  "last_added_at": "2026-10-02T02:17:04.773431-07:00",
+  "updated_at": "2026-10-02T09:47:41.169958+00:00",
+  "last_change": "Added 8 eval Jobs for completed recipe-v2 settings; submitted to cogrob"
 }
