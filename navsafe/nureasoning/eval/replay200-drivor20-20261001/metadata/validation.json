@@ -1,0 +1,14 @@
+{
+  "manifest_sha256": "e490a6918e109a1d5275e65201f00d6351c8a025b1ec93028cf3251bd65d385c",
+  "jobs": [
+    "navsafe-nureasoning-eval5-01-e08a9f05",
+    "navsafe-nureasoning-eval5-02-660c2f7a",
+    "navsafe-nureasoning-eval5-03-a12a8365",
+    "navsafe-nureasoning-eval5-04-834aa758",
+    "navsafe-nureasoning-eval5-05-e8f65885"
+  ],
+  "inline_bash_syntax": "10/10 passed",
+  "inline_python_heredocs": "all passed",
+  "input_audit": "completed USDZ and origin offsets matched for all5; single-log Arrowroot enumeration verified",
+  "gpus_per_job": 2
+}

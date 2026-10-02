@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cogrob
+resources:
+- jobs/660c2f7a/2p5m-80k-bg1.yaml
+- jobs/660c2f7a/2p5m-80k-bg5.yaml
+- jobs/660c2f7a/3m-160k-bg1.yaml
+- jobs/660c2f7a/3m-160k-bg5.yaml
+- jobs/660c2f7a/3m-40k-bg1.yaml
+- jobs/660c2f7a/3m-40k-bg5.yaml
+- jobs/660c2f7a/3m-80k-bg1.yaml
+- jobs/660c2f7a/3m-80k-bg5.yaml
+- jobs/660c2f7a/5m-80k-bg1.yaml
+- jobs/660c2f7a/5m-80k-bg5.yaml
+- jobs/e08a9f05/2p5m-80k-bg1.yaml
+- jobs/e08a9f05/2p5m-80k-bg5.yaml
+- jobs/e08a9f05/3m-160k-bg1.yaml
+- jobs/e08a9f05/3m-160k-bg5.yaml
+- jobs/e08a9f05/3m-40k-bg1.yaml
+- jobs/e08a9f05/3m-40k-bg5.yaml
+- jobs/e08a9f05/3m-80k-bg1.yaml
+- jobs/e08a9f05/3m-80k-bg5.yaml
+- jobs/e08a9f05/5m-80k-bg1.yaml
+- jobs/e08a9f05/5m-80k-bg5.yaml

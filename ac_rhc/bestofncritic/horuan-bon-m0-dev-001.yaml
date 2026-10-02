@@ -1,0 +1,44 @@
+# M0 dev pod (CPU only, 4 CPU / 16Gi, bounded 2h; full python image for gcc+git): (1) locate WOMD 1.3.1 under /avl-west and inspect its format,
+# (2) receive this project's code via `kubectl cp` into /hugsim-storage/bestofncritic.
+# Pinned to ry-gpu-07 per user instruction (2026-09-27). Independent line: never touches
+# /hugsim-storage/aris-chunk-critic. Never writes into any WOMD directory.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-bon-m0-dev-001
+  namespace: cogrob
+  labels:
+    app: horuan-bon-m0-dev-001
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 7200
+  nodeSelector:
+    kubernetes.io/hostname: ry-gpu-07.sdsc.optiputer.net
+  containers:
+    - name: worker
+      image: python:3.11-bookworm
+      imagePullPolicy: IfNotPresent
+      command: ["bash", "-lc"]
+      args:
+        - |
+          mkdir -p /hugsim-storage/bestofncritic /avl-west/bestofncritic/runs
+          sleep 7000
+      resources:
+        requests: {cpu: "4", memory: 16Gi, ephemeral-storage: 20Gi}
+        limits: {cpu: "4", memory: 16Gi, ephemeral-storage: 20Gi}
+      volumeMounts:
+        - {name: hugsim-storage, mountPath: /hugsim-storage}
+        - {name: avl-west-vol, mountPath: /avl-west}
+  volumes:
+    - name: hugsim-storage
+      persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+    - name: avl-west-vol
+      persistentVolumeClaim: {claimName: avl-west-vol}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - {key: topology.kubernetes.io/region, operator: In, values: ["us-west"]}
+  tolerations:
+    - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

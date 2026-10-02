@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-navsafe
+  namespace: cogrob
+  labels: {app: navsafe, workload-type: interactive}
+spec:
+  activeDeadlineSeconds: 21600
+  restartPolicy: Never
+  containers:
+    - name: dev
+      image: robinwangucsd/metabench:latest
+      imagePullPolicy: IfNotPresent
+      workingDir: /hugsim-storage/NavSafe-infty
+      command: [bash, -lc]
+      args:
+        - |
+          set -euo pipefail
+          python3 -m pip install --quiet uv
+          export UV_PROJECT_ENVIRONMENT=/root/navsafe-venv
+          export UV_CACHE_DIR=/root/.cache/uv
+          git submodule update --init --recursive || echo "SUBMODULE_SETUP_FAILED"
+          if uv sync --locked --group conversion --python 3.12; then
+            touch /root/navsafe-env-ready
+          else
+            echo "NAVSAFE_SETUP_FAILED: shell kept available for diagnosis"
+          fi
+          /root/navsafe-venv/bin/python -m pip --version >/dev/null 2>&1 || uv pip install --python /root/navsafe-venv/bin/python pip
+          exec sleep infinity
+      env:
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token-nureasoning, key: HF_TOKEN}}
+        - {name: UV_LINK_MODE, value: copy}
+        - {name: PYTHONPATH, value: /hugsim-storage/NavSafe-infty}
+      resources:
+        requests: {cpu: '3', memory: 32Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: '1'}
+        limits: {cpu: '3', memory: 32Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: '1'}
+      volumeMounts:
+        - {name: hugsim-storage, mountPath: /hugsim-storage}
+        - {name: avl-west, mountPath: /avl-west}
+        - {name: dshm, mountPath: /dev/shm}
+  volumes:
+    - {name: hugsim-storage, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+    - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+    - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 8Gi}}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - {key: nvidia.com/gpu.product, operator: In, values: [NVIDIA-GeForce-RTX-3090]}
+  tolerations:
+    - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+    - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

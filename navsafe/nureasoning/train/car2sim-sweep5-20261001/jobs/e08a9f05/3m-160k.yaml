@@ -1,0 +1,425 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nureasoning-sweep-e08a9f05-3m-160k
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning-sweep5
+    batch: sweep5-e08a9f05-20261001
+    profile: 3m-160k
+    clip-hash: e08a9f05
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-sweep5
+        batch: sweep5-e08a9f05-20261001
+        profile: 3m-160k
+        job-id: navsafe-nureasoning-sweep-e08a9f05-3m-160k
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - name: stage-inputs
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DEST="$RECON_ROOT/$CLIP_ID"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          mkdir -p "$DIAG" /scratch/ncore
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          # Reuse the completed scenario's NCore/aux, with no conversion or aux generation.
+          test -s "$SOURCE_RECON/SUCCESS.json"
+          test -s "$BATCH_ROOT/prepared/$CLIP_ID.json"
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          MANIFEST="pai_${CLIP_ID}.json"
+          test -s "$NCORE_DIR/$MANIFEST"
+          cp -a "$NCORE_DIR/$MANIFEST" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_${CLIP_ID}".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          # Native GA26.04 aux discovery uses the stem before its first dot.
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_${CLIP_ID}.aux.$kind.zarr.itar"
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          echo "SWEEP_INPUTS_READY $CLIP_ID $PROFILE"
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: PROFILE
+          value: 3m-160k
+        - name: TRAIN_STEPS
+          value: '160000'
+        - name: GAUSSIAN_LIMIT
+          value: '3000000'
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        resources:
+          requests:
+            cpu: '8'
+            memory: 16Gi
+            ephemeral-storage: 200Gi
+          limits:
+            cpu: '8'
+            memory: 16Gi
+            ephemeral-storage: 200Gi
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      containers:
+      - name: train
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |2
+
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DEST="$RECON_ROOT/$CLIP_ID"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          mkdir -p "$DIAG"
+
+          exec > >(tee -a "$DIAG/train.log") 2>&1
+          finish() {
+           rc=$?
+           if [[ -d "$DEST/native/$CLIP_ID/config" ]]; then cp -a "$DEST/native/$CLIP_ID/config" "$DIAG/"; fi
+           printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+          }
+          trap finish EXIT
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          mkdir -p "$DEST/checkpoints" "$DEST/native/$CLIP_ID" /scratch/native-artifacts /scratch/native-save
+          RUN="$DEST/native/$CLIP_ID"
+          ln -sfn "$DEST/checkpoints" "$RUN/checkpoints"
+          ln -sfn /scratch/native-artifacts "$RUN/artifacts"
+          ln -sfn /scratch/native-save "$RUN/save"
+          CFGDIR=/app/run.runfiles/_main/configs/apps/prod/Hyperion-8.1
+          cat > "$CFGDIR/nureasoning_sweep_lidarinit.yaml"  <<'NRE_RECIPE'
+          # @package _global_
+          defaults:
+          - /apps/prod/Hyperion-8.1/car2sim_6cam
+          - /model/gaussians/models@model.layers.static_rigids: rigid_gaussians
+          - /model/gaussians/initialization@model.layers.static_rigids.initialization: camera_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_rigids.tracks_calib: static
+          - _self_
+          model:
+            layers:
+              static_rigids:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  symmetric_axis: Y
+                  camera_ids: []
+                  step_frame: 1
+                  fill_with_random_points: true
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 200000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  num_point_cloud_points_per_track: 5000
+              dynamic_rigids:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 300000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 5000
+                  fill_with_random_points: true
+              dynamic_deformables:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 100000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 5000
+                  fill_with_random_points: true
+              background:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 800000
+                  num_near_points: 100000
+                  num_far_points: 100000
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+              road:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 160000
+                  num_near_points: 20000
+                  num_far_points: 20000
+                  far_radius_factor: 20
+                  observation_scale_factor: 0.01
+                  non_dynamic_points_only: true
+                  default_scale: 0.1
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+            strategy:
+              add:
+                max_n_gaussians: 3000000
+                end_iteration: 140000
+                start_iteration: 20000
+                frequency: 100
+              relocate:
+                end_iteration: 140000
+                frequency: 100
+              perturb:
+                end_iteration: 160000
+          dataset:
+            n_samples_per_epoch: 160000
+            camera_ids: &id001
+            - camera_pcam_f0
+            - camera_pcam_b0
+            - camera_pcam_l0
+            - camera_pcam_l1
+            - camera_pcam_l2
+            - camera_pcam_r0
+            - camera_pcam_r1
+            - camera_pcam_r2
+            train_camera_ids: *id001
+            val_camera_ids: *id001
+            lidar_ids:
+            - lidar_top_360fov
+            train_lidar_ids:
+            - lidar_top_360fov
+            val_lidar_ids: []
+            n_train_sample_lidar_rays: 0
+            val_lidar: false
+            train_sequential_lidar: false
+            use_real_lidar_rays: false
+            n_train_sequential_image_subsample: 2
+            n_val_image_subsample: 2
+            aux_data: true
+            cuboid_tracks_params:
+              track_label_sources:
+              - GT_ANNOTATION
+            samplers:
+              batch_sampler:
+                ratio_camera_samples: 1.0
+                ratio_lidar_samples: 0.0
+                camera_pixel_sampler:
+                  subsample: 2
+          loss:
+            lidar:
+              lambda_: 0.0
+            background_lidar:
+              lambda_: 0.0
+            intensity:
+              lambda_: 0.0
+            raydrop:
+              lambda_: 0.0
+            normal:
+              lambda_: 0.0
+            rgb:
+              fn: l1
+              lambda_: 0.8
+            ssim:
+              lambda_: 0.2
+          trainer:
+            max_epochs: 1
+          datamodule:
+            train_num_workers: 8
+            val_num_workers: 4
+            test_num_workers: 4
+          checkpoint:
+            every_n_train_steps: 40000
+            save_top_k: 1
+            save_on_train_epoch_end: true
+            artifact:
+              enabled: true
+              mesh:
+                ground:
+                  enabled: false
+          seed: 42
+          NRE_RECIPE
+          echo "out_dir: $DEST/native" >> "$CFGDIR/nureasoning_sweep_lidarinit.yaml"
+          ARGS=(--config-name=configs/apps/prod/Hyperion-8.1/nureasoning_sweep_lidarinit.yaml mode=train logger=dummy "logger.run_id='$CLIP_ID'" "dataset.path=/scratch/ncore/pai_${CLIP_ID}.json" system.optimizers.0.scheduler.args.T_max=160000)
+          # Separate Lightning checkpoint retains optimizer/scheduler state.
+          if [[ -s "$DEST/checkpoints/last.ckpt" ]]; then ARGS+=("resume=$DEST/checkpoints/last.ckpt" resume_weights_only=false); fi
+          /app/run export-parsed-config --config-name=configs/apps/prod/Hyperion-8.1/nureasoning_sweep_lidarinit.yaml --output "$DEST/parsed-preflight.yaml" -- "${ARGS[@]:1}"
+          /app/run "${ARGS[@]}"
+          ART="/scratch/native-artifacts/last.usdz"
+          test -s "$ART"
+          mkdir -p "$DEST/artifacts"
+          cp -a "$ART" "$DEST/artifacts/last.usdz"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/artifacts/"
+          cp -a "$DEST/native/$CLIP_ID/config" "$DEST/"
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'VALIDATE'
+          import os,json,zipfile,pathlib,torch
+          p=pathlib.Path(os.environ["RECON_ROOT"])/os.environ["CLIP_ID"]
+          z=p/"artifacts/last.usdz"
+          with zipfile.ZipFile(z) as archive:
+           assert archive.testzip() is None
+           assert "checkpoint.ckpt" in archive.namelist() and "parsed_config.yaml" in archive.namelist()
+          ck=p/"checkpoints/last.ckpt"
+          assert ck.is_file()
+          s=torch.load(ck,map_location="cpu",weights_only=False)
+          assert s["global_step"]==int(os.environ["TRAIN_STEPS"]) and s.get("optimizer_states") and s.get("lr_schedulers")
+          record=dict(clip_id=os.environ["CLIP_ID"],profile=os.environ["PROFILE"],training_steps=s["global_step"],gaussian_strategy_limit=int(os.environ["GAUSSIAN_LIMIT"]),initial_gaussian_budget=1800000,temporal_slicing=False,camera_count=8,image_subsample=2,lidar_initialization=True,lidar_supervision=False,usdz_bytes=z.stat().st_size,resume_checkpoint=str(ck),resume_has_optimizer_state=True,quality_validation="pending",seed=42,source_recon=os.environ["SOURCE_RECON"])
+          (p/"SUCCESS.json").write_text(json.dumps(record,indent=2)+"\n")
+          print("TRAIN_DONE",record)
+          VALIDATE
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: PROFILE
+          value: 3m-160k
+        - name: TRAIN_STEPS
+          value: '160000'
+        - name: GAUSSIAN_LIMIT
+          value: '3000000'
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        resources:
+          requests:
+            cpu: '8'
+            memory: 64Gi
+            ephemeral-storage: 200Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '8'
+            memory: 64Gi
+            ephemeral-storage: 200Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 185Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  ttlSecondsAfterFinished: 604800

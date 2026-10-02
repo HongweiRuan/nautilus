@@ -1,0 +1,90 @@
+# J0 / R000 — read-only probe of /avl-west/WOMD_v1_1 (layout, formats, split sizes).
+# CPU only, no code checkout needed. Writes a report to /avl-west/bestofncritic/runs/<run>/.
+# Never writes into WOMD_v1_1.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-bon-m0-probe-data-001
+  namespace: cogrob
+  labels:
+    app: horuan-bon-m0-probe-data-001
+    workload-type: batch
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels:
+        app: horuan-bon-m0-probe-data-001
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              RUN=horuan-bon-m0-probe-data-001
+              OUT=/avl-west/bestofncritic/runs/$RUN
+              SRC=/avl-west/WOMD_v1_1
+              mkdir -p "$OUT"
+              echo "no-code probe job (repo has no commits yet)" > "$OUT/commit.txt"
+              test -d "$SRC"
+              {
+                echo "== top level"; ls -la "$SRC"
+                echo "== directory tree (depth 3, dirs only)"; find "$SRC" -maxdepth 3 -type d | sort
+                echo "== file counts and sizes per directory (depth 3)"
+                find "$SRC" -maxdepth 3 -type d | sort | while read -r d; do
+                  n=$(find "$d" -maxdepth 1 -type f | wc -l)
+                  s=$(du -sh --apparent-size "$d" 2>/dev/null | cut -f1)
+                  echo "$n files, $s  $d"
+                done
+                echo "== extensions"; find "$SRC" -type f | sed -E 's/.*\.([^./]+)$/\1/' | sort | uniq -c | sort -rn | head -20
+                echo "== sample files"; find "$SRC" -type f | head -20
+              } > "$OUT/womd_layout.txt" 2>&1
+              python3 - "$SRC" >> "$OUT/womd_layout.txt" <<'PY'
+              import os, sys
+              root = sys.argv[1]
+              for dp, _, fs in os.walk(root):
+                  fs = sorted(fs)
+                  if fs:
+                      p = os.path.join(dp, fs[0])
+                      with open(p, "rb") as f:
+                          head = f.read(64)
+                      print("== first bytes of", p, ":", head[:64])
+                      break
+              PY
+              cat "$OUT/womd_layout.txt" | head -200
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+              ephemeral-storage: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+              ephemeral-storage: 1Gi
+          volumeMounts:
+            - name: avl-west-vol
+              mountPath: /avl-west
+      volumes:
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+      # Both PVCs are rook-cephfs (west): keep compute in us-west for I/O.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob

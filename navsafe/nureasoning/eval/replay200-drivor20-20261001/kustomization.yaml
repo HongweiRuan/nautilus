@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cogrob
+resources:
+- jobs/e08a9f05.yaml
+- jobs/660c2f7a.yaml
+- jobs/a12a8365.yaml
+- jobs/834aa758.yaml
+- jobs/e8f65885.yaml

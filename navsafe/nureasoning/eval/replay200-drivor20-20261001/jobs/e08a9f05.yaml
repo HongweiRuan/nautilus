@@ -1,0 +1,290 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nureasoning-eval5-01-e08a9f05
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning-eval5
+    batch: completed5-20261001
+    clip-hash: e08a9f05
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          mkdir -p "$OUTPUT_DIR" /root/nurec-artifact /sync
+          exec > >(tee -a "$OUTPUT_DIR/renderer.log") 2>&1
+          on_exit() {
+            rc=$?
+            if [[ ! -e /sync/EVAL_DONE ]]; then echo "$rc" > /sync/SERVE_FAILED; fi
+          }
+          trap on_exit EXIT
+          test -s "$SOURCE_RECON/SUCCESS.json"
+          test -s "$SOURCE_RECON/artifacts/last.usdz"
+          cp -a "$SOURCE_RECON/artifacts/last.usdz" /root/nurec-artifact/last.usdz
+          /app/run serve-grpc --host 0.0.0.0 --enable-editing-actors --renderer default --artifact-glob /root/nurec-artifact/last.usdz &
+          server_pid=$!
+          # Finite companion: stop our own renderer after the two evaluations finish.
+          while kill -0 "$server_pid" 2>/dev/null; do
+            if [[ -e /sync/EVAL_DONE ]]; then
+              kill -TERM "$server_pid" 2>/dev/null || true
+              wait "$server_pid" || true
+              echo "RENDERER_FINISHED $CLIP_ID"
+              exit 0
+            fi
+            sleep 2
+          done
+          wait "$server_pid"
+          echo 'ERROR: renderer exited before evaluations finished' >&2
+          exit 7
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: OUTPUT_DIR
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/eval/completed5-replay200-drivor20-20261001/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        name: renderer
+        ports:
+        - containerPort: 8080
+          name: grpc
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 90
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: '4'
+            ephemeral-storage: 100Gi
+            memory: 32Gi
+            nvidia.com/gpu: '1'
+          requests:
+            cpu: '4'
+            ephemeral-storage: 100Gi
+            memory: 32Gi
+            nvidia.com/gpu: '1'
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /dev/shm
+          name: dshm
+        - name: sync
+          mountPath: /sync
+      - command:
+        - bash
+        - -lc
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: OUTPUT_DIR
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/eval/completed5-replay200-drivor20-20261001/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        name: eval
+        resources:
+          limits:
+            cpu: '8'
+            ephemeral-storage: 150Gi
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+          requests:
+            cpu: '8'
+            ephemeral-storage: 150Gi
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /dev/shm
+          name: dshm
+        - name: sync
+          mountPath: /sync
+        workingDir: /hugsim-storage/NavSafe-infty
+        args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          OUT="$OUTPUT_DIR"
+          LOCAL=/root/navsafe-eval-output
+          mkdir -p "$OUT" "$LOCAL" /sync
+          exec > >(tee -a "$OUT/job.log") 2>&1
+          finish() {
+            rc=$?
+            echo "$rc" > /sync/EVAL_DONE
+            if [[ -d "$LOCAL" ]]; then cp -a "$LOCAL/." "$OUT/" || rc=8; fi
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$OUT/exit_status.json"
+            trap - EXIT
+            exit "$rc"
+          }
+          trap finish EXIT
+          test -s "$SOURCE_RECON/SUCCESS.json"
+          test -s "$SOURCE_RECON/nurec_origin_offset.json"
+          command -v conda >/dev/null && conda info --envs || true
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq git curl libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null
+          python3 -m pip install --quiet uv
+          export UV_PROJECT_ENVIRONMENT=/root/navsafe-eval-venv UV_CACHE_DIR=/root/.cache/uv UV_LINK_MODE=copy
+          uv sync --locked --python 3.12
+          export PATH=/root/navsafe-eval-venv/bin:$PATH PYTHONPATH="$REPO_ROOT"
+          export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES PYTHONUNBUFFERED=1
+          export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=8080
+          python - <<'ENV_CHECK'
+          import torch,isaaclab,py123d
+          from importlib.metadata import version
+          print('EVAL_ENV',version('py123d'),torch.__version__,torch.cuda.is_available())
+          assert torch.cuda.is_available() and version('py123d')=='0.6.0'
+          ENV_CHECK
+          CHECKPOINT=/avl-west/navsafe_eval/model_zoo/drivor/drivor_Nav1_25epochs.pth
+          test -s "$CHECKPOINT"
+          DRIVER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1 | tr -d ' ')
+          KITCACHE="/avl-west/navsafe_dev/kitcache/kitcache-3090-$DRIVER.tar"
+          if [[ -s "$KITCACHE" ]]; then
+            KITPKG=$(python -c 'import isaacsim,os; print(os.path.dirname(isaacsim.__file__))' | tail -1)
+            if tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
+              echo "WARM_KIT_CACHE_RESTORED $KITCACHE"
+              printf '%s\n' "$KITCACHE" > "$LOCAL/warm_kit_cache.txt"
+            else
+              echo "WARM_KIT_CACHE_RESTORE_FAILED $KITCACHE" >&2
+            fi
+          else
+            echo "WARM_KIT_CACHE_MISSING driver=$DRIVER" >&2
+          fi
+          # Limit discovery to exactly this Arrow log: --py123d-scene-index 0 cannot drift.
+          ARROW=/root/navsafe-eval-arrow
+          mkdir -p "$ARROW/logs/nureasoning-mini_train"
+          ln -s "$BATCH_ROOT/arrow/logs/nureasoning-mini_train/$CLIP_ID" "$ARROW/logs/nureasoning-mini_train/$CLIP_ID"
+          python - <<'RENDER_READY'
+          import grpc,time,pathlib
+          channel=grpc.insecure_channel('127.0.0.1:8080')
+          for attempt in range(120):
+           if pathlib.Path('/sync/SERVE_FAILED').exists(): raise RuntimeError('NuRec renderer failed; see renderer.log')
+           try:
+            grpc.channel_ready_future(channel).result(timeout=10)
+            print('NUREC_RENDERER_READY',flush=True)
+            break
+           except grpc.FutureTimeoutError: pass
+          else: raise RuntimeError('NuRec renderer not ready within1200 seconds')
+          channel.close()
+          RENDER_READY
+          COMMON=(--scenario-source py123d --py123d-data-root "$ARROW" --py123d-scene-index 0 --nurec-work-dir "$RECON_ROOT" --render-backend nurec_grpc --traffic-mode log_replay --execution-mode controller --controller lqr --replan-rate 5 --eval-seed 1 --enable-vis --keep-ego-replay-frames --camera-resolution-scale 1.0 --log-level INFO)
+          failed=0
+          echo "EVAL_BEGIN $CLIP_ID full ego replay200"
+          if navsafe-eval "${COMMON[@]}" --model-type pdm_closed --checkpoint none --ego-replay-frames 200 --eval-frames 0 --output-dir "$LOCAL/ego_replay_200" 2>&1 | tee "$OUT/ego_replay_200.log"; then
+            echo 0 > "$LOCAL/ego_replay_200.exit_code"
+          else
+            status=$?; echo "$status" > "$LOCAL/ego_replay_200.exit_code"; failed=1
+          fi
+          echo "EVAL_BEGIN $CLIP_ID replay20 plus DrivOR180"
+          if navsafe-eval "${COMMON[@]}" --model-type drivor --checkpoint "$CHECKPOINT" --ego-replay-frames 20 --eval-frames 180 --output-dir "$LOCAL/drivor_replay20_total200" 2>&1 | tee "$OUT/drivor_replay20_total200.log"; then
+            echo 0 > "$LOCAL/drivor_replay20_total200.exit_code"
+          else
+            status=$?; echo "$status" > "$LOCAL/drivor_replay20_total200.exit_code"; failed=1
+          fi
+          export LOCAL
+          if python - <<'VALIDATE_EVAL'
+          import os,json,pathlib
+          root=pathlib.Path(os.environ['LOCAL']);records=[]
+          for mode in ['ego_replay_200','drivor_replay20_total200']:
+           p=root/mode
+           assert (root/(mode+'.exit_code')).read_text().strip()=='0',mode
+           metrics=json.loads((p/'metrics.json').read_text())
+           assert not metrics.get('infra_failure_error'),metrics
+           assert all((p/'visualization'/name).is_file() and (p/'visualization'/name).stat().st_size>0 for name in ['topdown.gif','cam_f0.gif','combined.gif']),mode
+           if mode=='ego_replay_200':
+            assert metrics['total_frames']==200 and metrics['success'],metrics
+            note='Visualization-only replay; current evaluator marks zero controlled frames unscorable.'
+           else:
+            assert 20<=metrics['total_frames']<=200 and metrics.get('termination_reason')!='infra_failure',metrics
+            note='20 replay frames, up to180 controlled; normal episode termination may end early.'
+           records.append({'mode':mode,'metrics':metrics,'note':note})
+          record={'clip_id':os.environ['CLIP_ID'],'reconstruction_source':os.environ['SOURCE_RECON'],'visualization_enabled':True,'records':records}
+          (root/'SUCCESS.json').write_text(json.dumps(record,indent=2)+'\n')
+          print('EVAL_BOTH_DONE',record,flush=True)
+          VALIDATE_EVAL
+          then :; else failed=1; fi
+          exit "$failed"
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: sync
+        emptyDir: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

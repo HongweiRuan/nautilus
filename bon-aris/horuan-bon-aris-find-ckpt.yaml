@@ -1,0 +1,59 @@
+# CPU-only: search shared storage for existing PLUTO / Diffusion Planner checkpoints (read-only; excludes forbidden chunk-critic dirs).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-bon-aris-find-ckpt
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: horuan-bon-aris-find-ckpt
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "### avl-west"
+              find /avl-west -maxdepth 6 \( -path /avl-west/nuplan/nuplan-v1.1/sensor_blobs -o -path /avl-west/nuplan/nuplan-v1.1/rendered_sensor_blobs -o -path /avl-west/nuplan/nuplan-v1.1/processed -o -path '/avl-west/WOMD*' -o -path '/avl-west/waymo*' \) -prune -o \( -iname '*pluto*' -o -iname '*diffusion_planner*' -o -iname '*diffusion-planner*' \) -print 2>/dev/null | head -50
+              echo "### hugsim-storage"
+              find /hugsim-storage -maxdepth 5 \( -path /hugsim-storage/bestofncritic -o -path /hugsim-storage/aris-chunk-critic \) -prune -o \( -iname '*pluto*' -o -iname '*diffusion_planner*' -o -iname '*diffusion-planner*' \) -print 2>/dev/null | head -50
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+            limits: {cpu: "1", memory: 1Gi}
+          volumeMounts:
+            - {name: avl-west-vol, mountPath: /avl-west, readOnly: true}
+            - {name: hugsim-storage, mountPath: /hugsim-storage, readOnly: true}
+      volumes:
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      # Only these 7 RTX 3090 nodes for this project. Both PVCs are rook-cephfs (west):
+      # keep the us-west region constraint for I/O (both expressions must hold).
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

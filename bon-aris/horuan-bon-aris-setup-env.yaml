@@ -1,0 +1,50 @@
+# CPU-only: build conda env + third-party base-model repos on PVC.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-bon-aris-setup-env, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 10800
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata: {labels: {app: horuan-bon-aris-setup-env}}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: python:3.11-bookworm
+          command: ["bash", "-lc"]
+          args: ["set -o pipefail; bash /hugsim-storage/bon-aris/scripts/env/setup_env.sh 2>&1 | tee /hugsim-storage/bon-aris/setup_env.log"]
+          resources:
+            requests: {cpu: "8", memory: 16Gi, ephemeral-storage: 20Gi}
+            limits: {cpu: "8", memory: 16Gi, ephemeral-storage: 20Gi}
+          volumeMounts:
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+      # Only these 7 RTX 3090 nodes for this project. Both PVCs are rook-cephfs (west):
+      # keep the us-west region constraint for I/O (both expressions must hold).
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

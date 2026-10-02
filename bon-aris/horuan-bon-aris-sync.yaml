@@ -1,0 +1,49 @@
+# CPU-only helper pod for kubectl cp code sync into /hugsim-storage/bon-aris (sleeps; deadline 24h).
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-bon-aris-sync, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata: {labels: {app: horuan-bon-aris-sync}}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: python:3.11-bookworm
+          command: ["sleep", "86000"]
+          resources:
+            requests: {cpu: "1", memory: 2Gi}
+            limits: {cpu: "1", memory: 2Gi}
+          volumeMounts:
+            - {name: hugsim-storage, mountPath: /hugsim-storage}
+            - {name: avl-west-vol, mountPath: /avl-west}
+      volumes:
+        - name: hugsim-storage
+          persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+        - name: avl-west-vol
+          persistentVolumeClaim: {claimName: avl-west-vol}
+      # Only these 7 RTX 3090 nodes for this project. Both PVCs are rook-cephfs (west):
+      # keep the us-west region constraint for I/O (both expressions must hold).
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}

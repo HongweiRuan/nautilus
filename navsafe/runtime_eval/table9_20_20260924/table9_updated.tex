@@ -1,0 +1,21 @@
+Table~\ref{tab:runtime} reports end-to-end runtime measured on 20 policy-in-loop episodes using semi-reactive traffic and the NuRec renderer. End-to-end time includes rendering, simulation, policy inference, control, and scoring. We use the DrivoR baseline policy on two NVIDIA GeForce RTX~3090 GPUs per worker: GPU~0 serves the renderer and GPU~1 runs simulation and policy inference. Median combined peak memory is 24.1~GiB (19.7~GiB for rendering and 4.5~GiB for the policy-side process). The component-level rendering/inference latency split is reported separately in Table~\ref{tab:throughput}.
+
+\begin{table}[t]
+  \centering
+  \caption{Measured end-to-end runtime for the reference policy-in-loop path.}
+  \label{tab:runtime}
+  \begin{tabular}{lrrrrl}
+    \toprule
+    Quantity & Median & p90 & Maximum & $N$ & Conditions \\
+    \midrule
+    Episode evaluation & 400~s & 713~s & 953~s & 20 & Up to 60~s per episode \\
+    Steady-state frame & 1.79~s & 2.60~s & 3.62~s & 20 episodes & End-to-end \\
+    Renderer startup & 50~s & 50~s & 50~s & 10 launches & Excluded above \\
+    Operational cell budget & 7.5~min & 12.7~min & 16.7~min & 20 episodes & Startup included \\
+    GPU memory/worker & 24.1~GiB & 24.7~GiB & 25.1~GiB & 15 workers & Two RTX~3090 GPUs \\
+    Scenario-bundle storage & 8.43~GiB & -- & -- & one bundle & 16-file snapshot \\
+    \bottomrule
+  \end{tabular}
+  \vspace{2pt}
+  \footnotesize Episode evaluation and steady-state frame time exclude renderer startup; the operational cell budget includes one renderer startup. GPU memory is the simultaneous total across the renderer and policy GPUs.
+\end{table}

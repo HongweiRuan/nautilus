@@ -1,0 +1,226 @@
+{
+  "repo_id": "qixuewei/nuReasoning_mini",
+  "revision": "cbd4d9c8007d1d2bdc32432426920f6ef519ce75",
+  "scenarios": [
+    {
+      "path": "data/train/part_3/2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae.zip",
+      "size": 3203479907,
+      "lfs_sha256": "3c19516147c25e2f423843b986c3f5e690930d42948ee0ec6c4840bf25f181f2",
+      "clip_id": "2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/upstream-v060/ncore/clips/2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae",
+      "reused": true
+    },
+    {
+      "path": "data/train/part_3/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd.zip",
+      "size": 3118618979,
+      "lfs_sha256": "32dabddd106c22e40c281a456daf7f100724db8dc7ea27ff0c1b32310d920c0e",
+      "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.949932,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "work_zone_or_roadwork",
+        "log_name": "2026.01.13.14.13.30_PFDKB4AE7RF000100",
+        "archive_prefix": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.zip",
+      "size": 3434560529,
+      "lfs_sha256": "5020054edce9ef6ce5a94f1bb81856939a364e940364b3032ac4905cb840059f",
+      "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.950647,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "vulnerable_road_user|work_zone_or_roadwork",
+        "log_name": "2026.01.13.20.33.55_PFDKB4AE7RF000100",
+        "archive_prefix": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_1/2026.01.14.12.46.28_PFDKB4AE6RF000105_a12a8365024352098b6050885b3b1045.zip",
+      "size": 2616144544,
+      "lfs_sha256": "b618af58f781eafe83c78f37dd9424349488ce3ce556b043ddeca3f9b8f0b573",
+      "clip_id": "2026.01.14.12.46.28_PFDKB4AE6RF000105_a12a8365024352098b6050885b3b1045",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.12.46.28_PFDKB4AE6RF000105_a12a8365024352098b6050885b3b1045",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.14.12.46.28_PFDKB4AE6RF000105_a12a8365024352098b6050885b3b1045",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.950124,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "work_zone_or_roadwork|vulnerable_road_user|limited_visibility_or_perception_degradation",
+        "log_name": "2026.01.14.12.46.28_PFDKB4AE6RF000105",
+        "archive_prefix": "2026.01.14.12.46.28_PFDKB4AE6RF000105_a12a8365024352098b6050885b3b1045/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_1/2026.01.14.16.41.21_PFDKB4AE5RF000113_834aa758588053b2a721698a6233d658.zip",
+      "size": 2973504244,
+      "lfs_sha256": "0a1d931613aac99b9467a1d7b65a38ab956b21f5b9d63973b15268c22018ae44",
+      "clip_id": "2026.01.14.16.41.21_PFDKB4AE5RF000113_834aa758588053b2a721698a6233d658",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.16.41.21_PFDKB4AE5RF000113_834aa758588053b2a721698a6233d658",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.14.16.41.21_PFDKB4AE5RF000113_834aa758588053b2a721698a6233d658",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.950011,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "work_zone_or_roadwork",
+        "log_name": "2026.01.14.16.41.21_PFDKB4AE5RF000113",
+        "archive_prefix": "2026.01.14.16.41.21_PFDKB4AE5RF000113_834aa758588053b2a721698a6233d658/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_2/2026.01.14.17.35.24_PFDKB4AE7RF000100_e8f65885e2f55192b30c4d37fd9b96d0.zip",
+      "size": 2951606102,
+      "lfs_sha256": "07740ad9f8154b77594b5d8cdf2ecd439305d41f6fb797439d09b8c815bc10aa",
+      "clip_id": "2026.01.14.17.35.24_PFDKB4AE7RF000100_e8f65885e2f55192b30c4d37fd9b96d0",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.17.35.24_PFDKB4AE7RF000100_e8f65885e2f55192b30c4d37fd9b96d0",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.14.17.35.24_PFDKB4AE7RF000100_e8f65885e2f55192b30c4d37fd9b96d0",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.950383,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "vulnerable_road_user",
+        "log_name": "2026.01.14.17.35.24_PFDKB4AE7RF000100",
+        "archive_prefix": "2026.01.14.17.35.24_PFDKB4AE7RF000100_e8f65885e2f55192b30c4d37fd9b96d0/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_2/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96.zip",
+      "size": 3114241822,
+      "lfs_sha256": "d5a2c30dffdd3c67d0a57b63cc75247a97cf904a72a12eb7a53e9a0abb1a248e",
+      "clip_id": "2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.949989,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "work_zone_or_roadwork",
+        "log_name": "2026.01.14.20.08.14_PFDKB4AE0SF000140",
+        "archive_prefix": "2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96/",
+        "all_referenced_sensor_files_present": true
+      }
+    },
+    {
+      "path": "data/train/part_2/2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa.zip",
+      "size": 3135574286,
+      "lfs_sha256": "9e443de58449ebad08603370e08947709e81a30675fbd77479db3af24b7b2c2c",
+      "clip_id": "2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa",
+      "ncore_path": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa",
+      "reused": false,
+      "audit": {
+        "clip_id": "2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa",
+        "raw_frames": 202,
+        "unique_frames": 201,
+        "duration_s": 19.950308,
+        "lidar_frames": 201,
+        "camera_names": [
+          "back",
+          "back_left",
+          "back_right",
+          "front",
+          "front_left",
+          "front_right",
+          "left",
+          "right"
+        ],
+        "clip_location": "las vegas",
+        "scenario_type": "work_zone_or_roadwork|stationary_vehicle_obstruction",
+        "log_name": "2026.01.14.20.28.10_PFDKB4AE3RF000062",
+        "archive_prefix": "2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa/",
+        "all_referenced_sensor_files_present": true
+      }
+    }
+  ],
+  "selection_complete": true,
+  "selection_policy": "Existing smoke clip plus seven distinct 2026 logs, verified 201 physical frames, full LiDAR references and eight cameras"
+}

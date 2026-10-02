@@ -1,0 +1,45 @@
+# CPU-only probe: list datasets available under /avl-west (read-only), no GPU.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-bon-aris-ls-data
+  namespace: cogrob
+  labels:
+    app: horuan-bon-aris-ls-data
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: horuan-bon-aris-ls-data
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/hostname: ry-gpu-07.sdsc.optiputer.net
+      containers:
+        - name: worker
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              ls -la /avl-west
+              for d in /avl-west/*/; do echo "== $d"; ls "$d" | head -30; done
+              find /avl-west -maxdepth 3 -iname '*nuplan*' 2>/dev/null | head -20
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+            limits: {cpu: "1", memory: 1Gi}
+          volumeMounts:
+            - name: avl-west-vol
+              mountPath: /avl-west
+              readOnly: true
+      volumes:
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob

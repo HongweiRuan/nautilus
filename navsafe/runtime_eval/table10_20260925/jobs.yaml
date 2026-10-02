@@ -1,0 +1,772 @@
+apiVersion: v1
+data:
+  instrument_timing.py: |
+    #!/usr/bin/env python3
+    """Add measurement-only per-frame latency logging to a pinned checkout."""
+    from pathlib import Path
+    import sys
+
+    p = Path(sys.argv[1])
+    s = p.read_text()
+
+    old = """        while True:
+                keep_going = self._step()
+                if not keep_going:
+                    break
+    """
+    new = """        while True:
+                _frame_t0 = _time.perf_counter()
+                keep_going = self._step()
+                _frame_dt = _time.perf_counter() - _frame_t0
+                if not hasattr(self, \"_prof_samples\"):
+                    self._prof_samples = _defaultdict(list)
+                self._prof_samples[\"e2e_frame\"].append(_frame_dt)
+                if not keep_going:
+                    break
+    """
+    assert old in s
+    s = s.replace(old, new, 1)
+
+    old = """            sys.stderr.flush()
+            return results
+    """
+    new = """            if hasattr(self, \"_prof_samples\"):
+                    import numpy as _np
+                    for _k, _xs in sorted(self._prof_samples.items()):
+                        if not _xs:
+                            continue
+                        _a = _np.asarray(_xs, dtype=float) * 1000.0
+                        sys.stderr.write(
+                            f\"[PROFILE_DIST] {_k} n={len(_a)} \"
+                            f\"p50_ms={_np.percentile(_a, 50):.3f} \"
+                            f\"p95_ms={_np.percentile(_a, 95):.3f} \"
+                            f\"max_ms={_a.max():.3f}\\n\")
+                sys.stderr.flush()
+            return results
+    """
+    assert old in s
+    s = s.replace(old, new, 1)
+
+    old = """        self._prof[key] += _time.perf_counter() - t0
+    """
+    new = """        _dt = _time.perf_counter() - t0
+            self._prof[key] += _dt
+            if not hasattr(self, \"_prof_samples\"):
+                self._prof_samples = _defaultdict(list)
+            self._prof_samples[key].append(_dt)
+    """
+    assert old in s
+    s = s.replace(old, new, 1)
+
+    old = """        model_input = self.adapter.prepare_input(
+    """
+    new = """        _policy_t0 = _time.perf_counter()
+            model_input = self.adapter.prepare_input(
+    """
+    assert old in s
+    s = s.replace(old, new, 1)
+
+    old = """        parsed = self.adapter.parse_output(raw_output, ego_state)
+    """
+    new = """        parsed = self.adapter.parse_output(raw_output, ego_state)
+            self._prof_add('policy', _policy_t0)
+    """
+    assert old in s
+    s = s.replace(old, new, 1)
+
+    p.write_text(s)
+    print(f"instrumented {p}")
+  models.tsv: "drivor\tdrivor\tdrivor/drivor_Nav1_25epochs.pth\n"
+  run_worker.sh: |
+    #!/usr/bin/env bash
+    # Table 10 throughput benchmark: one NuRec renderer on GPU 0 and N concurrent
+    # DrivoR evaluation processes sharing GPU 1 in one two-GPU pod.
+    #
+    # Why it is shaped like this, since none of it is arbitrary:
+    #
+    #  * `run_bundle_eval.sh` cannot be used here. It starts the renderer with
+    #    `docker run` (the single-machine "Mode B" of docs/navsafe_eval.md); a pod
+    #    has no docker daemon. This is Mode A — a long-lived serve-grpc the eval
+    #    client reaches over the network — with server and client in the SAME pod, so
+    #    the network is loopback and the renderer cannot outlive the work. Every
+    #    eval FLAG below is copied from that wrapper verbatim, because the flags are
+    #    what make a score comparable and this file is not the place to have an
+    #    opinion about them.
+    #
+    #  * ONE renderer per worker, started once. serve-grpc costs 2-4 minutes to
+    #    publish its scenes and bind, and the eval venv costs ~15 minutes to build;
+    #    a pod that evaluated a single scenario would spend most of its life on
+    #    that. Here both are paid once and amortised over ~25 cells.
+    #
+    #  * Two GPUs, not one. serve-grpc with the harmonizer and --cache-size 4 was
+    #    measured at 21.8 GiB of a 3090's 23.6 GiB (see nexussim/nurec_serving/
+    #    serve-grpc.yaml), which leaves nothing for a policy. GPU 0 renders, GPU 1
+    #    runs the rollout.
+    #
+    #  * --cache-size 4 is a correctness floor, not a speed knob: a NavSafe scenario
+    #    is FOUR 5 s reconstructions the episode renders in turn, and at a smaller
+    #    cache they evict each other mid-episode.
+    #
+    #  * Token-outer, model-inner. All models run against one scenario before moving
+    #    to the next, so the renderer keeps that scenario's four reconstructions
+    #    resident across the whole model list instead of reloading ~8 GB per model.
+    #
+    #  * --eval-frames 600 states the episode bound instead of inheriting it.
+    #    `eval_frames` counts SCORED frames, so the run lasts
+    #    ego_replay_frames + eval_frames = 20 + 600 = 620 frames; leaving it unset
+    #    stops at ego_replay_frames + round(SAFETY_CEILING_S / sim_dt) =
+    #    20 + 60.0/0.1 = the same 620 (evaluator.py, "safety ceiling"). Same bound,
+    #    now written down — which is what keeps cells scored before this flag was
+    #    added comparable with the ones after.
+    #
+    #  * Resumable, per cell. A Job's pod is NOT time-capped here (verified: the
+    #    6 h activeDeadlineSeconds cogrob injects lands on bare Pods, not on pods a
+    #    Job owns), so a worker normally runs its slice to the end in one go. The
+    #    resume exists for the other reasons a pod dies — a node drain, an evicted
+    #    pod, a renderer that wedges — and it costs nothing when unused. A cell is
+    #    skipped when its log carries eval_py123d's DONE line AND a
+    #    navsafe_metrics.json exists — not on a frame count, which --enable-vis
+    #    being off makes zero for finished and unfinished runs alike.
+    #
+    # Inputs, all from the Job manifest:
+    #   WORKER_INDEX  this worker's index, 0-based
+    #   WORKERS       how many workers share the scenario set
+    #   SEEDS         space-separated --eval-seed values, e.g. "1" or "1 2 3"
+    #   NEXUSSIM_SHA  the commit every worker in the campaign evaluates
+    #   CAMPAIGN      output subtree name under outputs/
+    #
+    # Optional, for a campaign other than the model-zoo sweep:
+    #   ROOT          campaign root holding dataset/ and outputs/ (default below)
+    #   AH_REPLACE    1 = render the logged actors from their harvested assets
+    #                 (docs/navsafe_harvested_actors.md). The bank is found beside
+    #                 each scenario, so a bundle needs an `ah_assets` entry.
+    #   AH_REPLACE_MAX  how many resident copies at once -- a car served by three
+    #                 of the four 5 s scenes counts three times. 10 is what a 24 GB
+    #                 card holds through a whole episode with four reconstructions.
+    set -uo pipefail
+
+    : "${WORKER_INDEX:?}" "${WORKERS:?}" "${SEEDS:?}" "${NEXUSSIM_SHA:?}" "${CONCURRENCY:?}"
+    ROOT=${ROOT:-/avl-west/navsafe_eval}
+    DATASET=${DATASET:-$ROOT/dataset}
+    # Two campaigns can share one dataset and differ only in a flag -- a harvested
+    # replacement run and its baseline, for instance -- so the output subtree is
+    # separable from the root.
+    OUTROOT=${OUTROOT:-$ROOT/outputs}
+    MODELS_TSV=${MODELS_TSV:-/cfg/models.tsv}
+    ZOO=${ZOO:-$ROOT/model_zoo}
+    HARMONIZER_CACHE=${HARMONIZER_CACHE:-/avl-west/navsafe_dev/.harmonizer-cache}
+    PORT=8080
+    CELL_TIMEOUT=${CELL_TIMEOUT:-45m}
+    W=$(printf 'w%02d' "$WORKER_INDEX")
+
+    say() { echo "[$W $(date -u +%H:%M:%S)] $*"; }
+
+    # ── 0. which scenarios are mine ──────────────────────────────────────────────
+    # Deterministic stride, computed identically by every worker from the same
+    # sorted list, so no worker needs to be told and two workers never collide.
+    # Directories only, and only bundles that can actually be served. An entry under
+    # $DATASET that is not an evaluatable scenario killed a whole worker: it became a
+    # dangling symlink in the shard, serve-grpc died on FileNotFoundError before
+    # publishing any scene list, and the slice went down with it. Two produced that
+    # on 2026-08-26 — a stray top-level manifest.json (a FILE, which `ls` happily
+    # returns; since moved to ../dataset_manifest.json) and 442b2cf63c6f570a, which
+    # carries arrow/ and offsets/ but no usdz at all. Screened here, where the cost
+    # is one skipped scenario rather than one dead worker.
+    read -r -a MY_TOKENS <<< "${TABLE10_TOKENS:?}"
+    [ "${#MY_TOKENS[@]}" -ge 1 ] || { say "expected TABLE10_TOKENS"; exit 1; }
+    for T in "${MY_TOKENS[@]}"; do
+      d="$DATASET/$T"
+      [ -f "$d/manifest.json" ] && [ -d "$d/arrow" ] || { say "$T invalid bundle"; exit 1; }
+      compgen -G "$d/*.usdz" >/dev/null || { say "$T has no USDZ"; exit 1; }
+    done
+    say "Table 10 concurrency=$CONCURRENCY scenarios: ${MY_TOKENS[*]}"
+    [ ${#MY_TOKENS[@]} -gt 0 ] || { say "nothing to do"; exit 0; }
+
+    mapfile -t ROWS < <(grep -v '^\s*#' "$MODELS_TSV" | grep -v '^\s*$')
+    say "models: $(printf '%s ' "${ROWS[@]%% *}")"
+
+    # ── 1. environment ───────────────────────────────────────────────────────────
+    # The venv is built here, on the pod's own ephemeral /root, every time. It is
+    # NOT cached on the PVC: a shared interpreter tree on CephFS is not ours to
+    # create. ~15 minutes, paid once per pod.
+    export DEBIAN_FRONTEND=noninteractive
+    say "apt: GL/X libs the renderer and IsaacSim need"
+    # python3-dev is not decoration: SparseDriveV2 JIT-builds a C++/CUDA extension,
+    # `uv sync --python 3.12` resolves to this image's SYSTEM python (Ubuntu 24.04
+    # ships 3.12.3), and torch hands the compiler `-isystem /usr/include/python3.12`.
+    # Without the headers the C++ half of the build dies on `Python.h: No such file
+    # or directory` while the CUDA half compiles fine — which reads as a broken
+    # adapter rather than a missing apt package.
+    apt-get update -qq && apt-get install -y -qq git curl python3-venv python3-dev \
+      libglu1-mesa libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 \
+      libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 \
+      libice6 libgomp1 >/dev/null || { say "apt FAILED"; exit 1; }
+
+    export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH
+    export UV_CACHE_DIR=/root/.cache/uv UV_PROJECT_ENVIRONMENT=/root/nexussim-venv
+    for i in 1 2 3 4; do
+      command -v uv >/dev/null && break
+      python -m pip install --quiet --user uv 2>/dev/null \
+        || pip install --quiet --user uv 2>/dev/null \
+        || curl -LsSf https://astral.sh/uv/install.sh | sh
+      hash -r; sleep 5
+    done
+    command -v uv >/dev/null || { say "uv unavailable"; exit 1; }
+
+    # Pinned checkout, cloned locally: 30 workers importing .py straight off CephFS
+    # would contend on __pycache__ writes, and a campaign has to be able to say
+    # which commit produced its numbers.
+    REPO=/root/ns
+    rm -rf "$REPO"
+    git clone --quiet --no-hardlinks /hugsim-storage/NexusSim "$REPO" || { say "clone FAILED"; exit 1; }
+    git -C "$REPO" checkout --quiet "$NEXUSSIM_SHA" || { say "checkout $NEXUSSIM_SHA FAILED"; exit 1; }
+    say "code at $(git -C "$REPO" log --oneline -1)"
+
+    # Timing-only benchmark instrumentation. It records per-frame distributions
+    # and policy preprocessing+inference+postprocessing without changing outputs.
+    "$(command -v python3)" /cfg/instrument_timing.py "$REPO/nexussim/evaluation/evaluator.py" \
+      || { say "timing instrumentation FAILED"; exit 1; }
+
+    # A clone carries COMMITTED state only, which is the point: a campaign has to be
+    # able to name the commit its numbers came from. But a feature under test is
+    # not committed yet, and without this the workers run code that does not have
+    # the flag and every cell dies on "unrecognized arguments".
+    #
+    # NEXUSSIM_OVERLAY=1 copies the source checkout's uncommitted changes on top and
+    # SAYS SO. Provenance does not silently degrade: eval_py123d already stamps a
+    # run from a dirty tree as corresponding to no commit and records the diff.
+    if [ "${NEXUSSIM_OVERLAY:-0}" = "1" ]; then
+      SRC=/hugsim-storage/NexusSim
+      # -uall lists untracked FILES; the default collapses them to a directory
+      # ("?? nexussim/navsafe/harvest/"), which the -f test below then skips — that
+      # is how a whole new package went missing and every cell died on an import.
+      mapfile -t DIRTY < <(git -C "$SRC" status --porcelain -uall | awk '{print $NF}')
+      for f in "${DIRTY[@]}"; do
+        [ -f "$SRC/$f" ] || continue
+        mkdir -p "$REPO/$(dirname "$f")" && cp -f "$SRC/$f" "$REPO/$f"
+      done
+      say "OVERLAID ${#DIRTY[@]} uncommitted file(s) from $SRC — these numbers "\
+          "correspond to no commit"
+      # Fail here rather than 25 minutes into the first cell. The overlay exists
+      # solely so this worker can run code that is not committed yet; if the pieces
+      # that code needs did not arrive, every cell dies identically on an import or
+      # an unrecognized argument, and the fleet burns an hour saying so.
+      if [ "${AH_REPLACE:-0}" = "1" ]; then
+        grep -q -- "--asset-harvester-replace" "$REPO/scripts/tools/eval_py123d.py" \
+          || { say "overlay incomplete: eval_py123d.py has no --asset-harvester-replace"; exit 1; }
+        [ -f "$REPO/nexussim/navsafe/harvest/manifest.py" ] \
+          || { say "overlay incomplete: nexussim/navsafe/harvest/ did not arrive"; exit 1; }
+      fi
+    fi
+
+    cd "$REPO"
+    if ! /root/nexussim-venv/bin/python -c "import isaacsim, isaaclab, nexussim" 2>/dev/null; then
+      say "uv sync (IsaacSim 6.0 + cu128 torch, ~15 min)"
+      uv sync --all-extras --python 3.12 || { say "uv sync FAILED"; exit 1; }
+      [ -d /root/IsaacLab/.git ] || git clone --depth 1 --branch v3.0.0-beta \
+        https://github.com/isaac-sim/IsaacLab.git /root/IsaacLab
+      for ext in isaaclab isaaclab_assets isaaclab_tasks isaaclab_rl isaaclab_mimic; do
+        d=/root/IsaacLab/source/$ext
+        [ -d "$d" ] && uv pip install --python /root/nexussim-venv/bin/python --no-deps -e "$d" >/dev/null
+      done
+      uv pip install --python /root/nexussim-venv/bin/python lazy_loader einops >/dev/null
+      # SparseDriveV2 JIT-builds a CUDA extension (deformable attention) at its first
+      # forward pass, and torch.utils.cpp_extension refuses to without ninja:
+      # "Ninja is required to load C++ extensions". The NRE image ships nvcc 12.8 and
+      # g++ but not ninja, so the cell died at frame 0 with an infra_failure that
+      # reads like a broken adapter. Compiled once per pod into
+      # /root/.cache/torch_extensions.
+      uv pip install --python /root/nexussim-venv/bin/python ninja >/dev/null
+    fi
+    PY=/root/nexussim-venv/bin/python
+    "$PY" -c "import nexussim, isaaclab" || { say "venv unusable"; exit 1; }
+
+    # ── warm Omniverse Kit shader/material cache ─────────────────────────────────
+    # Without this every worker spends ~7.7 min inside AppLauncher, on an EMPTY
+    # stage, while Kit compiles materials (omni.ujitso) and ray-tracing pipelines
+    # (RtPso) into caches that die with the pod. Measured 2026-08-31 on an
+    # otherwise identical pair of jobs: AppLauncher returned after 467 s cold and
+    # 10.5 s restored, with byte-identical metrics. Ten workers per wave, so this
+    # is ~77 GPU-minutes a wave.
+    #
+    # The compile finishes before the scenario is read, so ONE cache serves every
+    # token. The tar is keyed on driver version (the OptiX and Vulkan pipeline
+    # caches are) and its members are venv-agnostic: `kit/` unpacks into whichever
+    # isaacsim package $PY has. A miss only costs the old boot time, so nothing
+    # here aborts. To refresh after an IsaacSim or driver upgrade, run one eval to
+    # completion and repack from that pod:
+    #   KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))")
+    #   tar -cf /avl-west/navsafe_dev/kitcache/kitcache-3090-$DRV.tar -C "$KITPKG" kit \
+    #       -C / var/tmp/OptixCache_root root/.cache/ov root/.cache/warp root/.nv
+    KITCACHE=/avl-west/navsafe_dev/kitcache/kitcache-3090-$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1 | tr -d ' ').tar
+    if [ -f "$KITCACHE" ]; then
+      KITPKG=$("$PY" -c "import isaacsim, os; print(os.path.dirname(isaacsim.__file__))" 2>/dev/null)
+      if [ -n "$KITPKG" ] && tar -xf "$KITCACHE" -C "$KITPKG" kit && tar -xf "$KITCACHE" -C / var root; then
+        say "Kit shader cache restored into $KITPKG"
+      else
+        say "Kit cache restore failed; IsaacSim will recompile (~8 min)"
+      fi
+    else
+      say "no Kit cache for this driver; IsaacSim will recompile (~8 min)"
+    fi
+    # `uv sync` rewrites uv.lock in place — it normalises the environment markers for
+    # this platform, same package versions — and every eval then records itself as
+    # "launched from a DIRTY tree ... this run corresponds to no commit". Restoring
+    # the file is what lets run_meta.json name the commit these numbers came from;
+    # the installed set is the locked one either way, which is why this is safe.
+    git -C "$REPO" checkout -- uv.lock 2>/dev/null || true
+
+    # The venv's bin/ has to be on PATH, not just its interpreter. torch checks for
+    # ninja by SHELLING OUT (`subprocess.run(["ninja", "--version"])` in
+    # verify_ninja_availability), so installing ninja into the venv while invoking
+    # only /root/nexussim-venv/bin/python leaves it invisible and SparseDriveV2 still dies
+    # at frame 0 with "Ninja is required to load C++ extensions". Checked here
+    # rather than trusted: the install is quiet, and its failure would otherwise
+    # surface 30 pods later as one adapter that never scores anything.
+    export PATH=/root/nexussim-venv/bin:$PATH
+    command -v ninja >/dev/null || { say "ninja not on PATH — sparsedrivev2 cannot JIT its CUDA extension"; exit 1; }
+    # The exact path torch will pass as -isystem, asked of the interpreter that will
+    # do the building rather than assumed from the apt package name.
+    INC=$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["include"])')
+    [ -f "$INC/Python.h" ] || { say "no Python.h under $INC — sparsedrivev2's extension cannot build"; exit 1; }
+    say "venv ready ($(git -C "$REPO" status --porcelain | wc -l) tracked files modified, ninja $(ninja --version), headers $INC)"
+
+    # ── Table 9 provenance and GPU sampler ───────────────────────────────────────
+    RUNDIR="$OUTROOT/_workers/$W"
+    mkdir -p "$RUNDIR"
+    {
+      echo "worker=$W"
+      echo "hostname=$(hostname)"
+      echo "commit=$(git -C "$REPO" rev-parse HEAD)"
+      echo "image=nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90"
+      echo "tokens=${MY_TOKENS[*]}"
+      nvidia-smi --query-gpu=index,name,uuid,driver_version,memory.total --format=csv,noheader
+      "$PY" - <<'PY'
+    import sys, torch, isaacsim, isaaclab
+    print(f"python={sys.version.split()[0]}")
+    print(f"torch={torch.__version__}")
+    print(f"cuda={torch.version.cuda}")
+    print(f"isaaclab={isaaclab.__version__}")
+    PY
+    } > "$RUNDIR/metadata.txt"
+    nvidia-smi --query-gpu=timestamp,index,name,driver_version,memory.used,memory.total,utilization.gpu \
+      --format=csv,noheader,nounits -l 1 > "$RUNDIR/gpu_samples.csv" 2> "$RUNDIR/gpu_sampler.err" &
+    GPU_SAMPLER_PID=$!
+
+    # ── 2. the renderer ──────────────────────────────────────────────────────────
+    # Its --artifact-glob covers only THIS worker's scenarios. serve-grpc scans the
+    # glob at start-up and reads every artifact it finds; pointing all 30 workers at
+    # all 508 reconstructions would make each of them scan half a terabyte of CephFS
+    # to serve twenty scenes.
+    SHARD=/root/shard
+    mkdir -p "$SHARD"
+    MY_SCENES=()
+    for T in "${MY_TOKENS[@]}"; do
+      for f in "$DATASET/$T"/*.usdz; do
+        [ -e "$f" ] || continue                     # a dangling link is not a scene
+        b=$(basename "$f"); ln -sf "$f" "$SHARD/$b"; MY_SCENES+=("${b%.usdz}")
+      done
+    done
+    mkdir -p "$HARMONIZER_CACHE"
+
+    SERVE_PID=""
+    start_serve() {
+      local render_t0=$(date +%s%N)
+      say "serve-grpc starting on GPU 0"
+      CUDA_VISIBLE_DEVICES=0 /app/run serve-grpc --host 0.0.0.0 \
+        --enable-editing-actors --renderer default --cache-size 4 \
+        --enable-harmonizer --harmonizer-cache "$HARMONIZER_CACHE" \
+        --artifact-glob "$SHARD/*.usdz" > /tmp/serve.log 2>&1 &
+      SERVE_PID=$!
+
+      # The scene list is CHECKED, never assumed: a renderer asked for a scene it
+      # does not hold falls back to raster silently, and the result reads as a
+      # reconstruction-quality problem rather than a configuration one.
+      for _ in $(seq 1 120); do
+        kill -0 $SERVE_PID 2>/dev/null || { say "serve exited early"; tail -40 /tmp/serve.log; return 1; }
+        grep -q "Available scenes" /tmp/serve.log && break
+        sleep 5
+      done
+      local scenes; scenes=$(grep "Available scenes" /tmp/serve.log | tail -1)
+      [ -n "$scenes" ] || { say "no scene list published"; tail -40 /tmp/serve.log; return 1; }
+      for SC in "${MY_SCENES[@]}"; do
+        echo "$scenes" | grep -q "$SC" || { say "MISSING scene $SC — would render raster"; return 1; }
+      done
+      # The scene list is not readiness: serve-grpc prints it while still loading
+      # the harmonizer weights and binds the port ~2 min later. Connecting in that
+      # gap dies with UNAVAILABLE from inside renderer setup.
+      for _ in $(seq 1 120); do grep -q "Serving on" /tmp/serve.log && break; sleep 5; done
+      grep -q "Serving on" /tmp/serve.log || { say "never bound its port"; tail -40 /tmp/serve.log; return 1; }
+      for _ in $(seq 1 60); do
+        (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && { exec 3<&- 3>&-; break; }
+        sleep 2
+      done
+      say "renderer accepting connections ($(echo "$scenes" | wc -w) scene tokens)"
+      local render_t1=$(date +%s%N)
+      "$PY" -c 'import sys; print((int(sys.argv[2])-int(sys.argv[1]))/1e9)' "$render_t0" "$render_t1" >> "$RUNDIR/renderer_startup_s.txt"
+    }
+
+    serve_alive() {
+      [ -n "$SERVE_PID" ] && kill -0 "$SERVE_PID" 2>/dev/null || return 1
+      (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null && { exec 3<&- 3>&-; return 0; }
+      return 1
+    }
+
+    trap 'say "exiting"; tail -40 /tmp/serve.log 2>/dev/null; kill $SERVE_PID $GPU_SAMPLER_PID 2>/dev/null' EXIT
+    start_serve || exit 1
+
+    # ── 3. the sweep ─────────────────────────────────────────────────────────────
+    export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=$PORT
+    # recon, not navsim: the reconstruction's own training camera, which is what
+    # nurec_grpc.py already defaults to. The navsim rig rebuilds a zero-distortion
+    # pinhole from seven scalars and renders rays the recon was never fit on.
+    # Set NUREC_GRPC_CAM_RIG=navsim to get the old behaviour back.
+    export NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600
+    export PY123D_RECENTER=1
+    export NUPLAN_MAP_VERSION=nuplan-maps-v1.0
+    export NEXUSSIM_NO_CAM_MAP_LINES=1
+    export PYTHONPATH="$REPO:$REPO/third_party/nurec_protos"
+    export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+    export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
+
+    # ── 3. concurrent policy-in-loop sweep ──────────────────────────────────────
+    export NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=$PORT
+    export NUREC_GRPC_CAM_RIG=${NUREC_GRPC_CAM_RIG:-recon} NUREC_GRPC_TIMEOUT_S=600
+    export PY123D_RECENTER=1 NUPLAN_MAP_VERSION=nuplan-maps-v1.0 NEXUSSIM_NO_CAM_MAP_LINES=1
+    export PYTHONPATH="$REPO:$REPO/third_party/nurec_protos"
+    export ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES UV_NO_SYNC=1
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+    export CUDA_VISIBLE_DEVICES=1 NEXUSSIM_NUREC_GPUS=1
+
+    read -r SLUG MT CK < <(head -1 "$MODELS_TSV")
+    [ "$CK" = none ] && CKPT=none || CKPT="$ZOO/$CK"
+    mkdir -p "$OUTROOT/$SLUG/seed1"
+
+    run_one() {
+      local T=$1 B="$DATASET/$1" OUT="$OUTROOT/$SLUG/seed1/$1" LOG="$OUTROOT/$SLUG/seed1/$1.log"
+      local HANDOFF T0 T1 RC WALL
+      HANDOFF=$("$PY" -m nexussim.navsafe.eval.bundle --handoff "$B" 2>/dev/null) || return 91
+      [ -n "$HANDOFF" ] || return 92
+      mkdir -p "$OUT"
+      T0=$(date +%s%N)
+      NUREC_GRPC_HANDOFF="$HANDOFF" timeout --signal=KILL "$CELL_TIMEOUT" \
+        "$PY" "$REPO/scripts/tools/eval_py123d.py" \
+          --scenario-source py123d --py123d-data-root "$B/arrow" --py123d-scene-index 0 \
+          --render-backend nurec_grpc --cam-height navsim \
+          --model-type "$MT" --checkpoint "$CKPT" \
+          --traffic-mode semi_reactive --ego-replay-frames 20 --terminate-on-collision \
+          --controller lqr --execution-mode controller --replan-rate 5 \
+          --camera-resolution-scale 1.0 --eval-frames 600 --eval-seed 1 \
+          --navsafe-prune-artifacts --output-dir "$OUT" > "$LOG" 2>&1
+      RC=$?
+      T1=$(date +%s%N)
+      WALL=$("$PY" -c 'import sys; print(f"{(int(sys.argv[2])-int(sys.argv[1]))/1e9:.6f}")' "$T0" "$T1")
+      printf '%s\t%s\t%s\t%s\n' "$T" "$T0" "$WALL" "$RC" > "$RUNDIR/$T.episode.tsv"
+      grep -qs '^\[eval_py123d\] DONE\.' "$LOG" && [ -f "$OUT/navsafe_metrics.json" ]
+    }
+
+    say "launching ${#MY_TOKENS[@]} episodes, concurrency=$CONCURRENCY"
+    fail=0
+    for ((base=0; base<${#MY_TOKENS[@]}; base+=CONCURRENCY)); do
+      pids=(); toks=()
+      for ((j=0; j<CONCURRENCY && base+j<${#MY_TOKENS[@]}; j++)); do
+        T=${MY_TOKENS[$((base+j))]}
+        say "launch $T"
+        run_one "$T" & pids+=("$!"); toks+=("$T")
+      done
+      for ((j=0; j<${#pids[@]}; j++)); do
+        if wait "${pids[$j]}"; then say "${toks[$j]} OK"; else say "${toks[$j]} FAILED"; fail=$((fail+1)); fi
+      done
+      serve_alive || { say "renderer died during wave"; fail=$((fail+1)); break; }
+    done
+    cat "$RUNDIR"/*.episode.tsv > "$RUNDIR/episodes.tsv" 2>/dev/null || true
+    say "TABLE10 DONE concurrency=$CONCURRENCY failed=$fail"
+    [ "$fail" -eq 0 ]
+kind: ConfigMap
+metadata:
+  name: navsafe-table10-20260925-cfg
+  namespace: cogrob
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c1-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "1" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "1" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "0" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "1" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c1" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "6", memory: "40Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "6", memory: "40Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c2-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "2" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "2" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "1" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "2" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c2" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c4-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "4" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "4" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "2" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "4" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c4" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c8-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "8" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "8" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "3" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "8" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c8" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "20", memory: "96Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "20", memory: "96Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

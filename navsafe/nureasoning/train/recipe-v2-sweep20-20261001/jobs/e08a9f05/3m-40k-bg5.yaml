@@ -1,0 +1,597 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur20-e08a9f05-3m-40k-bg5
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning-sweep20
+    batch: nureasoning-sweep20-20261001-1812
+    profile: 3m-40k
+    clip-hash: e08a9f05
+    background-fourier-dim: '5'
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-sweep20
+        batch: nureasoning-sweep20-20261001-1812
+        profile: 3m-40k
+        clip-hash: e08a9f05
+        background-fourier-dim: '5'
+        job-id: navsafe-nur20-e08a9f05-3m-40k-bg5
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: &id001
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env: &id002
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: DEST
+          value: /avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-40k-background-time-dim5
+        - name: EXPERIMENT_ID
+          value: e08a9f05-3m-40k-background-time-dim5
+        - name: TRAIN_STEPS
+          value: '40000'
+        - name: GAUSSIAN_LIMIT
+          value: '3000000'
+        - name: VARIANT
+          value: background-time-dim5
+        - name: BACKGROUND_FOURIER_DIM
+          value: '5'
+        - name: RECIPE_SHA256
+          value: 84d317853db93904d569fea9166c3860796f448cf3a70bbdca07d0d80b37b5f5
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: OMP_NUM_THREADS
+          value: '2'
+        - name: MKL_NUM_THREADS
+          value: '2'
+        - name: OPENBLAS_NUM_THREADS
+          value: '2'
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        volumeMounts: &id003
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+        name: stage-inputs
+        args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG" /scratch/ncore
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          test -s "$NCORE_DIR/pai_$CLIP_ID.json"
+          cp -a "$NCORE_DIR/pai_$CLIP_ID.json" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          # Native aux loader truncates the filename at its first dot.
+          MANIFEST="pai_$CLIP_ID.json"
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_$CLIP_ID.aux.$kind.zarr.itar"
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          echo "STAGING_COMPLETE $EXPERIMENT_ID"
+        resources:
+          requests:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+      containers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: *id001
+        env: *id002
+        volumeMounts: *id003
+        name: train
+        args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG"
+          exec > >(tee -a "$DIAG/train.log") 2>&1
+          finish() {
+            rc=$?
+            trap - EXIT
+            if [[ -d /scratch/native-save ]]; then
+              mkdir -p "$DEST/quality"
+              cp -a /scratch/native-save/. "$DEST/quality/" || rc=91
+            fi
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+            exit "$rc"
+          }
+          trap finish EXIT
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          RUN="$DEST/native/$CLIP_ID"
+          test ! -e "$RUN"
+          mkdir -p "$DEST/checkpoints" "$RUN" /scratch/native-artifacts /scratch/native-save
+          ln -s "$DEST/checkpoints" "$RUN/checkpoints"
+          ln -s /scratch/native-artifacts "$RUN/artifacts"
+          ln -s /scratch/native-save "$RUN/save"
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/recipe.yaml <<'NRE_RECIPE'
+          # @package _global_
+          defaults:
+          - /apps/AV/_base_3dgut_dynamic_road_semantic
+          - /apps/prod/options/artifact: default
+          - /apps/prod/options/nrend: disabled
+          - /apps/prod/options/difix/3dgut: disabled
+          - /apps/prod/options/mesh: disabled
+          - /apps/prod/options/ground: disabled
+          - /apps/prod/options/subsampling/3dgut: batch_sampler_2
+          - /apps/prod/options/calib: enabled
+          - /apps/AV/module_mixins/_mcmc_mixin.yaml
+          - /model/gaussians/models@model.layers.static_rigids: rigid_gaussians
+          - /model/gaussians/initialization@model.layers.static_rigids.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_rigids.tracks_calib: static
+          - /model/gaussians/models@model.layers.static_deformables: deformable_gaussians
+          - /model/gaussians/initialization@model.layers.static_deformables.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_deformables.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_deformables.tracks_calib: direct
+          - override /model/calib: free_pose
+          - override /model/gaussians/strategy@model.strategy: mcmc
+          - override /model/post_processing@model.post_processing.b: ppisp
+          - override /model/post_processing@model.post_processing.c: null
+          - override /logger: tensorboard
+          - _self_
+          model:
+            layers:
+              static_rigids:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  symmetric_axis: Y
+                  camera_ids: []
+                  step_frame: 1
+                  fill_with_random_points: true
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 240000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  num_point_cloud_points_per_track: 10000
+                fourier_features_dim: 1
+              dynamic_rigids:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 360000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 40000
+                  fill_with_random_points: true
+                fourier_features_dim: 20
+              dynamic_deformables:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 90000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 20000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                fourier_features_dim: 1
+              background:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 800000
+                  num_near_points: 100000
+                  num_far_points: 100000
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                fourier_features_dim: 5
+              road:
+                class_labels:
+                - road
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                initialization:
+                  name: lidar-rig-trajectory-road
+                  num_point_cloud_points: 120000
+                  num_random_points: 0
+                  default_density: 0.5
+                  default_scale:
+                  - 0.1
+                  - 0.1
+                  - 0.001
+                  project_to_z_offset: false
+                  init_with_normals: true
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.00016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    densities:
+                      args:
+                        lr: 0.01
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.001
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              static_deformables:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                fourier_features_dim: 1
+                initialization:
+                  name: lidar-dynamic-tracks
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_in_layer: 30000
+                  num_point_cloud_points_per_track: 10000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                is_static: false
+            strategy:
+              add:
+                max_n_gaussians: 2160000
+                end_iteration: 35000
+                start_iteration: 5000
+                frequency: 100
+              relocate:
+                end_iteration: 35000
+                frequency: 100
+              perturb:
+                end_iteration: 40000
+              exclude_layer_ids:
+              - road
+              - dynamic_rigids
+              - dynamic_deformables
+              - static_rigids
+              - static_deformables
+            calib:
+              name: free-pose-calib
+              camera:
+                enabled: true
+              lidar:
+                enabled: false
+            renderer:
+              outputs:
+                camera:
+                  enable_ray_gradients: true
+                lidar:
+                  enable_ray_gradients: false
+            post_processing:
+              b:
+                per_frame_ppisp_enabled: false
+          dataset:
+            n_samples_per_epoch: 40000
+            camera_ids: &id001
+            - camera_pcam_f0
+            - camera_pcam_b0
+            - camera_pcam_l0
+            - camera_pcam_l1
+            - camera_pcam_l2
+            - camera_pcam_r0
+            - camera_pcam_r1
+            - camera_pcam_r2
+            train_camera_ids: *id001
+            val_camera_ids: *id001
+            lidar_ids:
+            - lidar_top_360fov
+            train_lidar_ids:
+            - lidar_top_360fov
+            val_lidar_ids: []
+            n_train_sample_lidar_rays: 0
+            val_lidar: false
+            train_sequential_lidar: false
+            use_real_lidar_rays: false
+            n_train_sequential_image_subsample: 2
+            n_val_image_subsample: 2
+            aux_data: true
+            cuboid_tracks_params:
+              track_label_sources:
+              - GT_ANNOTATION
+            samplers:
+              batch_sampler:
+                ratio_camera_samples: 1.0
+                ratio_lidar_samples: 0.0
+                camera_pixel_sampler:
+                  subsample: 2
+                  crop_type: full_image
+            val_camera_frame_step: 10
+            val_camera: true
+            interp_with_rig: true
+          loss:
+            lidar:
+              lambda_: 0.0
+            background_lidar:
+              lambda_: 0.0
+            intensity:
+              lambda_: 0.0
+            raydrop:
+              lambda_: 0.0
+            normal:
+              lambda_: 0.0
+            rgb:
+              fn: l1
+              lambda_: 0.8
+            ssim:
+              lambda_: 0.2
+            gaussian_density:
+              layer_lambdas:
+                road: 1
+                dynamic_rigids: 0.1
+                dynamic_deformables: 0.1
+                static_rigids: 0.1
+                static_deformables: 0.1
+            background_in_track_gaussian:
+              fn: bce_with_logits
+              reduce:
+                name: mean
+              lambda_: 0.1
+              layer_names:
+              - background
+              layer_labels_to_use:
+                background:
+                - person
+                - rider
+                - car
+                - truck
+                - bus
+                - train
+                - motorcycle
+                - bicycle
+            node_semantic_gaussians:
+              layer_labels_to_exclude:
+                background:
+                - road
+                dynamic_rigids:
+                - road
+                dynamic_deformables:
+                - road
+                static_rigids:
+                - road
+                static_deformables:
+                - road
+          trainer:
+            max_epochs: 1
+            precision: 32
+            world_size: 1
+            num_nodes: 1
+            num_sanity_val_steps: 0
+            val_check_interval: 10000
+            log_every_n_steps: 50
+          datamodule:
+            train_num_workers: 8
+            val_num_workers: 4
+            test_num_workers: 4
+          checkpoint:
+            every_n_train_steps: 10000
+            save_top_k: 1
+            save_on_train_epoch_end: true
+            artifact:
+              enabled: true
+              mesh:
+                ground:
+                  enabled: false
+            save_last: true
+          seed: 42
+          mode: trainval
+          out_dir: /avl-west/navsafe_nureasoning/sweep20-recipev2-20261001-1812/e08a9f05-3m-40k-background-time-dim5/native
+          logger:
+            enabled: true
+            run_id: <generate>
+          system:
+            warmup_steps: 1000
+            record_quality_metrics:
+              psnr_interval: 100
+            test:
+              save_results: true
+              save_inputs: true
+              save_videos: true
+              save_stats: true
+              separate_val_dir_per_step: true
+              use_camera_name_dirs: true
+              video_fps: 1
+              metrics:
+                ssim:
+                  enabled: true
+                lpips:
+                  enabled: false
+              val_render_selected_nodes: {}
+          NRE_RECIPE
+          printf '%s  %s\n' "$RECIPE_SHA256" /scratch/recipe.yaml | sha256sum -c -
+          ARGS=(--config-name=/scratch/recipe.yaml mode=trainval "logger.run_id='$CLIP_ID'" "dataset.path=/scratch/ncore/pai_$CLIP_ID.json" "out_dir=$DEST/native")
+          /app/run export-parsed-config --config-name=/scratch/recipe.yaml --output "$DEST/parsed-preflight.yaml" -- "${ARGS[@]:1}"
+          /app/run "${ARGS[@]}"
+          test -s /scratch/native-artifacts/last.usdz
+          mkdir -p "$DEST/artifacts"
+          cp -a /scratch/native-artifacts/last.usdz "$DEST/artifacts/last.usdz"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/artifacts/"
+          cp -a "$RUN/config" "$DEST/"
+          # Use the image's native Python runtime to check checkpoint state and artifact.
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'CHECK_OUTPUT'
+          import os,json,zipfile,pathlib,torch
+          p=pathlib.Path(os.environ["DEST"])
+          z=p/"artifacts/last.usdz"
+          with zipfile.ZipFile(z) as archive:
+              assert archive.testzip() is None
+              assert "checkpoint.ckpt" in archive.namelist()
+              assert "parsed_config.yaml" in archive.namelist()
+          ckpt=torch.load(p/"checkpoints/last.ckpt",map_location="cpu",weights_only=False)
+          assert ckpt["global_step"]==int(os.environ["TRAIN_STEPS"])
+          assert ckpt.get("optimizer_states") and ckpt.get("lr_schedulers")
+          record=dict(experiment_id=os.environ["EXPERIMENT_ID"],clip_id=os.environ["CLIP_ID"],
+              train_steps=ckpt["global_step"],scene_gaussian_budget_max=int(os.environ["GAUSSIAN_LIMIT"]),
+              variant=os.environ["VARIANT"],background_fourier_dim=int(os.environ["BACKGROUND_FOURIER_DIM"]),
+              seed=42,lidar_initialization=True,lidar_supervision=False,temporal_splitting=False,
+              recipe_sha256=os.environ["RECIPE_SHA256"],usdz_bytes=z.stat().st_size,
+              quality_validation="native validation saved; cross-run comparison pending")
+          (p/"SUCCESS.json").write_text(json.dumps(record,indent=2)+"\n")
+          print("TRAIN_DONE",json.dumps(record))
+          CHECK_OUTPUT
+        resources:
+          requests:
+            cpu: '2'
+            memory: 64Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '2'
+            memory: 64Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 80Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule

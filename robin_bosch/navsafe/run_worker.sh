@@ -127,6 +127,8 @@ if [ -n "${MODEL_FILTER:-}" ]; then
 fi
 say "models: $(printf '%s ' "${ROWS[@]%% *}")"
 say "controller: ${CONTROLLER:-lqr}"
+VIS_ARGS=(); [ "${ENABLE_VIS:-0}" = 1 ] && VIS_ARGS=(--enable-vis)   # per-frame BEV/front-cam images + GIFs under the cell dir
+say "visualization: ${ENABLE_VIS:-0}"
 
 # ── 1. environment ───────────────────────────────────────────────────────────
 # The venv is built here, on the pod's own ephemeral /root, every time. It is
@@ -608,7 +610,7 @@ for T in "${MY_TOKENS[@]}"; do
             --replan-rate 5 --camera-resolution-scale 1.0 \
             --eval-frames 600 \
             --eval-seed "$SEED" \
-            --navsafe-prune-artifacts \
+            --navsafe-prune-artifacts "${VIS_ARGS[@]}" \
             --output-dir "$OUT" > "$LOG" 2>&1
         if grep -qs '^\[eval_py123d\] DONE\.' "$LOG" && metrics_scored "$OUT/navsafe_metrics.json"; then
           cell_ok=1; break

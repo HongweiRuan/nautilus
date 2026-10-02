@@ -1,0 +1,98 @@
+# GPU Job template for this project. Mount conventions follow
+# ~/Desktop/avl/nautilus/pods/horuan-nexussim.yaml:
+#   /hugsim-storage  <- PVC horuan-hugsim-vol   (dev code / repos)
+#   /avl-west        <- PVC avl-west-vol        (large data; WOMD v1.1 at /avl-west/WOMD_v1_1,
+#                                               v1.3.0 scenario at /avl-west/waymo_open_dataset_motion_v_1_3_0/scenario)
+# Copy to /Users/hongwei/Desktop/avl/nautilus/bon-aris/<run>.yaml, replace every REPLACE,
+# then `kubectl apply --dry-run=server -f` before `kubectl apply -f`.
+# Runs only on ry-gpu-06/07/08/11/12/13/14 (RTX 3090, shared). All horuan-bon-aris-* jobs together
+# may hold at most 8 GPUs at once: count them first with
+#   kubectl get pods -n cogrob -l 'job-name'
+# and wait in queue if the new job would exceed 8.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-bon-aris-ofull2-d-nr-s5
+  namespace: cogrob
+  labels:
+    app: horuan-bon-aris-ofull2-d-nr-s5
+    workload-type: batch
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels:
+        app: horuan-bon-aris-ofull2-d-nr-s5
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              cd /hugsim-storage/bon-aris
+              export OUT=/avl-west/bon-aris/runs/horuan-bon-aris-ofull2-d-nr-s5
+              mkdir -p "$OUT"
+              source /hugsim-storage/bon-aris/conda/bin/activate bon
+              export PYTHONPATH=/hugsim-storage/bon-aris:/hugsim-storage/bon-aris/third_party/pluto:${PYTHONPATH:-}
+              export NUPLAN_DATA_ROOT=/avl-west/nuplan NUPLAN_MAPS_ROOT=/avl-west/nuplan/maps NUPLAN_MAP_VERSION=nuplan-maps-v1.0
+              export NUPLAN_EXP_ROOT=/avl-west/bon-aris/runs/nuplan_exp TMPDIR=/tmp OMP_NUM_THREADS=1
+              ( python -m bonaris.tools.m1_policy_oracle --base pdm --modes d_full --scenarios_file scripts/p0_scenarios.json --skip_done '/avl-west/bon-aris/runs/horuan-bon-aris-ofull-d-*/oracle_shard*.json' --shard 5 --n_shards 6 --parallel 15 --out $OUT ) 2>&1 | tee "$OUT/log.txt"
+          resources:
+            requests:
+              cpu: "16"
+              memory: 48Gi
+              ephemeral-storage: 50Gi
+            limits:
+              cpu: "16"
+              memory: 48Gi
+              ephemeral-storage: 50Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: hugsim-storage
+              mountPath: /hugsim-storage
+            - name: avl-west-vol
+              mountPath: /avl-west
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: hugsim-storage
+          persistentVolumeClaim:
+            claimName: horuan-hugsim-vol
+        - name: avl-west-vol
+          persistentVolumeClaim:
+            claimName: avl-west-vol
+      # Only these 7 RTX 3090 nodes for this project. Both PVCs are rook-cephfs (west):
+      # keep the us-west region constraint for I/O (both expressions must hold).
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values: ["us-west"]
+      # Namespace reservation toleration, as used in horuan-nexussim.yaml.
+      tolerations:
+        - effect: NoSchedule
+          key: nautilus.io/reservation
+          operator: Equal
+          value: cogrob

@@ -1,0 +1,15 @@
+token	model	vis_DS	vis_termination	vis_frames	full280_DS	full280_termination	full280_frames
+3a0e2f53c9585e94	before	28.96	off_drivable	112	28.96	off_drivable	112
+3a0e2f53c9585e94	after	100.0	goal_reached	299	100.0	goal_reached	299
+0a51eb8adf8e5391	before	11.255	contact_at_fault	92	30.21	contact_not_at_fault	104
+0a51eb8adf8e5391	after	41.898	off_drivable	122	100.0	goal_reached	211
+b66f23071e675170	before	27.198	off_drivable	78	33.834	off_drivable	91
+b66f23071e675170	after	100.0	goal_reached	237	100.0	goal_reached	240
+e74ca27f40755297	before	34.176	off_drivable	82	34.176	off_drivable	82
+e74ca27f40755297	after	100.0	goal_reached	200	100.0	goal_reached	200
+23f0187033d658d9	before	35.357	contact_at_fault	150	35.357	contact_at_fault	150
+23f0187033d658d9	after	100.0	goal_reached	320	100.0	goal_reached	320
+26119d956d46590e	before	42.405	contact_not_at_fault	62	42.405	contact_not_at_fault	62
+26119d956d46590e	after	100.0	goal_reached	114	100.0	goal_reached	114
+9ef1d618435d5e53	before	53.287	contact_at_fault	214	53.287	contact_at_fault	214
+9ef1d618435d5e53	after	100.0	goal_reached	222	100.0	goal_reached	222

@@ -1,0 +1,58 @@
+{
+ "best": {
+  "started": true,
+  "reruns": {},
+  "fills": 2,
+  "jobs": [
+   "robin-drivor-action-full280-best-pp-r3",
+   "robin-drivor-action-full280-best-pp-r3-fill2-crash0",
+   "robin-drivor-action-full280-best-pp-r3-fill2-crash1"
+  ],
+  "pushed": true,
+  "note": "r2 (40Gi) hung on the cgroup memory limit and was deleted 12:55 PDT; r3 = 80Gi, 12 workers, same 83 scenarios, created by the orchestrator when the webhook allows | fill1 (bad TOKENS_FILE, no cell ran) deleted 17:25 PDT",
+  "crash_env": {
+   "5d12ad55fdd858e1": [
+    [
+     "NAVSAFE_INSERT_CLASS_PER_SCENE",
+     "1"
+    ]
+   ],
+   "2391f12d7e6a5e7f": [
+    [
+     "NAVSAFE_REPLACE_SCOPE",
+     "source"
+    ]
+   ],
+   "442b2cf63c6f570a": [
+    [
+     "NAVSAFE_REPLACE_SCOPE",
+     "source"
+    ]
+   ],
+   "9135a6d270475c7f": [
+    [
+     "NAVSAFE_REPLACE_SCOPE",
+     "source"
+    ]
+   ]
+  }
+ },
+ "sec9": {
+  "started": false,
+  "reruns": {},
+  "fills": 0,
+  "jobs": [
+   "robin-drivor-action-full280-sec9ep19-pp"
+  ],
+  "pushed": false
+ },
+ "gtrs": {
+  "started": false,
+  "reruns": {},
+  "fills": 0,
+  "jobs": [
+   "robin-drivor-action-full280-gtrs10b-pp"
+  ],
+  "pushed": false
+ }
+}

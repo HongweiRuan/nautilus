@@ -1,0 +1,282 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c1-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "1" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "1" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "0" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "1" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c1" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "6", memory: "40Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "6", memory: "40Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c2-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "2" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "2" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "1" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "2" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c2" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "8", memory: "48Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c4-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "4" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "4" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "2" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "4" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c4" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "12", memory: "64Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "12", memory: "64Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-table10-c8-20260925
+  namespace: cogrob
+  labels: { app: navsafe-table10-20260925, concurrency: "8" }
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: { app: navsafe-table10-20260925, concurrency: "8" }
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{ name: ngc-pull }]
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "/cfg/run_worker.sh"]
+          env:
+            - { name: WORKER_INDEX, value: "3" }
+            - { name: WORKERS, value: "4" }
+            - { name: CONCURRENCY, value: "8" }
+            - { name: SEEDS, value: "1" }
+            - { name: TABLE10_TOKENS, value: "0027991369e05ab2 0578756b879c55d0 0a51eb8adf8e5391 13bb7469606159e9 1dc437ce152e55fa 2d24100bcb1e57e2 4874da28248a5026 6ad48974e9985e1f" }
+            - { name: NEXUSSIM_SHA, value: "620ab1a27d209e46c76e818b6ea4fe30024d3d9b" }
+            - { name: OUTROOT, value: "/avl-west/navsafe_runtime/table10_drivor_20260925/c8" }
+            - { name: MODELS_TSV, value: "/cfg/models.tsv" }
+            - { name: NGC_API_KEY, valueFrom: { secretKeyRef: { name: ngc-api-key, key: NGC_API_KEY } } }
+            - { name: HF_TOKEN, valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } } }
+            - { name: HYDRA_FULL_ERROR, value: "1" }
+            - { name: ACCEPT_EULA, value: "Y" }
+            - { name: OMNI_KIT_ACCEPT_EULA, value: "Y" }
+          resources:
+            requests: { cpu: "20", memory: "96Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+            limits:   { cpu: "20", memory: "96Gi", nvidia.com/gpu: "2", ephemeral-storage: "60Gi" }
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+            - { name: cfg, mountPath: /cfg }
+            - { name: avl-west-vol, mountPath: /avl-west }
+            - { name: hugsim-storage, mountPath: /hugsim-storage }
+      volumes:
+        - { name: dshm, emptyDir: { medium: Memory, sizeLimit: 24Gi } }
+        - { name: cfg, configMap: { name: navsafe-table10-20260925-cfg, defaultMode: 493 } }
+        - { name: avl-west-vol, persistentVolumeClaim: { claimName: avl-west-vol } }
+        - { name: hugsim-storage, persistentVolumeClaim: { claimName: horuan-hugsim-vol } }
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - ry-gpu-06.sdsc.optiputer.net
+                      - ry-gpu-07.sdsc.optiputer.net
+                      - ry-gpu-08.sdsc.optiputer.net
+                      - ry-gpu-11.sdsc.optiputer.net
+                      - ry-gpu-12.sdsc.optiputer.net
+                      - ry-gpu-13.sdsc.optiputer.net
+                      - ry-gpu-14.sdsc.optiputer.net
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values: [NVIDIA-GeForce-RTX-3090]
+      tolerations:
+        - { effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob }
+        - { effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists }

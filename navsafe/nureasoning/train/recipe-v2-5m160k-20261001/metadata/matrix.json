@@ -1,0 +1,114 @@
+{
+  "batch": "nureasoning-5m160k-20261001-1932",
+  "output_root": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932",
+  "eligible_nodes": [
+    "ry-gpu-06.sdsc.optiputer.net",
+    "ry-gpu-07.sdsc.optiputer.net",
+    "ry-gpu-11.sdsc.optiputer.net",
+    "ry-gpu-12.sdsc.optiputer.net",
+    "ry-gpu-14.sdsc.optiputer.net"
+  ],
+  "excluded_nodes": [
+    "ry-gpu-08.sdsc.optiputer.net",
+    "ry-gpu-13.sdsc.optiputer.net"
+  ],
+  "seed": 42,
+  "runs": [
+    {
+      "experiment_id": "660c2f7a-5m-160k-background-time-dim1",
+      "job_name": "navsafe-nur24-660c2f7a-5m-160k-bg1",
+      "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+      "clip_hash": "660c2f7a",
+      "profile": "5m-160k",
+      "total_gaussian_cap": 5000000,
+      "train_steps": 160000,
+      "background_fourier_dim": 1,
+      "variant": "background-time-dim1",
+      "recipe_path": "/hugsim-storage/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/recipes/660c2f7a-5m-160k-background-time-dim1.yaml",
+      "recipe_sha256": "e05fd965af71fe6528c031f8a1794b1fa604190addafd11a31ce88cd46af6616",
+      "ncore_descriptor": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json",
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim1",
+      "budget": {
+        "background": 3600000,
+        "dynamic_rigids": 600000,
+        "dynamic_deformables": 150000,
+        "static_deformables": 50000,
+        "static_rigids": 400000,
+        "road": 200000
+      },
+      "local_job_yaml": "../jobs/660c2f7a/5m-160k-bg1.yaml"
+    },
+    {
+      "experiment_id": "660c2f7a-5m-160k-background-time-dim5",
+      "job_name": "navsafe-nur24-660c2f7a-5m-160k-bg5",
+      "clip_id": "2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f",
+      "clip_hash": "660c2f7a",
+      "profile": "5m-160k",
+      "total_gaussian_cap": 5000000,
+      "train_steps": 160000,
+      "background_fourier_dim": 5,
+      "variant": "background-time-dim5",
+      "recipe_path": "/hugsim-storage/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/recipes/660c2f7a-5m-160k-background-time-dim5.yaml",
+      "recipe_sha256": "a2c3d1e1516790e717fb3813df012cd15f1fb54af47048eee68e75224e2ea3c0",
+      "ncore_descriptor": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json",
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/660c2f7a-5m-160k-background-time-dim5",
+      "budget": {
+        "background": 3600000,
+        "dynamic_rigids": 600000,
+        "dynamic_deformables": 150000,
+        "static_deformables": 50000,
+        "static_rigids": 400000,
+        "road": 200000
+      },
+      "local_job_yaml": "../jobs/660c2f7a/5m-160k-bg5.yaml"
+    },
+    {
+      "experiment_id": "e08a9f05-5m-160k-background-time-dim1",
+      "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg1",
+      "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+      "clip_hash": "e08a9f05",
+      "profile": "5m-160k",
+      "total_gaussian_cap": 5000000,
+      "train_steps": 160000,
+      "background_fourier_dim": 1,
+      "variant": "background-time-dim1",
+      "recipe_path": "/hugsim-storage/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/recipes/e08a9f05-5m-160k-background-time-dim1.yaml",
+      "recipe_sha256": "fe75eb029cddace70c4523cedd3559bdc09fd925b38fbbb5a242d14cf0eae28e",
+      "ncore_descriptor": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/pai_2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd.json",
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim1",
+      "budget": {
+        "background": 3600000,
+        "dynamic_rigids": 600000,
+        "dynamic_deformables": 150000,
+        "static_deformables": 50000,
+        "static_rigids": 400000,
+        "road": 200000
+      },
+      "local_job_yaml": "../jobs/e08a9f05/5m-160k-bg1.yaml"
+    },
+    {
+      "experiment_id": "e08a9f05-5m-160k-background-time-dim5",
+      "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg5",
+      "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+      "clip_hash": "e08a9f05",
+      "profile": "5m-160k",
+      "total_gaussian_cap": 5000000,
+      "train_steps": 160000,
+      "background_fourier_dim": 5,
+      "variant": "background-time-dim5",
+      "recipe_path": "/hugsim-storage/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/recipes/e08a9f05-5m-160k-background-time-dim5.yaml",
+      "recipe_sha256": "77081b009445c43e48d20a87e77959b61980c8db98edc08b8f765265ec7928d6",
+      "ncore_descriptor": "/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/pai_2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd.json",
+      "output_dir": "/avl-west/navsafe_nureasoning/recipev2-5m160k-20261001-1932/e08a9f05-5m-160k-background-time-dim5",
+      "budget": {
+        "background": 3600000,
+        "dynamic_rigids": 600000,
+        "dynamic_deformables": 150000,
+        "static_deformables": 50000,
+        "static_rigids": 400000,
+        "road": 200000
+      },
+      "local_job_yaml": "../jobs/e08a9f05/5m-160k-bg5.yaml"
+    }
+  ]
+}

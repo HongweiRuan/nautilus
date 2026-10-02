@@ -1,0 +1,179 @@
+{
+  "native_compositions_pass": 10,
+  "variant_difference_exactly": [
+    "model.layers.background.fourier_features_dim"
+  ],
+  "note": "Independent proposed override audit, not certification of parent-generated Jobs. Proportional total-layer budgets72/12/3/1/8/4 percent. Fixed absolute warmup/calib/SH-stage steps retained; MCMC and validation/checkpoint horizons scaled.",
+  "records": [
+    {
+      "profile": "3m80k",
+      "background_fourier_dim": 1,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "3m80k",
+      "background_fourier_dim": 5,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "3m40k",
+      "background_fourier_dim": 1,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 40000,
+      "add_start_end": [
+        5000,
+        35000
+      ],
+      "val_checkpoint_interval": 10000,
+      "system_cosine_Tmax": 40000,
+      "deform_cosine_Tmax": 40000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "3m40k",
+      "background_fourier_dim": 5,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 40000,
+      "add_start_end": [
+        5000,
+        35000
+      ],
+      "val_checkpoint_interval": 10000,
+      "system_cosine_Tmax": 40000,
+      "deform_cosine_Tmax": 40000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "5m80k",
+      "background_fourier_dim": 1,
+      "total_gaussians_cap": 5000000,
+      "background_strategy_cap": 3600000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "5m80k",
+      "background_fourier_dim": 5,
+      "total_gaussians_cap": 5000000,
+      "background_strategy_cap": 3600000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "3m160k",
+      "background_fourier_dim": 1,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 160000,
+      "add_start_end": [
+        20000,
+        140000
+      ],
+      "val_checkpoint_interval": 40000,
+      "system_cosine_Tmax": 160000,
+      "deform_cosine_Tmax": 160000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "3m160k",
+      "background_fourier_dim": 5,
+      "total_gaussians_cap": 3000000,
+      "background_strategy_cap": 2160000,
+      "steps": 160000,
+      "add_start_end": [
+        20000,
+        140000
+      ],
+      "val_checkpoint_interval": 40000,
+      "system_cosine_Tmax": 160000,
+      "deform_cosine_Tmax": 160000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "2p5m80k",
+      "background_fourier_dim": 1,
+      "total_gaussians_cap": 2500000,
+      "background_strategy_cap": 1800000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    },
+    {
+      "profile": "2p5m80k",
+      "background_fourier_dim": 5,
+      "total_gaussians_cap": 2500000,
+      "background_strategy_cap": 1800000,
+      "steps": 80000,
+      "add_start_end": [
+        10000,
+        70000
+      ],
+      "val_checkpoint_interval": 20000,
+      "system_cosine_Tmax": 80000,
+      "deform_cosine_Tmax": 80000,
+      "camera_calib_start": 250,
+      "warmup_steps": 1000,
+      "native_typed": "PASS"
+    }
+  ]
+}

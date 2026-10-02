@@ -1,0 +1,38 @@
+{
+  "clip_id": "2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd",
+  "output_root": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001",
+  "profiles": [
+    {
+      "profile": "3m-80k",
+      "gaussian_limit": 3000000,
+      "steps": 80000
+    },
+    {
+      "profile": "3m-40k",
+      "gaussian_limit": 3000000,
+      "steps": 40000
+    },
+    {
+      "profile": "5m-80k",
+      "gaussian_limit": 5000000,
+      "steps": 80000
+    },
+    {
+      "profile": "3m-160k",
+      "gaussian_limit": 3000000,
+      "steps": 160000
+    },
+    {
+      "profile": "2p5m-80k",
+      "gaussian_limit": 2500000,
+      "steps": 80000
+    }
+  ],
+  "from_scratch": true,
+  "seed": 42,
+  "initial_gaussian_budget": 1800000,
+  "lidar_initialization": true,
+  "lidar_supervision": false,
+  "schedule": "growth start 12.5%, growth/relocation end 87.5%, cosine/perturb end 100%",
+  "checkpoint_frequency": "25% of total steps"
+}

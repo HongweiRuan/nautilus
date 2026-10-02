@@ -1,0 +1,37 @@
+{
+  "submitted_at_utc": "2026-10-02T01:26:29.275041+00:00",
+  "batch": "nureasoning-sweep20-20261001-1812",
+  "created_jobs": 20,
+  "job_names": [
+    "navsafe-nur20-660c2f7a-3m-80k-bg1",
+    "navsafe-nur20-660c2f7a-3m-80k-bg5",
+    "navsafe-nur20-660c2f7a-3m-40k-bg1",
+    "navsafe-nur20-660c2f7a-3m-40k-bg5",
+    "navsafe-nur20-660c2f7a-5m-80k-bg1",
+    "navsafe-nur20-660c2f7a-5m-80k-bg5",
+    "navsafe-nur20-660c2f7a-3m-160k-bg1",
+    "navsafe-nur20-660c2f7a-3m-160k-bg5",
+    "navsafe-nur20-660c2f7a-2p5m-80k-bg1",
+    "navsafe-nur20-660c2f7a-2p5m-80k-bg5",
+    "navsafe-nur20-e08a9f05-3m-80k-bg1",
+    "navsafe-nur20-e08a9f05-3m-80k-bg5",
+    "navsafe-nur20-e08a9f05-3m-40k-bg1",
+    "navsafe-nur20-e08a9f05-3m-40k-bg5",
+    "navsafe-nur20-e08a9f05-5m-80k-bg1",
+    "navsafe-nur20-e08a9f05-5m-80k-bg5",
+    "navsafe-nur20-e08a9f05-3m-160k-bg1",
+    "navsafe-nur20-e08a9f05-3m-160k-bg5",
+    "navsafe-nur20-e08a9f05-2p5m-80k-bg1",
+    "navsafe-nur20-e08a9f05-2p5m-80k-bg5"
+  ],
+  "manifest_sha256": "5c563d1596e8e2b12f2840b126650b72fd65720134d5eb991b9d2b73e4634769",
+  "eligible_nodes": [
+    "ry-gpu-06.sdsc.optiputer.net",
+    "ry-gpu-07.sdsc.optiputer.net",
+    "ry-gpu-11.sdsc.optiputer.net",
+    "ry-gpu-12.sdsc.optiputer.net",
+    "ry-gpu-13.sdsc.optiputer.net",
+    "ry-gpu-14.sdsc.optiputer.net"
+  ],
+  "excluded_node": "ry-gpu-08.sdsc.optiputer.net"
+}

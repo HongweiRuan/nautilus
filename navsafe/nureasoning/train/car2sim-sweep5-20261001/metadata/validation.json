@@ -1,0 +1,47 @@
+{
+  "validation": "5/5 exact emitted configs and native typed schema passed",
+  "bash_syntax": "10/10 passed",
+  "manifest_sha256": "bc5b8c245801e38447ff789687cc4c3527122aa68dbeff1bcdd95d24ed4f2aaa",
+  "profiles": [
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-3m-80k",
+      "profile": "3m-80k",
+      "steps": 80000,
+      "cap": 3000000,
+      "native_typed_config": "passed",
+      "ckpt_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-80k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/native/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints"
+    },
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-3m-40k",
+      "profile": "3m-40k",
+      "steps": 40000,
+      "cap": 3000000,
+      "native_typed_config": "passed",
+      "ckpt_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-40k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/native/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints"
+    },
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-5m-80k",
+      "profile": "5m-80k",
+      "steps": 80000,
+      "cap": 5000000,
+      "native_typed_config": "passed",
+      "ckpt_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/5m-80k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/native/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints"
+    },
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-3m-160k",
+      "profile": "3m-160k",
+      "steps": 160000,
+      "cap": 3000000,
+      "native_typed_config": "passed",
+      "ckpt_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/3m-160k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/native/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints"
+    },
+    {
+      "job": "navsafe-nureasoning-sweep-e08a9f05-2p5m-80k",
+      "profile": "2p5m-80k",
+      "steps": 80000,
+      "cap": 2500000,
+      "native_typed_config": "passed",
+      "ckpt_dir": "/avl-west/navsafe_nureasoning/sweep5-e08a9f05-20261001/2p5m-80k/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/native/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/checkpoints"
+    }
+  ]
+}

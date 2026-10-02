@@ -1,0 +1,59 @@
+{
+  "native_version": "GA26.04 / 26.4.146",
+  "checks_passed": 4,
+  "runs": [
+    {
+      "experiment_id": "660c2f7a-5m-160k-background-time-dim1",
+      "recipe_sha256": "e05fd965af71fe6528c031f8a1794b1fa604190addafd11a31ce88cd46af6616",
+      "typed_config": "passed",
+      "inline_shell_syntax": "passed",
+      "embedded_recipe_exact": "passed",
+      "budget_total": 5000000,
+      "scheduler_T_max": 160000
+    },
+    {
+      "experiment_id": "660c2f7a-5m-160k-background-time-dim5",
+      "recipe_sha256": "a2c3d1e1516790e717fb3813df012cd15f1fb54af47048eee68e75224e2ea3c0",
+      "typed_config": "passed",
+      "inline_shell_syntax": "passed",
+      "embedded_recipe_exact": "passed",
+      "budget_total": 5000000,
+      "scheduler_T_max": 160000
+    },
+    {
+      "experiment_id": "e08a9f05-5m-160k-background-time-dim1",
+      "recipe_sha256": "fe75eb029cddace70c4523cedd3559bdc09fd925b38fbbb5a242d14cf0eae28e",
+      "typed_config": "passed",
+      "inline_shell_syntax": "passed",
+      "embedded_recipe_exact": "passed",
+      "budget_total": 5000000,
+      "scheduler_T_max": 160000
+    },
+    {
+      "experiment_id": "e08a9f05-5m-160k-background-time-dim5",
+      "recipe_sha256": "77081b009445c43e48d20a87e77959b61980c8db98edc08b8f765265ec7928d6",
+      "typed_config": "passed",
+      "inline_shell_syntax": "passed",
+      "embedded_recipe_exact": "passed",
+      "budget_total": 5000000,
+      "scheduler_T_max": 160000
+    }
+  ],
+  "variant_pairs": [
+    {
+      "clip_hash": "660c2f7a",
+      "profile": "5m-160k",
+      "changed_fields": [
+        "model.layers.background.fourier_features_dim"
+      ]
+    },
+    {
+      "clip_hash": "e08a9f05",
+      "profile": "5m-160k",
+      "changed_fields": [
+        "model.layers.background.fourier_features_dim"
+      ]
+    }
+  ],
+  "training_started_by_validation": false
+}

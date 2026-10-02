@@ -1,0 +1,11 @@
+{
+  "native_TensorBoardLogger_instantiated": true,
+  "test_scalar_written": true,
+  "events": [
+    {
+      "path": "/root/navsafe-quality02/tensorboard-dependency-audit/tensorboard-audit/events.out.tfevents.1790903834.horuan-navsafe",
+      "bytes": 95
+    }
+  ],
+  "training_started": false
+}

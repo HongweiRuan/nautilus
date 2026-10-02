@@ -1,0 +1,746 @@
+{
+  "checked_at_utc": "2026-10-02T01:35:52.238111+00:00",
+  "batch": "nureasoning-sweep20-20261001-1812",
+  "counts": {
+    "queued": 3,
+    "initializing": 0,
+    "training": 17,
+    "failed": 0
+  },
+  "pods": [
+    {
+      "pod": "navsafe-nur20-660c2f7a-2p5m-80k-bg1-z4bwx",
+      "job": "navsafe-nur20-660c2f7a-2p5m-80k-bg1",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://913e86442063475fe98a284e1d1d881bac7abdc7526713e17b05b957226c7c83",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:01Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   4%|\u258d         | 3000/80000 [06:46<2:34:41,  8.30it/s, v_num=dd6f, train/psnr=24.50, train/nrays=1.31e+6, gaussians/num_gaussians=1.55e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 3000,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-2p5m-80k-bg5-z4brs",
+      "job": "navsafe-nur20-660c2f7a-2p5m-80k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://0ee4762c90e73dc7942e916fa4dcdd81d4717d051fdae61dab7a30687971928d",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:40Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:13Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:42Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 1354/80000 [04:52<3:42:12,  5.90it/s, v_num=dd6f, train/psnr=21.10, train/nrays=1.31e+6, gaussians/num_gaussians=1.55e+6]",
+        "Epoch 0:   2%|\u258f         | 1354/80000 [04:52<3:42:12,  5.90it/s, v_num=dd6f, train/psnr=21.10, train/nrays=1.31e+6, gaussians/num_gaussians=1.55e+6]",
+        "Epoch 0:   2%|\u258f         | 1355/"
+      ],
+      "log_errors": [],
+      "optimization_step": 1354,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-160k-bg1-c5gc9",
+      "job": "navsafe-nur20-660c2f7a-3m-160k-bg1",
+      "node": "ry-gpu-07.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://4b82077e9da22a1c42d85b0b796bbff80230604a5717beb280cdcc341f914637",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:12Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:39Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 3000/160000 [06:56<5:36:41,  7.77it/s, v_num=dd6f, train/psnr=23.90, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "                                                                                                                                                    ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 3000,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-160k-bg5-66chq",
+      "job": "navsafe-nur20-660c2f7a-3m-160k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://3298569095bb24ef1be0128e7f8aa44478d860bb4e6753f09283c23c1773dfa0",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:40Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:11Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:42Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   1%|          | 1200/160000 [04:41<7:48:25,  5.65it/s, v_num=dd6f, train/psnr=25.50, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "                                                                                                                                                    ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 1200,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-40k-bg1-mh7sz",
+      "job": "navsafe-nur20-660c2f7a-3m-40k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://130598ae5e613ba8164dfbf8687335b798d44c7d1e7cdc860a87eb36a3daf807",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:08Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:38Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   4%|\u258d         | 1554/40000 [05:07<1:41:02,  6.34it/s, v_num=dd6f, train/psnr=21.00, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "Epoch 0:   4%|\u258d         | 1554/40000 [05:07<1:41:02,  6.34it/s, v_num=dd6f, train/psnr=21.00, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "Epoch 0:   4%|\u258d         | 1555/"
+      ],
+      "log_errors": [],
+      "optimization_step": 1554,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-40k-bg5-s6nqg",
+      "job": "navsafe-nur20-660c2f7a-3m-40k-bg5",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://8fbf5ab869d61c6b4f4588536614166d515dcf8b9cf12ba7d1de141090ecc367",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:23:57Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   8%|\u258a         | 3054/40000 [06:53<1:17:02,  7.99it/s, v_num=dd6f, train/psnr=22.80, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "Epoch 0:   8%|\u258a         | 3054/40000 [06:53<1:17:02,  7.99it/s, v_num=dd6f, train/psnr=22.80, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "Epoch 0:   8%|\u258a         | 3055/"
+      ],
+      "log_errors": [],
+      "optimization_step": 3054,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-80k-bg1-czsrz",
+      "job": "navsafe-nur20-660c2f7a-3m-80k-bg1",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://d66a6ce172627df93273907ed8b94e33a4ab95c51c23782288d1095e1fe9f914",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:03Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:38Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 1600/80000 [05:13<3:27:22,  6.30it/s, v_num=dd6f, train/psnr=21.10, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 1600,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-3m-80k-bg5-lgn25",
+      "job": "navsafe-nur20-660c2f7a-3m-80k-bg5",
+      "node": "ry-gpu-14.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://ef539222e1365a5b2b2af8a29da6086b42e141a2c0f57c2de47e30f192ef2ec5",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:06Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:38Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 1600/80000 [05:13<3:26:51,  6.32it/s, v_num=dd6f, train/psnr=21.10, train/nrays=1.31e+6, gaussians/num_gaussians=1.69e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 1600,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-5m-80k-bg1-zxmr6",
+      "job": "navsafe-nur20-660c2f7a-5m-80k-bg1",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://57c4d2681371657433c7baabe671042a50c576d8d590f509966b4d436f2a70d8",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:23:58Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   3%|\u258e         | 2400/80000 [06:51<3:54:58,  5.50it/s, v_num=dd6f, train/psnr=24.20, train/nrays=1.31e+6, gaussians/num_gaussians=2.25e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 2400,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-660c2f7a-5m-80k-bg5-tk8dr",
+      "job": "navsafe-nur20-660c2f7a-5m-80k-bg5",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://73de2fb6c5859f1d92e683d47f1e48dc00fc47b4646e21995f3d22ee5d141934",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:37Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:23:59Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   4%|\u258e         | 2800/80000 [06:55<2:51:36,  7.50it/s, v_num=dd6f, train/psnr=24.00, train/nrays=1.31e+6, gaussians/num_gaussians=2.25e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 862538, new count: 862538 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 2800,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-2p5m-80k-bg1-d8m7v",
+      "job": "navsafe-nur20-e08a9f05-2p5m-80k-bg1",
+      "node": null,
+      "phase": "Pending",
+      "init": [],
+      "main": [],
+      "unscheduled": [
+        "0/533 nodes are available: 1 Insufficient memory, 19 node(s) were unschedulable, 2 Insufficient cpu, 225 node(s) had untolerated taint(s), 283 node(s) didn't match Pod's node affinity/selector, 5 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 527 Preemption is not helpful for scheduling, 6 No preemption victims found for incoming pod."
+      ],
+      "startup_stage": "queued"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-2p5m-80k-bg5-s8mtk",
+      "job": "navsafe-nur20-e08a9f05-2p5m-80k-bg5",
+      "node": null,
+      "phase": "Pending",
+      "init": [],
+      "main": [],
+      "unscheduled": [
+        "0/533 nodes are available: 1 Insufficient memory, 19 node(s) were unschedulable, 2 Insufficient cpu, 225 node(s) had untolerated taint(s), 283 node(s) didn't match Pod's node affinity/selector, 5 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 527 Preemption is not helpful for scheduling, 6 No preemption victims found for incoming pod."
+      ],
+      "startup_stage": "queued"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-160k-bg1-thhkm",
+      "job": "navsafe-nur20-e08a9f05-3m-160k-bg1",
+      "node": "ry-gpu-12.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://ca803335bd222eba0599eba4d3f77b0c7566e061bf22f59a70deab82ab9a570a",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:38Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:06Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:39Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 2653/160000 [07:05<6:20:42,  6.89it/s, v_num=89dd, train/psnr=18.80, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "Epoch 0:   2%|\u258f         | 2654/160000 [07:05<6:16:24,  6.97it/s, v_num=89dd, train/psnr=18.80, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "Epoch 0:   2%|\u258f         | 2654/160000 [07:05<6:16:24,  6.97it/s, v_num=89"
+      ],
+      "log_errors": [],
+      "optimization_step": 2654,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-160k-bg5-pfjpc",
+      "job": "navsafe-nur20-e08a9f05-3m-160k-bg5",
+      "node": null,
+      "phase": "Pending",
+      "init": [],
+      "main": [],
+      "unscheduled": [
+        "0/533 nodes are available: 1 Insufficient memory, 19 node(s) were unschedulable, 2 Insufficient cpu, 225 node(s) had untolerated taint(s), 283 node(s) didn't match Pod's node affinity/selector, 5 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/533 nodes are available: 527 Preemption is not helpful for scheduling, 6 No preemption victims found for incoming pod."
+      ],
+      "startup_stage": "queued"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-40k-bg1-5s8d8",
+      "job": "navsafe-nur20-e08a9f05-3m-40k-bg1",
+      "node": "ry-gpu-07.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://91339a57202443ade59ec7e598a39afd943e23f0f2e2ae1f61bc1a72137e178d",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:38Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:10Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:39Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   6%|\u258b         | 2600/40000 [07:08<1:31:27,  6.81it/s, v_num=89dd, train/psnr=20.50, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 874046, new count: 874046 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 2600,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-40k-bg5-lb2dl",
+      "job": "navsafe-nur20-e08a9f05-3m-40k-bg5",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://27a0952beeb47002941d7dadd4104310d44fd8cb80b643d8e2006e44f96f6d52",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:38Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:04Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   6%|\u258b         | 2600/40000 [07:06<1:30:52,  6.86it/s, v_num=89dd, train/psnr=19.80, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 874046, new count: 874046 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 2600,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-80k-bg1-9lqr2",
+      "job": "navsafe-nur20-e08a9f05-3m-80k-bg1",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://09b1cfd09aa0630a89f28016cbb72504600675d95adee3ffcba659202a9a68e0",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:42Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:15Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:43Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 1254/80000 [05:04<4:11:39,  5.22it/s, v_num=89dd, train/psnr=21.00, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "Epoch 0:   2%|\u258f         | 1254/80000 [05:04<4:11:39,  5.22it/s, v_num=89dd, train/psnr=21.00, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "Epoch 0:   2%|\u258f         | 1255/"
+      ],
+      "log_errors": [],
+      "optimization_step": 1254,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-3m-80k-bg5-686wn",
+      "job": "navsafe-nur20-e08a9f05-3m-80k-bg5",
+      "node": "ry-gpu-13.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://0785a53e45e6c277df0d8ffc288f3c8eb9332ac044bbb6c6d59fdb05906380d7",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:42Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:17Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:43Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   2%|\u258f         | 1400/80000 [05:23<4:18:27,  5.07it/s, v_num=89dd, train/psnr=20.00, train/nrays=1.31e+6, gaussians/num_gaussians=1.67e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 874046, new count: 874046 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 1400,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-5m-80k-bg1-fhwdj",
+      "job": "navsafe-nur20-e08a9f05-5m-80k-bg1",
+      "node": "ry-gpu-11.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://dcfe0696a25435fa53b03dfc393b72d8db02070cf93e55adeb52f58c76f96414",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:38Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:05Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:40Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   3%|\u258e         | 2600/80000 [07:07<3:14:57,  6.62it/s, v_num=89dd, train/psnr=20.50, train/nrays=1.31e+6, gaussians/num_gaussians=2.17e+6]",
+        "                                                                                                                                                   ",
+        "background: old count: 874046, new count: 874046 (0.00%)"
+      ],
+      "log_errors": [],
+      "optimization_step": 2600,
+      "startup_stage": "training"
+    },
+    {
+      "pod": "navsafe-nur20-e08a9f05-5m-80k-bg5-48wdp",
+      "job": "navsafe-nur20-e08a9f05-5m-80k-bg5",
+      "node": "ry-gpu-12.sdsc.optiputer.net",
+      "phase": "Running",
+      "init": [
+        {
+          "name": "stage-inputs",
+          "state": {
+            "terminated": {
+              "containerID": "containerd://abc00e60f980cc6922d8b9302100fd2906a1f11c97ce956c51cfcb5b249ceff9",
+              "exitCode": 0,
+              "finishedAt": "2026-10-02T01:24:38Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-02T01:24:05Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "main": [
+        {
+          "name": "train",
+          "state": {
+            "running": {
+              "startedAt": "2026-10-02T01:24:39Z"
+            }
+          },
+          "restarts": 0
+        }
+      ],
+      "unscheduled": [],
+      "log_tail": [
+        "Epoch 0:   3%|\u258e         | 2154/80000 [07:18<5:26:38,  3.97it/s, v_num=89dd, train/psnr=22.40, train/nrays=1.31e+6, gaussians/num_gaussians=2.17e+6]",
+        "Epoch 0:   3%|\u258e         | 2154/80000 [07:18<5:26:38,  3.97it/s, v_num=89dd, train/psnr=22.40, train/nrays=1.31e+6, gaussians/num_gaussians=2.17e+6]",
+        "Epoch 0:   3%|\u258e         | 2155/"
+      ],
+      "log_errors": [],
+      "optimization_step": 2154,
+      "startup_stage": "training"
+    }
+  ],
+  "scope": "Read-only startup monitoring; no resource changes."
+}

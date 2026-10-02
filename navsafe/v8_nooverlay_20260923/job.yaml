@@ -1,0 +1,119 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-v8-nooverlay-20260923-r1
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-v8-nooverlay
+    navsafe-batch: v8-nooverlay
+spec:
+  completionMode: Indexed
+  completions: 10
+  parallelism: 10
+  backoffLimitPerIndex: 0
+  maxFailedIndexes: 1
+  podReplacementPolicy: Failed
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 1209600
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: OUTROOT
+          value: /avl-west/runs/20260923-v8-nooverlay
+        - name: INPUT_ROOT
+          value: /avl-west/navsafe_eval/full_test
+        - name: RUNTIME_TAR
+          value: /avl-west/runs/20260923-v8-nooverlay/_runtime/runtime.tar.gz
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: 'Y'
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: 'YES'
+        - name: NEXUSSIM_NO_OVERLAY
+          value: '1'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 76Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits:
+            cpu: '3'
+            memory: 91Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-v8-nooverlay-20260923-r1-r1-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol

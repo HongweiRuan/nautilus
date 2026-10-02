@@ -1,0 +1,281 @@
+leaf	leaf_name	token	scenario_types	before_DS	before_termination	after_DS	after_termination
+C-1	Rear-End	02902d180b405100	near_long_vehicle	100.0	goal_reached	100.0	goal_reached
+C-1	Rear-End	0334cae9f1ef56ae	near_long_vehicle,stationary,stationary_in_traffic	100.0	goal_reached	100.0	goal_reached
+C-1	Rear-End	0436604d25145231	stationary,stationary_at_traffic_light_with_lead	100.0	goal_reached	68.272	off_drivable
+C-1	Rear-End	081b5785002b5962	high_magnitude_speed,near_long_vehicle	100.0	goal_reached	100.0	goal_reached
+C-1	Rear-End	087023402a695ba3	near_long_vehicle	100.0	goal_reached	100.0	goal_reached
+C-1	Rear-End	190c8d0cece45af1	near_long_vehicle,near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	18.063	contact_at_fault	31.635	contact_not_at_fault
+C-1	Rear-End	3af3b3a7a8635164	accelerating_at_traffic_light_with_lead	53.362	off_drivable	100.0	goal_reached
+C-1	Rear-End	4874da28248a5026	stationary,stationary_at_traffic_light_with_lead	100.0	goal_reached	100.0	goal_reached
+C-1	Rear-End	5bd2bc00e2d358e0	behind_long_vehicle,near_long_vehicle,stationary	98.125	goal_reached	100.0	goal_reached
+C-1	Rear-End	9d791495c47e5061	near_long_vehicle,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	2eb015a011ac5fa2	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	35cf51dd13d559c0	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	9.495	contact_at_fault	21.202	off_drivable
+C-2	Angle / T-Bone	3a0e2f53c9585e94	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	28.96	off_drivable	100.0	goal_reached
+C-2	Angle / T-Bone	4bb2fc18f5ee5dcb	on_all_way_stop_intersection,on_intersection,starting_left_turn,starting_protected_cross_turn	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	7b635c8426075d70	on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	19.268	off_drivable	19.447	off_drivable
+C-2	Angle / T-Bone	854918c8b7665af0	on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	888d1fb945ed5982	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	8d4c7214942e5619	medium_magnitude_speed,on_intersection,on_traffic_light_intersection,starting_high_speed_turn,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-2	Angle / T-Bone	cce944facc8158e8	on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,starting_high_speed_turn,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	15.268	off_drivable	15.497	off_drivable
+C-2	Angle / T-Bone	f077a062ad9b55e9	on_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection	18.115	contact_at_fault	19.647	contact_at_fault
+C-3	Sideswipe	01649900c5cc58c4	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	03dfd23cf97c590f	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	198bc5f3280e52cd	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	22f4f105eb64556e	following_lane_without_lead,high_magnitude_speed,near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	273f424fa2fc55ad	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	3151813685fe5b1d	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	3d3804a50285560e	near_high_speed_vehicle,near_long_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	48f603e3b4335b74	near_high_speed_vehicle,on_stopline_traffic_light,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	89ac4f4584065c48	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-3	Sideswipe	bea8f31993cd5a1b	near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	0670d0c81a5550c4	near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	1dae5903323e5214	high_magnitude_speed,near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	238f1cddb9415996	near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	440a60430f4655de	near_multiple_vehicles	15.838	contact_not_at_fault	15.838	contact_not_at_fault
+C-4	Multi-Vehicle	51ce5f94f83f576f	near_multiple_vehicles,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	7403f892832b51d3	near_multiple_vehicles	31.092	contact_at_fault	31.092	contact_at_fault
+C-4	Multi-Vehicle	7e40ef4f0d5b5cc9	medium_magnitude_speed,near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	8d261d29f3655aec	near_multiple_vehicles,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	c895b062e3735053	near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+C-4	Multi-Vehicle	e3e0b3d6d5ae52a1	near_multiple_vehicles	36.478	contact_at_fault	36.813	contact_at_fault
+C-5	Intersection	1981a85eb4ba5001	on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	58.347	budget_expired	56.435	budget_expired
+C-5	Intersection	1d0334886e9f535b	on_intersection,on_traffic_light_intersection,starting_straight_traffic_light_intersection_traversal,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-5	Intersection	398326681cd7500a	on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+C-5	Intersection	442b2cf63c6f570a	starting_protected_noncross_turn	100.0	goal_reached	57.382	off_drivable
+C-5	Intersection	58d69daf413c5d5a	on_intersection	24.584	contact_at_fault	30.252	off_drivable
+C-5	Intersection	58f3f43098985e77	near_pedestrian_on_crosswalk_with_ego,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-5	Intersection	671da9103fe05141	on_intersection,on_traffic_light_intersection,starting_right_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	33.066	contact_at_fault	33.641	contact_at_fault
+C-5	Intersection	6e778c30490d5f50	near_pedestrian_on_crosswalk,on_intersection,on_stopline_crosswalk,stationary,waiting_for_pedestrian_to_cross	100.0	goal_reached	100.0	goal_reached
+C-5	Intersection	9a6489254d5f5577	near_pedestrian_on_crosswalk,on_intersection,on_stopline_crosswalk,stationary,waiting_for_pedestrian_to_cross	100.0	goal_reached	100.0	goal_reached
+C-5	Intersection	e244b2ddf97a57d6	on_intersection,starting_left_turn,starting_protected_cross_turn	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	0122ce98b2735558	traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	0536ffc8d9555b0f	near_long_vehicle,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	07930113a85651b0	high_lateral_acceleration,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	39.602	contact_at_fault
+C-6	Roadway Departure	10cfd645bb645e2e	following_lane_with_slow_lead,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	14fe69db03425780	medium_magnitude_speed,near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	50.048	deadlock	51.232	deadlock
+C-6	Roadway Departure	23f0187033d658d9	following_lane_with_lead,on_pickup_dropoff,traversing_pickup_dropoff	35.357	contact_at_fault	100.0	goal_reached
+C-6	Roadway Departure	6ad48974e9985e1f	high_lateral_acceleration,on_pickup_dropoff,traversing_pickup_dropoff	29.819	contact_not_at_fault	52.4	off_drivable
+C-6	Roadway Departure	6f75ee5c660855e7	near_multiple_vehicles,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	89912e0a307256fd	high_lateral_acceleration,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-6	Roadway Departure	d64a3964875f5b41	on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-7	Head-On	05bcef7a11d65c6a	following_lane_without_lead	100.0	goal_reached	100.0	goal_reached
+C-7	Head-On	0dd3256035e75770	on_stopline_stop_sign	9.782	contact_at_fault	8.507	contact_at_fault
+C-7	Head-On	0ebb578555b25ab2	high_lateral_acceleration	99.987	goal_reached	100.0	goal_reached
+C-7	Head-On	112db94505025ec5	high_magnitude_speed,on_intersection,traversing_intersection	82.972	off_drivable	100.0	goal_reached
+C-7	Head-On	1bdfacbfcff75c27	on_intersection,starting_left_turn,starting_unprotected_cross_turn,traversing_crosswalk	12.293	off_drivable	12.668	off_drivable
+C-7	Head-On	1e9350ac2bc25f59	on_all_way_stop_intersection,on_intersection,traversing_crosswalk,traversing_intersection	100.0	goal_reached	20.996	off_drivable
+C-7	Head-On	54ae4b189e79541b	on_intersection,starting_protected_noncross_turn,starting_right_turn,traversing_intersection	8.003	contact_at_fault	8.003	contact_at_fault
+C-7	Head-On	599c8b2bc9b252a7	on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+C-7	Head-On	5d12ad55fdd858e1	high_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+C-7	Head-On	6b7c5199f84e5aac	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_unprotected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	15.063	contact_at_fault
+C-8	Backing	096d823b664e5972	on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	0e6cae45fdd5536b	high_lateral_acceleration,on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	0fa9a7f8b7235bfd	on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	17296f6032025ecc	on_carpark,stationary	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	1961d1075a085a1d	high_lateral_acceleration,on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	26119d956d46590e	on_carpark	42.405	contact_not_at_fault	100.0	goal_reached
+C-8	Backing	5ac972b34e2e5614	on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	771c4e378bef58e4	low_magnitude_speed,on_carpark	7.974	contact_not_at_fault	12.729	contact_at_fault
+C-8	Backing	bfcbb192c11b5736	on_carpark	100.0	goal_reached	100.0	goal_reached
+C-8	Backing	d5812df28c1558ba	on_carpark	100.0	goal_reached	100.0	goal_reached
+C-9	Single-Vehicle	029585f0509d52b0	traversing_crosswalk	23.423	off_drivable	23.398	off_drivable
+C-9	Single-Vehicle	342f42c4b2855ffb	medium_magnitude_speed	90.274	off_drivable	90.625	off_drivable
+C-9	Single-Vehicle	3838eb184c9d5989	on_stopline_stop_sign	26.083	off_drivable	20.722	off_drivable
+C-9	Single-Vehicle	5c838efd36805c92	high_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+C-9	Single-Vehicle	6704953640e55b83	on_intersection,starting_protected_noncross_turn,starting_right_turn	100.0	goal_reached	100.0	goal_reached
+C-9	Single-Vehicle	757c23c6819c589c	high_magnitude_speed,on_intersection,traversing_intersection	50.218	off_drivable	50.104	off_drivable
+C-9	Single-Vehicle	8c6c4c4b507c5eb1	on_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection	100.0	goal_reached	43.906	contact_at_fault
+C-9	Single-Vehicle	918b6721bcf75d38	on_intersection,starting_left_turn,starting_protected_noncross_turn,traversing_intersection	21.982	off_drivable	22.452	off_drivable
+C-9	Single-Vehicle	a67c6744e6c45edb	on_intersection,starting_left_turn,starting_protected_cross_turn	100.0	goal_reached	100.0	goal_reached
+C-9	Single-Vehicle	f038fc7ffdab5bad	on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	06a1f481118057b2	low_magnitude_speed,on_intersection,starting_left_turn,starting_low_speed_turn,starting_unprotected_cross_turn	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	07bf0601ad425977	near_pedestrian_on_crosswalk,on_intersection,on_traffic_light_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	17cac31ef9135faf	on_stopline_traffic_light,stationary,stationary_at_traffic_light_without_lead	99.84	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	2bd04a0902095129	on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	54.79	off_drivable	46.542	off_drivable
+C-10	Wrong-Way (crash)	2c337eb368fb54ca	on_intersection,on_traffic_light_intersection,starting_protected_noncross_turn,starting_right_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	15.918	off_drivable	15.904	off_drivable
+C-10	Wrong-Way (crash)	2ccebcdb0da25be5	accelerating_at_stop_sign,high_lateral_acceleration,on_stopline_stop_sign	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	2d24100bcb1e57e2	on_stopline_traffic_light,stationary,stationary_at_traffic_light_without_lead	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	3067f3d3d5a75989	near_trafficcone_on_driveable,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+C-10	Wrong-Way (crash)	42a20478abeb54d5	on_intersection,on_traffic_light_intersection,starting_high_speed_turn,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	36.26	off_drivable	27.571	off_drivable
+C-10	Wrong-Way (crash)	4d6456183bd056bc	on_intersection,on_traffic_light_intersection,starting_right_turn,starting_unprotected_cross_turn,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	00185dab0ba153b9	near_trafficcone_on_driveable,on_stopline_traffic_light,traversing_traffic_light_intersection	32.997	contact_at_fault	100.0	goal_reached
+I-1	Obstruction / Hazard	09d33cf8b87c5ae3	following_lane_with_slow_lead,near_barrier_on_driveable	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	0bcae698fd905226	near_barrier_on_driveable	79.895	off_drivable	79.774	off_drivable
+I-1	Obstruction / Hazard	1ceec301ab6552b1	accelerating_at_traffic_light,accelerating_at_traffic_light_without_lead,near_trafficcone_on_driveable,on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	36517f1223735d6a	near_trafficcone_on_driveable	22.195	contact_not_at_fault	22.195	contact_not_at_fault
+I-1	Obstruction / Hazard	6fc91bf02f225d1b	near_trafficcone_on_driveable,on_intersection,on_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	71d14fc8ea3d5b5d	near_trafficcone_on_driveable	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	7962741aebba5e56	medium_magnitude_speed,near_trafficcone_on_driveable	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	9605af7df76f5ba3	medium_magnitude_speed,near_trafficcone_on_driveable	100.0	goal_reached	100.0	goal_reached
+I-1	Obstruction / Hazard	97146fc0e8525e75	medium_magnitude_speed,near_trafficcone_on_driveable	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	0c49c66ca32551c2	near_construction_zone_sign	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	0d5b8da00d505be0	near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	107a64d478fa508f	medium_magnitude_speed,near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	2fa724c29a215bc4	high_magnitude_speed,near_construction_zone_sign	49.116	contact_at_fault	49.116	contact_at_fault
+I-2	Work-Zone	5bd8cf3fa67a524f	near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	61bce03d2e4659b9	medium_magnitude_speed,near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	7e5bbdae500e5ad1	near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	98.226	off_drivable
+I-2	Work-Zone	7f49b4deed075e6c	high_magnitude_speed,near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	66.888	deadlock	100.0	goal_reached
+I-2	Work-Zone	9eb1dcda60165ae3	near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+I-2	Work-Zone	9ef1d618435d5e53	near_construction_zone_sign	53.287	contact_at_fault	100.0	goal_reached
+I-3	General Incident	03b66343e1ac5d68	high_magnitude_speed,near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	6.987	contact_at_fault	6.987	contact_at_fault
+I-3	General Incident	050284885b2059e9	on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,starting_high_speed_turn,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	8.578	contact_at_fault	9.974	off_drivable
+I-3	General Incident	131a036a111e54f3	stationary,stationary_in_traffic	7.016	contact_at_fault	7.016	contact_at_fault
+I-3	General Incident	4fff5f5a86be53d5	on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_intersection,traversing_traffic_light_intersection	10.418	off_drivable	10.393	off_drivable
+I-3	General Incident	76da778ff251508d	high_magnitude_speed,near_high_speed_vehicle	7.574	contact_at_fault	7.574	contact_at_fault
+I-3	General Incident	84acc78da95f56d3	high_magnitude_speed,near_high_speed_vehicle	13.869	contact_at_fault	23.115	contact_not_at_fault
+I-3	General Incident	89e02236312d5038	near_pedestrian_on_crosswalk,near_pedestrian_on_crosswalk_with_ego,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_traffic_light_intersection	7.76	off_drivable	6.442	off_drivable
+I-3	General Incident	a43dbb1d34665f24	medium_magnitude_speed,on_stopline_crosswalk	88.455	off_drivable	77.528	off_drivable
+I-3	General Incident	a6b9a83019915658	accelerating_at_traffic_light,accelerating_at_traffic_light_without_lead,on_stopline_traffic_light,traversing_traffic_light_intersection	5.804	contact_at_fault	5.804	contact_at_fault
+I-3	General Incident	b023b7bcbab05bcb	high_magnitude_speed,on_intersection,on_traffic_light_intersection,starting_straight_traffic_light_intersection_traversal,traversing_intersection,traversing_traffic_light_intersection	8.054	contact_at_fault	8.054	contact_at_fault
+R-1	Pedestrian-Involved	0027991369e05ab2	on_all_way_stop_intersection,on_intersection,traversing_crosswalk	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	045044cb9f21527e	near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	05ee09cb75205555	near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	06b2df49f0455bd0	near_pedestrian_on_crosswalk,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_traffic_light_intersection	32.015	off_drivable	32.33	off_drivable
+R-1	Pedestrian-Involved	0a51eebaccc95c36	near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	0b12ac5676875ade	near_pedestrian_on_crosswalk,on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	0d2403a8031f540c	near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	14d53f85ccc65f23	near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	26.04	contact_at_fault
+R-1	Pedestrian-Involved	1ad96f74e72750db	near_pedestrian_at_pickup_dropoff,near_pedestrian_on_crosswalk,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-1	Pedestrian-Involved	3b910accfc12560a	traversing_crosswalk	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	0057ce5b81c35a81	on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	00c1e4eb4a045f20	traversing_traffic_light_intersection	14.678	contact_at_fault	14.678	contact_at_fault
+R-2	Bicycle-Involved	02b68b9cc51f506a	on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	02f1ad081f41550e	on_stopline_crosswalk,on_stopline_stop_sign	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	054e4984e1b55ec9	near_pedestrian_on_crosswalk,near_pedestrian_on_crosswalk_with_ego,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	190bf8dd22a25d1c	behind_bike,medium_magnitude_speed	21.836	contact_not_at_fault	20.811	contact_not_at_fault
+R-2	Bicycle-Involved	20cc0fdb7e2d5c3f	on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	31.025	contact_at_fault	31.28	contact_at_fault
+R-2	Bicycle-Involved	2575048779565f0b	medium_magnitude_speed,on_intersection,on_traffic_light_intersection,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	22.914	contact_at_fault	22.914	contact_at_fault
+R-2	Bicycle-Involved	99a98a7ffb075389	behind_bike	100.0	goal_reached	100.0	goal_reached
+R-2	Bicycle-Involved	ac01c31d1a5a5ed2	behind_bike	86.324	off_drivable	86.521	off_drivable
+R-3	Micromobility	02379e524f105926	on_stopline_crosswalk,on_stopline_stop_sign	7.018	contact_at_fault	6.739	contact_at_fault
+R-3	Micromobility	0777f5a7263758be	low_magnitude_speed,on_intersection	17.195	contact_at_fault	17.195	contact_at_fault
+R-3	Micromobility	0802a51b0a1d512c	on_stopline_crosswalk	31.815	contact_at_fault	32.274	contact_at_fault
+R-3	Micromobility	087df0996ade50d3	near_pedestrian_on_crosswalk,on_all_way_stop_intersection,on_intersection	100.0	goal_reached	100.0	goal_reached
+R-3	Micromobility-Involved	0a51eb8adf8e5391	low_magnitude_speed,on_stopline_crosswalk,on_stopline_stop_sign	30.21	contact_not_at_fault	100.0	goal_reached
+R-3	Micromobility	132307b3c1a55f97	near_pedestrian_on_crosswalk	12.438	contact_at_fault	11.544	contact_at_fault
+R-3	Micromobility-Involved	17b0992157365222	on_intersection,on_traffic_light_intersection,starting_straight_traffic_light_intersection_traversal,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	8.051	contact_at_fault	8.051	contact_at_fault
+R-3	Micromobility-Involved	2462c21ce2bb5f2d	on_intersection,on_traffic_light_intersection,starting_high_speed_turn,starting_left_turn,starting_protected_cross_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+R-3	Micromobility-Involved	34489cf42e005e93	on_intersection,starting_left_turn,starting_protected_cross_turn,traversing_crosswalk	4.566	contact_at_fault	3.842	contact_at_fault
+R-3	Micromobility-Involved	687dc7e79cf65570	on_all_way_stop_intersection,on_intersection,on_stopline_crosswalk,on_stopline_stop_sign,starting_straight_stop_sign_intersection_traversal	5.554	contact_at_fault	5.554	contact_at_fault
+R-4	Animal-Involved	005f87dd980253a5	medium_magnitude_speed,on_all_way_stop_intersection,on_intersection,on_stopline_crosswalk,on_stopline_stop_sign	9.935	contact_at_fault	7.605	contact_at_fault
+R-4	Animal-Involved	02015675e4585611	on_intersection,starting_protected_noncross_turn,starting_right_turn,traversing_intersection	18.015	deadlock	18.015	deadlock
+R-4	Animal-Involved	0371700bf65b51e0	on_all_way_stop_intersection,on_intersection,on_stopline_crosswalk,on_stopline_stop_sign,starting_straight_stop_sign_intersection_traversal	9.957	contact_not_at_fault	9.957	contact_not_at_fault
+R-4	Animal-Involved	05f1a5cbc0905d8e	on_intersection	12.41	contact_not_at_fault	13.324	contact_not_at_fault
+R-4	Animal-Involved	061e7e1700945b03	traversing_crosswalk,traversing_narrow_lane	100.0	goal_reached	100.0	goal_reached
+R-4	Animal-Involved	173369dc059d5fe9	on_intersection,on_traffic_light_intersection,starting_right_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	8.011	contact_at_fault	7.597	contact_at_fault
+R-4	Animal-Involved	225eb6e22af55972	near_barrier_on_driveable	17.899	contact_at_fault	17.443	contact_at_fault
+R-4	Animal-Involved	25b5cecdb3b75e7c	on_all_way_stop_intersection,on_intersection,on_stopline_crosswalk,on_stopline_stop_sign,starting_straight_stop_sign_intersection_traversal	8.009	contact_at_fault	8.009	contact_at_fault
+R-4	Animal-Involved	2ee44628526e524c	on_intersection,starting_right_turn,starting_unprotected_noncross_turn,traversing_crosswalk	5.269	contact_at_fault	5.416	contact_at_fault
+R-4	Animal-Involved	a2c2e046132e5596	starting_high_speed_turn,starting_right_turn,starting_unprotected_noncross_turn	37.916	contact_at_fault	38.242	contact_at_fault
+V-1	Red-Light / Stop-Sign	05d0a1a763fc5334	accelerating_at_traffic_light,accelerating_at_traffic_light_without_lead,on_stopline_traffic_light,traversing_traffic_light_intersection	45.604	contact_at_fault	62.789	contact_not_at_fault
+V-1	Red-Light / Stop-Sign	0ba54149d1575f95	accelerating_at_traffic_light,accelerating_at_traffic_light_without_lead,on_intersection,on_stopline_traffic_light,on_traffic_light_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-1	Red-Light / Stop-Sign	0f622aef14545f59	near_pedestrian_on_crosswalk,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-1	Red-Light / Stop-Sign	42af8e33480d53b3	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_protected_cross_turn,traversing_traffic_light_intersection	9.867	off_drivable	9.841	off_drivable
+V-1	Red-Light / Stop-Sign	4c23b72459a55ad0	near_high_speed_vehicle,on_stopline_traffic_light,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-1	Red-Light / Stop-Sign	67abcf0964415891	on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	34.604	contact_at_fault	31.341	off_drivable
+V-1	Red-Light / Stop-Sign	9157902936a456bf	accelerating_at_traffic_light,accelerating_at_traffic_light_without_lead,on_stopline_traffic_light,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-1	Red-Light / Stop-Sign	92c6df44cf055882	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_traffic_light_intersection	38.597	off_drivable	36.821	off_drivable
+V-1	Red-Light / Stop-Sign	9311d9a2409c5224	accelerating_at_stop_sign,high_lateral_acceleration,on_stopline_crosswalk,on_stopline_stop_sign	13.115	off_drivable	13.117	off_drivable
+V-1	Red-Light / Stop-Sign	9e34c53444bd518c	high_lateral_acceleration,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	1c064ec24fa15900	on_intersection,starting_right_turn,starting_unprotected_cross_turn	87.688	off_drivable	87.674	off_drivable
+V-2	Failure to Yield	21b8742127e7523c	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_unprotected_noncross_turn,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	2391f12d7e6a5e7f	on_intersection,starting_right_turn,starting_unprotected_cross_turn	14.738	off_drivable	14.343	off_drivable
+V-2	Failure to Yield	3862c9ed94ab5f90	on_intersection,on_traffic_light_intersection,starting_right_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	3d324bda0cec57ab	on_all_way_stop_intersection,on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	6f61120208385a02	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_intersection,traversing_traffic_light_intersection	17.454	off_drivable	17.445	off_drivable
+V-2	Failure to Yield	7956fe13f69e53dc	on_all_way_stop_intersection,on_intersection,starting_protected_noncross_turn,starting_right_turn	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	9135a6d270475c7f	on_intersection,on_traffic_light_intersection,starting_left_turn,starting_unprotected_noncross_turn,traversing_crosswalk,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	a0ff0b74063659a2	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	100.0	goal_reached	100.0	goal_reached
+V-2	Failure to Yield	e74ca27f40755297	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	34.176	off_drivable	100.0	goal_reached
+V-3	Unsafe Lane Change	20fffc4aa17d5a12	changing_lane,changing_lane_to_left,medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	262333f372975eef	traversing_crosswalk	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	3a6525cd871a5fff	changing_lane,changing_lane_to_right,high_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	4528c271d89c53e1	changing_lane,changing_lane_to_right,changing_lane_with_trail,medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	4ee177f621f259da	changing_lane,changing_lane_to_left,high_magnitude_speed	96.717	off_drivable	100.0	goal_reached
+V-3	Unsafe Lane Change	9b21b864f1a159e8	changing_lane,changing_lane_to_right	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	bc08e60c250953a9	changing_lane,changing_lane_to_right	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	c1c5dec6bab3598a	changing_lane,changing_lane_to_left	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	c41f71c68ad45f21	changing_lane,changing_lane_to_right	100.0	goal_reached	100.0	goal_reached
+V-3	Unsafe Lane Change	cc108c5480345911	changing_lane,changing_lane_to_right	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	089e3eac4f7e5c5c	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	0eeeee655d415970	high_lateral_acceleration,on_intersection,on_traffic_light_intersection,traversing_traffic_light_intersection	100.0	goal_reached	13.862	contact_at_fault
+V-4	Reckless / Aggressive	2845a5483a0f57de	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	2ad17379a25d55d9	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	467879c3d37054f5	high_lateral_acceleration,on_intersection,traversing_intersection	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	53571ab149005b43	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	aac96a67f68e51ac	high_lateral_acceleration	18.78	off_drivable	18.626	off_drivable
+V-4	Reckless / Aggressive	c896895a9524547f	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive	daf905a8d1255722	high_lateral_acceleration	100.0	goal_reached	100.0	goal_reached
+V-4	Reckless / Aggressive Driving	edc4a4a176f65fea	high_lateral_acceleration,near_pedestrian_at_pickup_dropoff,on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	0092e40a13ea52f4	high_magnitude_speed,near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	0578756b879c55d0	low_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	07c5114fdb395f8b	high_magnitude_speed,near_high_speed_vehicle	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	0b1250020ea95539	medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	0e272e003af65a71	medium_magnitude_speed	38.625	contact_at_fault	38.625	contact_at_fault
+V-5	Speeding	13bb7469606159e9	medium_magnitude_speed,near_multiple_vehicles	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	28a4a08f11a05407	medium_magnitude_speed	33.667	off_drivable	31.774	off_drivable
+V-5	Speeding	56c64f7e47b15e0d	low_magnitude_speed	73.067	off_drivable	80.978	off_drivable
+V-5	Speeding	ac019d81388056be	behind_pedestrian_on_driveable,medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-5	Speeding	bf72d4d6b25f5b27	high_magnitude_speed,on_intersection,on_traffic_light_intersection,starting_straight_traffic_light_intersection_traversal,traversing_intersection,traversing_traffic_light_intersection	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	09a803ee2cb65992	following_lane_with_slow_lead	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	0af464147919575d	following_lane_with_slow_lead	24.791	off_drivable	24.549	off_drivable
+V-6	Tailgating	1b2b430e151a50ae	following_lane_with_slow_lead	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	20ec6765e35d5cd1	following_lane_with_slow_lead	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	3239cd8874425d73	following_lane_with_slow_lead	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	39d1f561e06054c5	following_lane_with_slow_lead,low_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	53f49b4480de528c	following_lane_with_slow_lead	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	5afcbc10159e5b87	following_lane_with_slow_lead,on_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+V-6	Tailgating	8661a7e9b4a95042	following_lane_with_slow_lead,low_magnitude_speed	70.0	goal_reached	70.0	goal_reached
+V-6	Tailgating	9ac86ade68505597	following_lane_with_lead	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	0ce170237acd51c2	following_lane_without_lead	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	0d07429bb7205688	following_lane_without_lead,medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	184c11a8cc875403	following_lane_without_lead,high_magnitude_speed	43.847	off_drivable	42.639	off_drivable
+V-7	Failure to Maintain Lane	19b85cbca28f5c41	following_lane_without_lead,medium_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	26f4d8d4d72a588e	following_lane_without_lead,high_magnitude_speed	96.353	off_drivable	100.0	goal_reached
+V-7	Failure to Maintain Lane	39a1ca97dca75beb	following_lane_without_lead	62.536	off_drivable	61.959	off_drivable
+V-7	Failure to Maintain Lane	689abfdd66235378	following_lane_without_lead	99.364	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	7cb91c1ad87c56d5	following_lane_without_lead,high_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	97dcc120f4695080	following_lane_without_lead	100.0	goal_reached	100.0	goal_reached
+V-7	Failure to Maintain Lane	a12d1a61d7cc50fe	following_lane_without_lead,high_magnitude_speed	100.0	goal_reached	100.0	goal_reached
+V-8	Illegal Turn	0980dd9cdc0e543a		3.798	contact_at_fault	3.798	contact_at_fault
+V-8	Illegal Turn	14c0a657ac3e5bb7		100.0	goal_reached	100.0	goal_reached
+V-8	Illegal Turn	61b3149306a3501a		96.262	off_drivable	96.148	off_drivable
+V-8	Illegal Turn	67eb77e9004a503f		27.375	contact_at_fault	27.862	contact_at_fault
+V-8	Illegal Turn	7c00774138ae5805		100.0	goal_reached	100.0	goal_reached
+V-8	Illegal Turn	8decf23c348f5b65		51.184	off_drivable	41.768	off_drivable
+V-8	Illegal Turn	b66f23071e675170		33.834	off_drivable	100.0	goal_reached
+V-8	Illegal Turn	c8600743d9e050a9		100.0	goal_reached	100.0	goal_reached
+V-8	Illegal Turn	e1526251bd0a53ee		100.0	goal_reached	100.0	goal_reached
+V-8	Illegal Turn	e9567d54464052f7		100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	0166f867762a56e1	stationary	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	01a58976a2e45a3d	stationary,stationary_in_traffic	25.238	off_drivable	23.168	off_drivable
+V-9	Blocking Intersection	04aa69f18d255c96	stationary,stationary_in_traffic	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	0b1a626ef31150b3	stationary,stationary_in_traffic	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	0dd23f4ea286544f	stationary,stationary_in_traffic	57.779	contact_at_fault	70.561	off_drivable
+V-9	Blocking Intersection	1bf45a481f1d52e3	stationary,stationary_in_traffic	100.0	goal_reached	56.264	contact_not_at_fault
+V-9	Blocking Intersection	3a5278b27c87565f	stationary,stationary_at_traffic_light_with_lead,stationary_in_traffic	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	4211afd0df14524c	on_stopline_traffic_light,stationary,stationary_at_traffic_light_without_lead	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	7cdcf11e211759cf	near_pedestrian_on_crosswalk,stationary,stopping_at_crosswalk	100.0	goal_reached	100.0	goal_reached
+V-9	Blocking Intersection	9869278b0f8f5061	on_carpark,stationary	0.003	contact_not_at_fault	0.003	deadlock
+V-10	Unsafe Merge / Entry	07846b829b3a575e	medium_magnitude_speed	60.33	off_drivable	50.249	contact_at_fault
+V-10	Unsafe Merge / Entry	13805e7752fe5685	near_construction_zone_sign	100.0	goal_reached	100.0	goal_reached
+V-10	Unsafe Merge / Entry	13c555e68671524f	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	100.0	goal_reached	100.0	goal_reached
+V-10	Unsafe Merge / Entry	14d171fcb9295596	near_construction_zone_sign,on_intersection,on_traffic_light_intersection	38.361	contact_not_at_fault	31.553	contact_not_at_fault
+V-10	Unsafe Merge / Entry	34ac200e359653b5	on_all_way_stop_intersection,on_intersection,starting_protected_noncross_turn,starting_right_turn	100.0	goal_reached	100.0	goal_reached
+V-10	Unsafe Merge / Entry	49a0d29c7058501c	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	4.661	contact_not_at_fault	4.661	contact_not_at_fault
+V-10	Unsafe Merge / Entry	63c145828c3b5fd8	on_intersection,starting_left_turn,starting_unprotected_noncross_turn	100.0	goal_reached	100.0	goal_reached
+V-10	Unsafe Merge / Entry	6c9e40634f705f56	on_all_way_stop_intersection,on_intersection	7.031	contact_at_fault	7.031	contact_at_fault
+V-10	Unsafe Merge / Entry	bbee1ab465af50c2	high_magnitude_speed,near_construction_zone_sign	88.871	contact_not_at_fault	88.871	contact_not_at_fault
+V-10	Unsafe Merge / Entry	be36f75d360c502f	medium_magnitude_speed,near_construction_zone_sign,on_intersection,on_traffic_light_intersection,traversing_intersection,traversing_traffic_light_intersection	20.11	contact_at_fault	21.111	contact_at_fault
+V-11	Driving Wrong Way	0093ff0188ea5b90	on_pickup_dropoff,traversing_pickup_dropoff	100.0	goal_reached	100.0	goal_reached
+V-11	Driving Wrong Way	0317b218061b5c4d	on_stopline_crosswalk,on_stopline_stop_sign	100.0	goal_reached	100.0	goal_reached
+V-11	Driving Wrong Way	18b5995484435fbe	stationary,stationary_at_traffic_light_with_lead	100.0	goal_reached	100.0	goal_reached
+V-11	Driving Wrong Way	2073f76964735ff7	on_all_way_stop_intersection,on_intersection,starting_left_turn,starting_protected_cross_turn	84.915	off_drivable	100.0	goal_reached
+V-11	Driving Wrong Way	227d62f5dfd95624	accelerating_at_stop_sign,high_lateral_acceleration,on_stopline_crosswalk,on_stopline_stop_sign	25.128	off_drivable	28.217	off_drivable
+V-11	Driving Wrong Way	2b7bf25209dd5705	on_all_way_stop_intersection,on_intersection,starting_protected_noncross_turn,starting_right_turn	25.787	contact_at_fault	29.013	contact_at_fault
+V-11	Driving Wrong Way	32d85d373126537e	on_stopline_traffic_light,stationary,stationary_at_traffic_light_without_lead	14.267	contact_at_fault	15.148	contact_at_fault
+V-11	Driving Wrong Way	a18d2b32f8415373	on_stopline_crosswalk,on_stopline_stop_sign	58.612	contact_at_fault	100.0	goal_reached
+V-11	Driving Wrong Way	a4581d8af5f755a9	on_all_way_stop_intersection,on_intersection,starting_left_turn,starting_protected_cross_turn	34.272	off_drivable	34.272	off_drivable
+V-11	Driving Wrong Way	bf896d504b4356c7	on_stopline_crosswalk,on_stopline_stop_sign,stationary,stopping_at_stop_sign_without_lead	30.475	contact_at_fault	29.971	contact_at_fault

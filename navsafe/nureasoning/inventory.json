@@ -1,0 +1,360 @@
+{
+  "organized_at": "2026-10-01T19:14:15.977288-07:00",
+  "job_count": 42,
+  "groups": {
+    "train/recipe-v2-sweep20-20261001": 20,
+    "train/car2sim-sweep5-20261001": 5,
+    "train/car2sim-full8-20261001": 8,
+    "eval/replay200-drivor20-20261001": 5,
+    "train/recipe-v2-5m160k-20261001": 4
+  },
+  "job_yaml_bytes_unchanged": true,
+  "inline_bash_syntax": "42/42 Jobs passed",
+  "cluster_mutations": false,
+  "original_directories": [
+    "navsafe_nureasoning_8",
+    "navsafe_nureasoning_eval5_20261001",
+    "navsafe_nureasoning_sweep5_20261001",
+    "navsafe_nureasoning_sweep20_20261001_1812"
+  ],
+  "jobs": [
+    {
+      "job_name": "navsafe-nur20-660c2f7a-2p5m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-2p5m-80k-bg1.yaml",
+      "sha256": "17aa57184e7daa967dff1f14b4a212885bfa4141096a75192ae40775e7787219",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-2p5m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/2p5m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-2p5m-80k-bg5.yaml",
+      "sha256": "51caa0131391455a138390310cd7588a4346aa0a76097a0c3219639849d4653b",
+      "cluster_status_at_organization": "Failed"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-160k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-160k-bg1.yaml",
+      "sha256": "0d1be2b8548bedccda099cc86dde16f5205582f0bf506d17a1d5c255641cb430",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-160k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-160k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-160k-bg5.yaml",
+      "sha256": "2603b6e827bc1bad759a389615f6ad2948469fccc8d9667a7ea02a5c9394b2d4",
+      "cluster_status_at_organization": "Failed"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-40k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-40k-bg1.yaml",
+      "sha256": "f0ec6ad4bbe56e08a10825363a41193df3c5332760801b511306c7fc1b874d6f",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-40k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-40k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-40k-bg5.yaml",
+      "sha256": "a60e67dd04a15e54629cf35736a592a9218bf597bda31a90a5b60e62a2b0c719",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-80k-bg1.yaml",
+      "sha256": "2d439ee25bdd921956a2f06e459f62dbbb1095d9d09150996dcda0d5d862e4e7",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-3m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/3m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-3m-80k-bg5.yaml",
+      "sha256": "29da3848999145c20ae0ac378bf8d13a68b58dfa22904b6de0b6455eb17571c2",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-5m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/5m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-5m-80k-bg1.yaml",
+      "sha256": "772851880fd9c5ad6d6c85aefcb03a2af0a5d5c48e05a1b114efeaf101e079c0",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-660c2f7a-5m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/660c2f7a/5m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-660c2f7a-5m-80k-bg5.yaml",
+      "sha256": "ffd19886b22d0ce56ee4b20d8c60a46a63c11b5e805eda0fe8a6fec4a73f9cd8",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-2p5m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-2p5m-80k-bg1.yaml",
+      "sha256": "05c3ce988038ee87b1c04f5242db38459a089eb8350df10b63eac08626ecf823",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-2p5m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/2p5m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-2p5m-80k-bg5.yaml",
+      "sha256": "4c5a6424621a8ca6965408a45adfbdbf1584d8aa06078bcd138af87b36df0f49",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-160k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-160k-bg1.yaml",
+      "sha256": "004e6b1b3f9768733283a9735d593d49218b15226b218ab6d9541c03f8218514",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-160k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-160k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-160k-bg5.yaml",
+      "sha256": "08e4138b79d72addb482c0d0b7053568caa26fc8a8cb3f77853fa7141c2055f0",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-40k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-40k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-40k-bg1.yaml",
+      "sha256": "0d4527e3460e5f30c9e117da4b6adde9b4d804c8057f98d6e40356440065d28c",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-40k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-40k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-40k-bg5.yaml",
+      "sha256": "e52be277a47e0e51e31865bbfd56e2acfa07a9b30c4e1e3b7c3d917fed7754de",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-80k-bg1.yaml",
+      "sha256": "bdd29b3032351143c35f7cc0bb20361ef151920284542d23688b46cb56b1a455",
+      "cluster_status_at_organization": "Failed"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-3m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/3m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-3m-80k-bg5.yaml",
+      "sha256": "cd9cf2fe6ffc743eba909edc152ffeb47fe2b6d6600d2ff0e2bcbb6c09a6278e",
+      "cluster_status_at_organization": "Failed"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-5m-80k-bg1",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg1.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-5m-80k-bg1.yaml",
+      "sha256": "62442b0f768b4b9e8ff421420e01576fbcc1f243c41e345645c021dc45ede16c",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nur20-e08a9f05-5m-80k-bg5",
+      "manifest": "train/recipe-v2-sweep20-20261001/jobs/e08a9f05/5m-80k-bg5.yaml",
+      "purpose": "current experiment",
+      "source": "navsafe_nureasoning_sweep20_20261001_1812/jobs/navsafe-nur20-e08a9f05-5m-80k-bg5.yaml",
+      "sha256": "94941cf37f645343a44b223fabe24d3da795c02901a1ce0e3ef10159e8b498f3",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nureasoning-sweep-e08a9f05-2p5m-80k",
+      "manifest": "train/car2sim-sweep5-20261001/jobs/e08a9f05/2p5m-80k.yaml",
+      "purpose": "recipe comparison",
+      "source": "navsafe_nureasoning_sweep5_20261001/navsafe-nureasoning-sweep-e08a9f05-2p5m-80k.yaml",
+      "sha256": "c053b5b74fa856328ed0ca659742763cd85a586e16f5021d90d9703065203974",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-sweep-e08a9f05-3m-160k",
+      "manifest": "train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-160k.yaml",
+      "purpose": "recipe comparison",
+      "source": "navsafe_nureasoning_sweep5_20261001/navsafe-nureasoning-sweep-e08a9f05-3m-160k.yaml",
+      "sha256": "d679c19d09c5d250c7a197f5f42c2e15e2fe6f6fab2e42942bfd386427e13508",
+      "cluster_status_at_organization": "Active/Pending"
+    },
+    {
+      "job_name": "navsafe-nureasoning-sweep-e08a9f05-3m-40k",
+      "manifest": "train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-40k.yaml",
+      "purpose": "recipe comparison",
+      "source": "navsafe_nureasoning_sweep5_20261001/navsafe-nureasoning-sweep-e08a9f05-3m-40k.yaml",
+      "sha256": "211235f5850bbbbb89de3c97dad0d84315916f751444dfc493487e5b33efedb8",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-sweep-e08a9f05-3m-80k",
+      "manifest": "train/car2sim-sweep5-20261001/jobs/e08a9f05/3m-80k.yaml",
+      "purpose": "recipe comparison",
+      "source": "navsafe_nureasoning_sweep5_20261001/navsafe-nureasoning-sweep-e08a9f05-3m-80k.yaml",
+      "sha256": "beafa4c4a3b00117f2654d3278ee842af09e522982fda7dd9027b6db5fdbfaa6",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-sweep-e08a9f05-5m-80k",
+      "manifest": "train/car2sim-sweep5-20261001/jobs/e08a9f05/5m-80k.yaml",
+      "purpose": "recipe comparison",
+      "source": "navsafe_nureasoning_sweep5_20261001/navsafe-nureasoning-sweep-e08a9f05-5m-80k.yaml",
+      "sha256": "1de34dceeb0b85d043aa9d7fd4079cce5fe24885c71599da2dac877274f03263",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-00-a62db8cd-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/a62db8cd.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-00-a62db8cd-r3.yaml",
+      "sha256": "d76761734c759ac39f6f7c864d388bf3ec3c90f2ce7738fb0681893f38aadb77",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-01-e08a9f05-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/e08a9f05.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-01-e08a9f05-r3.yaml",
+      "sha256": "cb4a5abb862ce4e70b777cec6734f041d2a5c477e3d532068e63ef080485bd6a",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-02-660c2f7a-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/660c2f7a.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-02-660c2f7a-r3.yaml",
+      "sha256": "c642f350e6b06fbe4c72b3ec8fa4b1d7f47cfaf7f82730d57c630d1684b21965",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-03-a12a8365-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/a12a8365.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-03-a12a8365-r3.yaml",
+      "sha256": "5c3bd8358f69d43a1fed1b1b2834882f618a1e6898d14e052e96acd275816dd4",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-04-834aa758-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/834aa758.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-04-834aa758-r3.yaml",
+      "sha256": "274b33afe201a67913be585fc3cee5cf4aba657f1a4140906c3a9c048e9f899f",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-05-e8f65885-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/e8f65885.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-05-e8f65885-r3.yaml",
+      "sha256": "60e294f994c2cae497cd633b94cb3b9a69d429871f00c50715776c6cf2b814c8",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-06-ae44365f-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/ae44365f.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-06-ae44365f-r3.yaml",
+      "sha256": "8087d7769c2562e559726d283927e0327e5a4d539b622dd412169e7f43c0b3f3",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-full8-07-c7534532-r3",
+      "manifest": "train/car2sim-full8-20261001/jobs/c7534532.yaml",
+      "purpose": "successful pipeline baseline",
+      "source": "navsafe_nureasoning_8/r3/navsafe-nureasoning-full8-07-c7534532-r3.yaml",
+      "sha256": "d728ae3e9c2cdb2965c22e76cc90e2112c5c4cf46f130935fa90dac52706f716",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-eval5-01-e08a9f05",
+      "manifest": "eval/replay200-drivor20-20261001/jobs/e08a9f05.yaml",
+      "purpose": "evaluation reference",
+      "source": "navsafe_nureasoning_eval5_20261001/navsafe-nureasoning-eval5-01-e08a9f05.yaml",
+      "sha256": "62aa7dd3b3205ffd925f8476b0fd9ec8e356edeb113eea20d3978f609df6a631",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-eval5-02-660c2f7a",
+      "manifest": "eval/replay200-drivor20-20261001/jobs/660c2f7a.yaml",
+      "purpose": "evaluation reference",
+      "source": "navsafe_nureasoning_eval5_20261001/navsafe-nureasoning-eval5-02-660c2f7a.yaml",
+      "sha256": "1e3b7dfc91eec91b6f0242d78273d70c514e6796b0afe401bb1236e84940641a",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-eval5-03-a12a8365",
+      "manifest": "eval/replay200-drivor20-20261001/jobs/a12a8365.yaml",
+      "purpose": "evaluation reference",
+      "source": "navsafe_nureasoning_eval5_20261001/navsafe-nureasoning-eval5-03-a12a8365.yaml",
+      "sha256": "1023ceb85524caab7c4f967caa72abc92d71c19bc7bf455b01a3f7edf4e5b098",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-eval5-04-834aa758",
+      "manifest": "eval/replay200-drivor20-20261001/jobs/834aa758.yaml",
+      "purpose": "evaluation reference",
+      "source": "navsafe_nureasoning_eval5_20261001/navsafe-nureasoning-eval5-04-834aa758.yaml",
+      "sha256": "88b4559bbe47f5d326ea468fa1e9494ddc105db4e51b02a40336a9ca9f5884e3",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nureasoning-eval5-05-e8f65885",
+      "manifest": "eval/replay200-drivor20-20261001/jobs/e8f65885.yaml",
+      "purpose": "evaluation reference",
+      "source": "navsafe_nureasoning_eval5_20261001/navsafe-nureasoning-eval5-05-e8f65885.yaml",
+      "sha256": "8640f247153c33a6415c1757d5e4a45e1568de42f366b6e89e822f824f4ee721",
+      "cluster_status_at_organization": "Absent"
+    },
+    {
+      "job_name": "navsafe-nur24-660c2f7a-5m-160k-bg1",
+      "manifest": "train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg1.yaml",
+      "purpose": "additional 5M/160k experiment",
+      "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-660c2f7a-5m-160k-bg1.yaml",
+      "sha256": "bc8a24c9be0bd94a3ebef03fabc8df26ccd3993ed13211fd82e1820a6b4ab194",
+      "cluster_status_at_addition": "Admission blocked; not created"
+    },
+    {
+      "job_name": "navsafe-nur24-660c2f7a-5m-160k-bg5",
+      "manifest": "train/recipe-v2-5m160k-20261001/jobs/660c2f7a/5m-160k-bg5.yaml",
+      "purpose": "additional 5M/160k experiment",
+      "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-660c2f7a-5m-160k-bg5.yaml",
+      "sha256": "fc3d6cd052f04cd035a851c34fd39b79440ac74e797ca08670a19a6256e31327",
+      "cluster_status_at_addition": "Admission blocked; not created"
+    },
+    {
+      "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg1",
+      "manifest": "train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg1.yaml",
+      "purpose": "additional 5M/160k experiment",
+      "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-e08a9f05-5m-160k-bg1.yaml",
+      "sha256": "077fad44fa32c2adf6022a0ba3c6c9d2a010d50e7223b29d09102bd921aef518",
+      "cluster_status_at_addition": "Admission blocked; not created"
+    },
+    {
+      "job_name": "navsafe-nur24-e08a9f05-5m-160k-bg5",
+      "manifest": "train/recipe-v2-5m160k-20261001/jobs/e08a9f05/5m-160k-bg5.yaml",
+      "purpose": "additional 5M/160k experiment",
+      "source": "/Users/hongwei/Desktop/avl/NavSafe-infty/deploy/nautilus/nureasoning_5m160k_20261001_1932/jobs/navsafe-nur24-e08a9f05-5m-160k-bg5.yaml",
+      "sha256": "66202d32a7e7f998c2b7f60411a986990867ad4192894ca671d834c40c5fae60",
+      "cluster_status_at_addition": "Admission blocked; not created"
+    }
+  ],
+  "kustomize_builds": "5/5 built successfully; original4 equivalent verified, new4 NRE preflight passed but server admission denied",
+  "last_added_at": "2026-10-01T19:34:50.758679-07:00"
+}
