@@ -1,0 +1,125 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-fixer-v6-20261009
+  namespace: cogrob
+  labels:
+    app: navsafe-nuplan20-enhancer-compare
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 21600
+  template:
+    metadata:
+      labels:
+        app: navsafe-nuplan20-enhancer-compare
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: odyssey-fixer
+        image: nvcr.io/nvidia/cosmos/cosmos-predict2-container:1.2
+        command:
+        - /bin/bash
+        - -lc
+        args:
+        - |
+          set -euo pipefail
+          # Both Fixer checkpoints (NVIDIA pretrained, Odyssey fine-tuned) on the raw e3e0 renders of v6-8cam-3m-nolidar.
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          CACHE="$ROOT/odyssey_fixer/cache"
+          RUN="$ROOT/train_v4_20261009/fixer"
+          SCENE=e3e0b3d6d5ae52a1
+          METHOD=v6-8cam-3m-nolidar
+          CODE=/tmp/Fixer
+          mkdir -p "$RUN"
+          exec > >(tee -a "$RUN/run.log") 2>&1
+          date -u; hostname
+          nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+          python3 -m pip install --no-deps "cosmos-predict2==1.0.9"
+          git clone --depth 1 https://github.com/nv-tlabs/Fixer.git "$CODE"
+          cd "$CODE"
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install "torchmetrics[image]" imageio-ffmpeg==0.6.0
+          NVIDIA_MODEL="$CACHE/nvidia-fixer/pretrained/pretrained_fixer.pkl"
+          ODYSSEY_MODEL="$CACHE/odyssey-models/fixer/models/finetuned/h1_b16_e1_model_11001.pkl"
+          test -s "$NVIDIA_MODEL"; test -s "$ODYSSEY_MODEL"
+          mkdir -p "$CODE/models/base" /work/models/base
+          cp -a "$CACHE/nvidia-fixer/base/." "$CODE/models/base/"
+          cp -a "$CACHE/nvidia-fixer/base/." /work/models/base/
+          test -s "$CODE/models/base/model_fast_tokenizer.pt"
+          test -s "$CODE/models/base/tokenizer_fast.pth"
+          mkdir -p /tmp/input
+          for STATE in log_replay left_5m right_5m; do
+            SRC="$ROOT/train_v4_20261009/induced/$SCENE/frames/$STATE/$METHOD/camera_pcam_f0"
+            test "$(find "$SRC" -maxdepth 1 -name '*.jpg' | wc -l)" -eq 200
+            for FRAME in "$SRC"/*.jpg; do cp "$FRAME" "/tmp/input/${STATE}__$(basename "$FRAME")"; done
+          done
+          test "$(ls /tmp/input | wc -l)" -eq 600
+          for NAME in nvidia odyssey; do
+            MODEL="$NVIDIA_MODEL"; [ "$NAME" = odyssey ] && MODEL="$ODYSSEY_MODEL"
+            mkdir -p "/tmp/out_$NAME"
+            python3 "$CODE/src/inference_pretrained_model.py" --model "$MODEL" --input /tmp/input --output "/tmp/out_$NAME" \
+              --timestep 250 --resolution 1024 --warmup-iters 2
+            test "$(find "/tmp/out_$NAME" -maxdepth 1 -type f | wc -l)" -eq 600
+            # same layout as the Harmonizer output: <state>/<method>/<frame>
+            for STATE in log_replay left_5m right_5m; do
+              DST="$RUN/$NAME/$SCENE/$STATE/$METHOD/camera_pcam_f0"; mkdir -p "$DST"
+              for F in "/tmp/out_$NAME/${STATE}__"*; do B=$(basename "$F"); cp -n "$F" "$DST/${B#${STATE}__}"; done
+              test "$(ls "$DST" | wc -l)" -eq 200
+            done
+            echo "FIXER_SET_DONE $NAME"
+          done
+          date -u > "$RUN/COMPLETE"
+          echo FIXER_V6_DONE
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: OMP_NUM_THREADS
+          value: '4'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 40Gi
+          limits:
+            cpu: '3'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 40Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

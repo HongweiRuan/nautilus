@@ -1,0 +1,35 @@
+# CPU-only helper pod (NRE image, PVCs mounted) for reading results on the PVC; exits after 90 min.
+# CPU-only pod (no GPU) with the NRE GA26.04 runtime: checks staged inputs and computes scene budgets
+# from the raw annotations. Finite sleep so it exits on its own after 3h.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-fidabl-check
+  namespace: cogrob
+  labels: {app: navsafe-nureasoning-audit}
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+  - name: prep
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: ["bash", "-c", "sleep 5400"]
+    resources:
+      requests: {cpu: "1", memory: 2Gi, ephemeral-storage: 20Gi}
+      limits: {cpu: "1", memory: 2Gi, ephemeral-storage: 20Gi}
+    volumeMounts:
+    - {name: avl-west, mountPath: /avl-west}
+    - {name: hugsim, mountPath: /hugsim-storage}
+  volumes:
+  - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+  - {name: hugsim, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+  tolerations:
+  - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}

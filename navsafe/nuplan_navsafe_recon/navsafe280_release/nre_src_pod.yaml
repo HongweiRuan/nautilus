@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nre-src
+  namespace: cogrob
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]}
+  containers:
+  - name: c
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: [sleep, "18000"]
+    resources:
+      requests: {cpu: "1", memory: 4Gi}
+      limits: {cpu: 1200m, memory: 4800Mi}

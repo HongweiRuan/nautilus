@@ -1,0 +1,108 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-eval-render-s660b2
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          [ -s /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-nosup-r4/RENDER_COMPLETE ] || ART=/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sbtc-full-80k-lens-lidar-nosup-r4/artifacts/last.usdz NCORE=/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json OUT=/avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-nosup-r4 /app/run run-script /pipeline/render_eval_nur.py || FAILED="$FAILED 660c2f7a-sbtc-full-80k-lens-lidar-nosup-r4"
+
+          [ -s /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-w01-r4/RENDER_COMPLETE ] || ART=/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sbtc-full-80k-lens-lidar-w01-r4/artifacts/last.usdz NCORE=/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json OUT=/avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-w01-r4 /app/run run-script /pipeline/render_eval_nur.py || FAILED="$FAILED 660c2f7a-sbtc-full-80k-lens-lidar-w01-r4"
+
+          [ -s /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-disks-r5/RENDER_COMPLETE ] || ART=/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sbtc-full-80k-lens-lidar-disks-r5/artifacts/last.usdz NCORE=/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json OUT=/avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-disks-r5 /app/run run-script /pipeline/render_eval_nur.py || FAILED="$FAILED 660c2f7a-sbtc-full-80k-lens-lidar-disks-r5"
+
+          [ -s /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-disks-ws-r5/RENDER_COMPLETE ] || ART=/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sbtc-full-80k-lens-lidar-disks-ws-r5/artifacts/last.usdz NCORE=/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/pai_2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.json OUT=/avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-lidar-disks-ws-r5 /app/run run-script /pipeline/render_eval_nur.py || FAILED="$FAILED 660c2f7a-sbtc-full-80k-lens-lidar-disks-ws-r5"
+
+          echo RENDER_JOB_DONE failed: "$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe-nur-optloop-eval
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

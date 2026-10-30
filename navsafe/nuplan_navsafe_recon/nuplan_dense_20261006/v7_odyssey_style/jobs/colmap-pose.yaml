@@ -1,0 +1,376 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-colmap-pose-20261010
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: colmap-pose
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - name: export
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          OUT="$ROOT/colmap_pose_20261010/$C"
+          mkdir -p "$OUT/$HOSTNAME" /work/ncore /work/colmap
+          exec > >(tee -a "$OUT/$HOSTNAME/export.log") 2>&1
+          cp -a "$ROOT/inputs_lidar4_20261009/$C/clips/$C/." /work/ncore/
+          (cd /work/ncore; for f in "$C".aux.*.zarr.itar; do ln -s "$f" "pai_$f"; done)
+          cat > /work/build_audit8.py <<'AUDIT8_PY'
+          """Capture-clock table and lens parameters for ALL cameras of a converted nuPlan clip.
+
+          Codex's audit covers the five cameras of the legacy recipe. This does the same for every camera in the clip: each
+          stored frame is matched byte for byte to an image of the log database, and the database timestamp of that image is
+          the capture time. Output has the two keys nuplan_training_optimizations.py reads: "clock" and "lens".
+
+          usage (inside the NRE image): AUDIT8_MANIFEST=... AUDIT8_DB=... AUDIT8_OUT=... /app/run run-script build_audit8.py
+          """
+          import json
+          import pathlib
+          import pickle
+          import sqlite3
+          import sys
+          import numpy as np
+          from ncore.data.v4 import SequenceComponentGroupsReader, SequenceLoaderV4
+
+          import os
+          # "/app/run run-script" takes no script arguments, so the job passes them in the environment
+          args = sys.argv[1:4] if len(sys.argv) >= 4 else [os.environ["AUDIT8_MANIFEST"], os.environ["AUDIT8_DB"], os.environ["AUDIT8_OUT"]]
+          manifest, db, out = pathlib.Path(args[0]), args[1], args[2]
+          BLOBS = pathlib.Path("/avl-west/nuplan/nuplan-v1.1/sensor_blobs")
+          m = json.loads(manifest.read_text())
+          loader = SequenceLoaderV4(SequenceComponentGroupsReader([manifest.parent / s["path"] for s in m["component_stores"]]))
+          conn = sqlite3.connect("file:" + db + "?mode=ro", uri=True)
+          lens = {}
+          for channel, blob in conn.execute("SELECT channel, distortion FROM camera"):
+              d = np.array(pickle.loads(blob)).reshape(-1)
+              assert len(d) == 5
+              lens["camera_pcam_" + channel[4:].lower()] = {"radial": [float(d[0]), float(d[1]), float(d[4]), 0, 0, 0], "tangential": [float(d[2]), float(d[3])]}
+          clock, summary = {}, {}
+          for name in sorted(loader.camera_ids):
+              sensor = loader.get_camera_sensor(name)
+              stamps = [int(t) for t in sensor.get_frames_timestamps_us()]
+              channel = "CAM_" + name.removeprefix("camera_pcam_").upper()
+              rows = conn.execute("SELECT image.timestamp, image.filename_jpg FROM image JOIN camera ON image.camera_token = camera.token "
+                                  "WHERE camera.channel = ? AND image.timestamp BETWEEN ? AND ?", (channel, min(stamps) - 200000, max(stamps) + 200000)).fetchall()
+              table = {}
+              for i, ts in enumerate(stamps):
+                  stored = sensor.get_frame_data(i)._encoded_image_data
+                  candidates = sorted(rows, key=lambda r: abs(r[0] - ts))[:3]
+                  matches = [t for t, f in candidates if (BLOBS / f).read_bytes() == stored]
+                  assert len(matches) == 1, (name, i, matches)
+                  table[str(ts)] = int(matches[0])
+              clock[name] = table
+              off = np.array([v - int(k) for k, v in table.items()]) / 1000
+              summary[name] = {"frames": len(table), "offset_ms_min": float(off.min()), "offset_ms_median": float(np.median(off)), "offset_ms_max": float(off.max())}
+              print("AUDIT8_CAMERA", name, summary[name], flush=True)
+          json.dump({"clock": clock, "lens": lens, "summary": summary}, open(out, "w"))
+          print("AUDIT8_DONE", len(clock), "cameras", flush=True)
+          AUDIT8_PY
+          cat > /work/export_for_colmap.py <<'EXPORT_PY'
+          """Export one converted nuPlan clip for COLMAP: images, masks, prior poses at the capture time, intrinsics, match pairs.
+
+          Runs with the NRE image's python (ncore + nre.utils). env: COLMAP_MANIFEST (pai_<clip>.json, aux stores next to it),
+          COLMAP_AUDIT (build_audit8.py output: capture clock), COLMAP_WORK (output directory).
+          Masks (0 = ignore): moving-object classes, sky and the ego vehicle from the camera segmentation, dilated by 12 px, plus
+          the aggregated ego mask. Features on the ego body are fixed in the image and would pull every pose correction to zero.
+          """
+          import inspect, json, os, pathlib
+          import cv2
+          import numpy as np
+          from upath import UPath
+          from ncore.data.v4 import SequenceComponentGroupsReader, SequenceLoaderV4
+          from nre.utils import ncore_utils
+
+          manifest = pathlib.Path(os.environ["COLMAP_MANIFEST"]); work = pathlib.Path(os.environ["COLMAP_WORK"])
+          clock = json.load(open(os.environ["COLMAP_AUDIT"]))["clock"]
+          m = json.loads(manifest.read_text())
+          loader = SequenceLoaderV4(SequenceComponentGroupsReader([manifest.parent / s["path"] for s in m["component_stores"]]))
+          aux = ncore_utils.AuxShardDataLoader(sequence_id=loader.sequence_id, dataset_paths=[UPath(manifest)], open_consolidated=True)
+          MASKED = ["person", "rider", "car", "truck", "bus", "train", "motorcycle", "bicycle", "sky", "egocar", "ego vehicle"]
+          cams = sorted(loader.camera_ids)
+          LO = min(int(loader.get_camera_sensor(c).get_frames_timestamps_us()[0]) for c in cams)
+          HI = min(int(loader.get_camera_sensor(c).get_frames_timestamps_us()[-1]) for c in cams)
+
+
+          def rig_poses_at(ts_us):
+              """rig -> world at the capture times. A few capture times lie just outside the stored trajectory (the stored frame
+              stamp is later than the exposure by up to some 10 ms): there the pose at the boundary is moved on with the ego
+              velocity at the boundary, rotation unchanged."""
+              ts = np.asarray(ts_us, dtype=np.int64)
+              inside = np.clip(ts, LO, HI)
+              T = np.asarray(loader.pose_graph.evaluate_poses("rig", "world", inside.astype(np.uint64)), dtype=np.float64).copy()
+              out_idx = np.nonzero(inside != ts)[0]
+              if len(out_idx):
+                  step = 50000
+                  for i in out_idx:
+                      b0 = int(inside[i]); b1 = b0 + step if b0 == LO else b0 - step
+                      pair = np.asarray(loader.pose_graph.evaluate_poses("rig", "world", np.array([b0, b1], dtype=np.uint64)), dtype=np.float64)
+                      velocity = (pair[1, :3, 3] - pair[0, :3, 3]) / (b1 - b0)
+                      T[i, :3, 3] += velocity * (int(ts[i]) - b0)
+                  print("EXTRAPOLATED", len(out_idx), "capture times, at most", int(np.abs(ts - inside).max()), "us outside the trajectory", flush=True)
+              return T
+          out = {"cameras": {}, "images": {}}
+          kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25))
+          ego_used = {}
+          for cam in cams:
+              s = loader.get_camera_sensor(cam)
+              p = s.model_parameters
+              assert type(p).__name__ == "OpenCVPinholeCameraModelParameters", type(p)
+              rc, tc = [float(v) for v in p.radial_coeffs], [float(v) for v in p.tangential_coeffs]
+              w, h = int(p.resolution[0]), int(p.resolution[1])
+              # COLMAP FULL_OPENCV: fx fy cx cy k1 k2 p1 p2 k3 k4 k5 k6
+              out["cameras"][cam] = {"width": w, "height": h, "T_sensor_rig": np.asarray(s.T_sensor_rig, dtype=np.float64).tolist(),
+                                     "full_opencv": [float(p.focal_length[0]), float(p.focal_length[1]), float(p.principal_point[0]), float(p.principal_point[1]),
+                                                     rc[0], rc[1], tc[0], tc[1], rc[2], rc[3], rc[4], rc[5]]}
+              classes = aux.get_semantic_segmentation_meta(cam)["stuff_classes"]
+              ids = [i for i, c in enumerate(classes) if c in MASKED]
+              assert len(ids) >= 8, (classes, ids)
+              ego = None
+              try:
+                  ego = np.array(aux.get_aggregated_egomask(cam)).squeeze() > 0
+                  assert ego.shape == (h, w), ego.shape
+              except Exception as exc:  # noqa: BLE001 - reported below, the segmentation class still masks the ego body
+                  print("EGO_MASK_NOT_AVAILABLE", cam, type(exc).__name__, exc, "signature", inspect.signature(aux.get_aggregated_egomask), flush=True)
+              ego_used[cam] = None if ego is None else float(ego.mean())
+              (work / "images" / cam).mkdir(parents=True, exist_ok=True); (work / "masks" / cam).mkdir(parents=True, exist_ok=True)
+              stamps = [int(t) for t in s.get_frames_timestamps_us()]
+              capture = np.array([clock[cam][str(t)] for t in stamps], dtype=np.uint64)
+              T_rig_world = rig_poses_at(capture)
+              masked_share = []
+              for i, ts in enumerate(stamps):
+                  name = f"{cam}/{i:06d}.jpg"
+                  data = s.get_frame_data(i)
+                  if i == 0:
+                      print("image format", cam, data.get_encoded_image_format(), flush=True)
+                  assert data.get_encoded_image_data()[:2] == b"\xff\xd8", "not a JPEG"
+                  (work / "images" / name).write_bytes(data.get_encoded_image_data())
+                  seg = np.array(aux.get_semantic_segmentation(cam, ts)).squeeze()
+                  assert seg.shape == (h, w), seg.shape
+                  bad = np.isin(seg, ids)
+                  if ego is not None:
+                      bad |= ego
+                  bad = cv2.dilate(bad.astype(np.uint8), kernel) > 0
+                  cv2.imwrite(str(work / "masks" / (name + ".png")), np.where(bad, 0, 255).astype(np.uint8))
+                  masked_share.append(float(bad.mean()))
+                  out["images"][name] = {"camera": cam, "frame": i, "stored_ts_us": ts, "capture_ts_us": int(capture[i]),
+                                         "T_rig_world": T_rig_world[i].tolist(), "T_cam_world": (T_rig_world[i] @ np.asarray(s.T_sensor_rig, dtype=np.float64)).tolist()}
+              print("EXPORTED", cam, len(stamps), "frames, masked share median %.2f max %.2f, ego mask share %s" % (np.median(masked_share), np.max(masked_share), ego_used[cam]), flush=True)
+          names = sorted(out["images"])
+          (work / "image_list.txt").write_text("\n".join(names) + "\n")
+          # pairs: the same camera a few frames apart, and neighbouring cameras at the same time and at a lag (a side camera sees
+          # later what the front camera saw; at 6-12 m/s the lag is 0.5-2 s)
+          ring = [("f0", "l0"), ("f0", "r0"), ("l0", "l1"), ("r0", "r1"), ("l1", "l2"), ("r1", "r2"), ("l2", "b0"), ("r2", "b0")]
+          pairs = set()
+          n = max(v["frame"] for v in out["images"].values()) + 1
+          have = set(names)
+          for cam in cams:
+              for i in range(n):
+                  for d in (1, 2, 4, 8, 16):
+                      a, b = f"{cam}/{i:06d}.jpg", f"{cam}/{i + d:06d}.jpg"
+                      if a in have and b in have:
+                          pairs.add((a, b))
+          for ca, cb in ring:
+              for i in range(n):
+                  for lag in (0, 5, -5, 10, -10, 20, -20):
+                      a, b = f"camera_pcam_{ca}/{i:06d}.jpg", f"camera_pcam_{cb}/{i + lag:06d}.jpg"
+                      if a in have and b in have:
+                          pairs.add((a, b))
+          (work / "pairs.txt").write_text("".join(f"{a} {b}\n" for a, b in sorted(pairs)))
+          json.dump(out, open(work / "priors.json", "w"))
+          print("EXPORT_DONE", len(names), "images", len(pairs), "pairs", flush=True)
+          EXPORT_PY
+          R=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main
+          PY="$R/internal/scripts/pycena/runtime/pycena_run_venv_deps.venv/bin/python"
+          export PYTHONPATH="$R"
+          AUDIT8_MANIFEST=/work/ncore/pai_$C.json AUDIT8_DB=/avl-west/nuplan/nuplan-v1.1/splits/test/2021.06.28.20.24.43_veh-38_03385_04952.db AUDIT8_OUT=/work/audit8.json "$PY" /work/build_audit8.py
+          COLMAP_MANIFEST=/work/ncore/pai_$C.json COLMAP_AUDIT=/work/audit8.json COLMAP_WORK=/work/colmap "$PY" /work/export_for_colmap.py
+          rm -rf /work/ncore
+          cp /work/colmap/priors.json /work/colmap/pairs.txt "$OUT/"
+          echo EXPORT_STAGE_DONE
+        resources: &id002
+          requests: {cpu: '3', memory: 16Gi, ephemeral-storage: 60Gi}
+          limits: {cpu: '3', memory: 19Gi, ephemeral-storage: 60Gi}
+        volumeMounts: &id003
+        - {name: avl-west-vol, mountPath: /avl-west}
+        - {name: work, mountPath: /work}
+      containers:
+      - name: colmap
+        image: colmap/colmap:latest
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          OUT="$ROOT/colmap_pose_20261010/$C"
+          W=/work/colmap
+          mkdir -p "$OUT/$HOSTNAME"
+          exec > >(tee -a "$OUT/$HOSTNAME/colmap.log") 2>&1
+          export DEBIAN_FRONTEND=noninteractive QT_QPA_PLATFORM=offscreen
+          apt-get update -qq && apt-get install -y -qq python3 python3-numpy >/dev/null
+          colmap -h | head -3 || true
+          cat > /work/colmap_model.py <<'MODEL_PY'
+          """make: prior model (TXT) with the database's ids.   extract: refined poses -> per-frame rig corrections.
+
+          usage: colmap_model.py make WORK      |      colmap_model.py extract WORK REFINED_TXT_DIR OUT.json
+          Odyssey (appendix B.1) keeps the logged x and y and takes z, roll, pitch and yaw from COLMAP. Here: the refined
+          camera poses are aligned to the logged camera centres with a similarity transform (bundle adjustment has a free gauge),
+          each image gives a correction D = inv(T_rig_world logged) @ T_rig_world refined, the cameras of one frame are combined
+          with a median, the series is smoothed over 5 frames, and x and y are set to zero.
+          """
+          import json, sqlite3, sys
+          import numpy as np
+
+
+          def quat_to_rot(q):
+              w, x, y, z = q
+              return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                               [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                               [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+          def rot_to_quat(R):
+              K = np.array([[R[0, 0] - R[1, 1] - R[2, 2], 0, 0, 0], [R[0, 1] + R[1, 0], R[1, 1] - R[0, 0] - R[2, 2], 0, 0],
+                            [R[0, 2] + R[2, 0], R[1, 2] + R[2, 1], R[2, 2] - R[0, 0] - R[1, 1], 0],
+                            [R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1], R[0, 0] + R[1, 1] + R[2, 2]]]) / 3.0
+              w, v = np.linalg.eigh(K)
+              q = v[[3, 0, 1, 2], np.argmax(w)]
+              return q if q[0] >= 0 else -q
+
+
+          work = sys.argv[2]
+          pri = json.load(open(f"{work}/priors.json"))
+          if sys.argv[1] == "make":
+              db = sqlite3.connect(f"{work}/database.db")
+              image_rows = db.execute("SELECT image_id, name, camera_id FROM images").fetchall()
+              assert len(image_rows) == len(pri["images"]), (len(image_rows), len(pri["images"]))
+              cam_of = {}
+              for _, name, cid in image_rows:
+                  cam_of.setdefault(pri["images"][name]["camera"], set()).add(cid)
+              assert all(len(v) == 1 for v in cam_of.values()) and len({next(iter(v)) for v in cam_of.values()}) == len(cam_of), cam_of
+              import os
+              os.makedirs(f"{work}/sparse/prior", exist_ok=True)
+              with open(f"{work}/sparse/prior/cameras.txt", "w") as f:
+                  for cam, ids in sorted(cam_of.items()):
+                      c = pri["cameras"][cam]
+                      params = np.array(c["full_opencv"], dtype=np.float64)
+                      f.write(f"{next(iter(ids))} FULL_OPENCV {c['width']} {c['height']} " + " ".join(repr(float(v)) for v in params) + "\n")
+                      # the database holds the extractor's guess; triangulation and matching geometry must use the calibration
+                      db.execute("UPDATE cameras SET model = 6, params = ?, prior_focal_length = 1 WHERE camera_id = ?", (params.tobytes(), next(iter(ids))))
+              db.commit()
+              with open(f"{work}/sparse/prior/images.txt", "w") as f:
+                  for iid, name, cid in sorted(image_rows):
+                      T = np.linalg.inv(np.array(pri["images"][name]["T_cam_world"]))          # world -> camera
+                      q = rot_to_quat(T[:3, :3])
+                      f.write(f"{iid} {q[0]!r} {q[1]!r} {q[2]!r} {q[3]!r} {T[0, 3]!r} {T[1, 3]!r} {T[2, 3]!r} {cid} {name}\n\n")
+              open(f"{work}/sparse/prior/points3D.txt", "w").close()
+              print("PRIOR_MODEL", len(image_rows), "images", len(cam_of), "cameras")
+          else:
+              refined_dir, out_path = sys.argv[3], sys.argv[4]
+              ref = {}
+              lines = [l for l in open(f"{refined_dir}/images.txt") if not l.startswith("#")]
+              for l in lines[0::2]:
+                  e = l.split()
+                  if len(e) < 10:
+                      continue
+                  T = np.eye(4); T[:3, :3] = quat_to_rot([float(v) for v in e[1:5]]); T[:3, 3] = [float(v) for v in e[5:8]]
+                  ref[e[9]] = np.linalg.inv(T)                                               # camera -> world
+              names = sorted(n for n in pri["images"] if n in ref)
+              print("registered", len(names), "of", len(pri["images"]))
+              A = np.array([ref[n][:3, 3] for n in names]); B = np.array([np.array(pri["images"][n]["T_cam_world"])[:3, 3] for n in names])
+              # similarity transform A -> B (Umeyama)
+              ma, mb = A.mean(0), B.mean(0)
+              U, S, Vt = np.linalg.svd((B - mb).T @ (A - ma) / len(A))
+              d = np.sign(np.linalg.det(U @ Vt)); Dm = np.diag([1, 1, d])
+              Rg = U @ Dm @ Vt; sc = np.trace(np.diag(S) @ Dm) / ((A - ma) ** 2).sum(1).mean(); tg = mb - sc * Rg @ ma
+              print("gauge: scale %.6f, rotation %.4f deg" % (sc, np.degrees(np.arccos(np.clip((np.trace(Rg) - 1) / 2, -1, 1)))))
+              per_frame = {}
+              resid = []
+              for n in names:
+                  info = pri["images"][n]
+                  T = ref[n].copy(); T[:3, 3] = sc * Rg @ T[:3, 3] + tg; T[:3, :3] = Rg @ T[:3, :3]
+                  T_rig = T @ np.linalg.inv(np.array(pri["cameras"][info["camera"]]["T_sensor_rig"]))
+                  D = np.linalg.inv(np.array(info["T_rig_world"])) @ T_rig
+                  R = D[:3, :3]
+                  per_frame.setdefault(info["frame"], []).append([D[0, 3], D[1, 3], D[2, 3], (R[2, 1] - R[1, 2]) / 2, (R[0, 2] - R[2, 0]) / 2, (R[1, 0] - R[0, 1]) / 2, info["capture_ts_us"]])
+                  resid.append(np.linalg.norm(T[:3, 3] - np.array(info["T_cam_world"])[:3, 3]))
+              frames = sorted(per_frame)
+              med = np.array([np.median(np.array(per_frame[f])[:, :6], axis=0) for f in frames])
+              spread = np.array([np.std(np.array(per_frame[f])[:, :6], axis=0) for f in frames])
+              ts = np.array([np.median(np.array(per_frame[f])[:, 6]) for f in frames])
+              k = 5
+              pad = np.pad(med, ((k // 2, k // 2), (0, 0)), mode="edge")
+              smooth = np.stack([np.median(pad[i:i + k], axis=0) for i in range(len(med))])
+              pad = np.pad(smooth, ((k // 2, k // 2), (0, 0)), mode="edge")
+              smooth = np.stack([pad[i:i + k].mean(axis=0) for i in range(len(med))])
+              names6 = ["x_m", "y_m", "z_m", "roll_rad", "pitch_rad", "yaw_rad"]
+              report = {"registered_images": len(names), "images": len(pri["images"]), "frames": len(frames), "gauge_scale": float(sc),
+                        "camera_centre_change_m": {"median": float(np.median(resid)), "p95": float(np.percentile(resid, 95)), "max": float(np.max(resid))},
+                        "correction_abs_median": {n: float(np.median(np.abs(smooth[:, i]))) for i, n in enumerate(names6)},
+                        "correction_abs_max": {n: float(np.max(np.abs(smooth[:, i]))) for i, n in enumerate(names6)},
+                        "spread_between_cameras_median": {n: float(np.median(spread[:, i])) for i, n in enumerate(names6)},
+                        "applied": ["z_m", "roll_rad", "pitch_rad", "yaw_rad"], "not_applied": ["x_m", "y_m"]}
+              json.dump({"report": report, "timestamps_us": [int(t) for t in ts], "z_m": smooth[:, 2].tolist(), "roll_rad": smooth[:, 3].tolist(),
+                         "pitch_rad": smooth[:, 4].tolist(), "yaw_rad": smooth[:, 5].tolist(), "x_m_not_applied": smooth[:, 0].tolist(), "y_m_not_applied": smooth[:, 1].tolist()},
+                        open(out_path, "w"), indent=1)
+              print("POSE_DELTA", json.dumps(report, indent=1))
+          MODEL_PY
+          # option names are those of COLMAP 4.2.1 (colmap/colmap:latest on 2026-10-10); the GPU switch name is looked up
+          EX=$(colmap feature_extractor -h 2>&1 | grep -o -- '--[A-Za-z]*\.use_gpu' | head -1)
+          MA=$(colmap matches_importer -h 2>&1 | grep -o -- '--[A-Za-z]*\.use_gpu' | head -1)
+          echo "gpu switches: $EX $MA"
+          colmap feature_extractor --database_path $W/database.db --image_path $W/images --image_list_path $W/image_list.txt \
+            --ImageReader.mask_path $W/masks --ImageReader.camera_model FULL_OPENCV --ImageReader.single_camera_per_folder 1 \
+            $EX 0 --SiftExtraction.max_num_features 6000 --FeatureExtraction.max_image_size 1920
+          colmap matches_importer --database_path $W/database.db --match_list_path $W/pairs.txt --match_type pairs $MA 0
+          python3 /work/colmap_model.py make $W
+          IN=$W/sparse/prior
+          for round in 1 2; do
+            mkdir -p $W/sparse/tri$round $W/sparse/ba$round
+            colmap point_triangulator --database_path $W/database.db --image_path $W/images --input_path $IN --output_path $W/sparse/tri$round --clear_points 1
+            colmap bundle_adjuster --input_path $W/sparse/tri$round --output_path $W/sparse/ba$round \
+              --BundleAdjustment.refine_focal_length 0 --BundleAdjustment.refine_principal_point 0 --BundleAdjustment.refine_extra_params 0 --BundleAdjustment.refine_rig_from_world 1 --BundleAdjustment.refine_sensor_from_rig 0
+            colmap model_analyzer --path $W/sparse/ba$round 2>&1 | tail -12 || true
+            IN=$W/sparse/ba$round
+          done
+          mkdir -p $W/sparse/txt
+          colmap model_converter --input_path $W/sparse/ba2 --output_path $W/sparse/txt --output_type TXT
+          python3 /work/colmap_model.py extract $W $W/sparse/txt /work/pose_delta.json
+          cp /work/pose_delta.json "$OUT/pose_delta.json.partial" && mv "$OUT/pose_delta.json.partial" "$OUT/pose_delta.json"
+          cp $W/sparse/txt/images.txt "$OUT/refined_images.txt"
+          date -u +%FT%TZ > "$OUT/ready"
+          echo COLMAP_POSE_DONE
+        resources: *id002
+        volumeMounts: *id003
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: work
+        emptyDir: {sizeLimit: 50Gi}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

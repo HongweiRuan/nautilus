@@ -1,0 +1,133 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-harmonizer-v6-20261009
+  namespace: cogrob
+  labels:
+    app: navsafe-nuplan20-enhancer-compare
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nuplan20-enhancer-compare
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render-induced
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          RUN="$ROOT/train_v4_20261009"
+          mkdir -p /scratch "$RUN/harmonizer"
+          exec > >(tee -a "$RUN/harmonizer/run.log") 2>&1
+          date -u; hostname
+          nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+          test -s "$ROOT/harmonizer/cache/models/harmonizer_nontemporal.pt"
+          cat > /scratch/harmonize_frames.py <<'HARMONIZE_PY'
+          """(v4_lidar copy: methods from HARMONIZE_METHODS, frames under train_v4_20261009/induced.)
+          Apply NRE's server-side Harmonizer (serve-grpc --enable-harmonizer) to already rendered frames.
+
+          Same class, checkpoint, resolution and call as nre/grpc/serve.py: DifixModelFactory.get(...)(flat_rgb, img_size, False).
+          """
+          import os, shutil, time
+          from pathlib import Path
+          import numpy as np, torch
+          from PIL import Image
+          from nre.difix.model import DifixModelFactory
+          from nre.grpc.grpc_server_config import GrpcServerConfig
+
+          root = Path("/avl-west/navsafe_nuplan_dense_20261006")
+          out_root = root / "train_v4_20261009/harmonizer"
+          cache = Path("/scratch/harmonizer_cache"); cache.mkdir(parents=True, exist_ok=True)
+          fields = GrpcServerConfig.model_fields
+          url, filename, resolution = fields["harmonizer_url"].default, fields["harmonizer_model_filename"].default, tuple(fields["harmonizer_resolution"].default)
+          shutil.copy(root / "harmonizer/cache/models" / filename, cache / filename)
+          print("HARMONIZER", url, filename, resolution, flush=True)
+          model = DifixModelFactory.get(url, str(cache), filename, resolution)
+          done = 0; started = time.monotonic()
+          for scene in ("e3e0b3d6d5ae52a1",):
+              for method in os.environ["HARMONIZE_METHODS"].split(","):
+                  for state in ("log_replay", "left_5m", "right_5m"):
+                      src = root / "train_v4_20261009/induced" / scene / "frames" / state / method / "camera_pcam_f0"
+                      frames = sorted(src.glob("*.jpg")); assert len(frames) == 200, (src, len(frames))
+                      dst = out_root / scene / state / method; dst.mkdir(parents=True, exist_ok=True)
+                      for f in frames:
+                          target = dst / f.name
+                          if target.is_file():
+                              continue
+                          rgb = torch.from_numpy(np.asarray(Image.open(f).convert("RGB"))).cuda().float() / 255.0
+                          h, w, _ = rgb.shape
+                          with torch.no_grad():
+                              result = model(rgb.reshape(h * w, 3), torch.Size((h, w)), False)
+                          img = (result.reshape(h, w, 3).clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()
+                          Image.fromarray(img).save(target, quality=95)
+                          done += 1
+                      assert len(list(dst.glob("*.jpg"))) == 200
+                      print("SEQUENCE_DONE", scene, method, state, "new frames", done, "elapsed", round(time.monotonic() - started), flush=True)
+          print("HARMONIZE_DONE", done, flush=True)
+          HARMONIZE_PY
+          HARMONIZE_METHODS=v6-8cam-3m-nolidar,v6-lidar-w01,v6-8cam-3m-lidar /app/run run-script /scratch/harmonize_frames.py
+          date -u
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: OMP_NUM_THREADS
+          value: '4'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+          limits:
+            cpu: '2'
+            memory: 19Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 14400

@@ -1,0 +1,422 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-lidarstruct-convert-660c2f7a
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning
+    stage: convert
+    batch: lidar-structured-20261009
+    clip-hash: 660c2f7a
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: convert
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -lc
+        args:
+        - |
+          set -euo pipefail
+          DEST="$NUR_OUTPUT/ncore/clips/$NUR_CLIP_ID"
+          DIAG="$NUR_OUTPUT/diagnostics/$NUR_CLIP_ID/${HOSTNAME:-manual}"
+          # New outputs only: never write into an existing clip directory.
+          if [[ -e "$DEST" ]]; then echo "CONVERT_REFUSED $DEST already exists"; exit 1; fi
+          mkdir -p "$DIAG" /scratch/repo /scratch/overlay
+          exec > >(tee -a "$DIAG/convert.log") 2>&1
+          test -s "$NUPLAN_LIDAR_CALIB_JSON"
+          test -s "$NUR_LIDAR_RAW_CLIP/metadata.json"
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq git curl libglib2.0-0 libgl1 libgomp1 >/dev/null
+          python3 -m pip install --quiet uv
+          export UV_PROJECT_ENVIRONMENT=/scratch/convert-venv UV_CACHE_DIR=/scratch/uv-cache UV_LINK_MODE=copy
+          (cd "$REPO_ROOT" && uv sync --locked --python 3.12 --group conversion)
+          # The repository on the PVC stays as it is: its python package is copied and the copy is patched.
+          tar -C "$REPO_ROOT" --exclude=__pycache__ -cf - navsafe | tar -C /scratch/repo -xf -
+          cat > /scratch/overlay/patch_bridge.py <<'PATCH_BRIDGE_PY'
+          """(nuReasoning copy of nuplan_dense_20261006/v4_lidar/patch_bridge.py; adds NUR_LIDAR_FRAME_POSES.)
+          Patch a COPY of navsafe/gs3d_converter/ncore_bridge.py (inside the conversion job) to write nuPlan's top, left,
+          right and back LiDARs as structured components and to stamp every LiDAR frame at lidar_pc time + offset.
+
+          usage: patch_bridge.py /root/NavSafe-infty/navsafe/gs3d_converter/ncore_bridge.py
+          Every replacement must match exactly once; the script fails otherwise, so a changed bridge cannot be patched silently.
+          """
+          import sys
+
+          path = sys.argv[1]
+          src = open(path).read()
+
+
+          def once(a, b):
+              global src
+              assert src.count(a) == 1, (src.count(a), a)
+              src = src.replace(a, b)
+
+
+          # 1. calibration: sensors from the per-vehicle JSON instead of a single-sweep fit of the top sensor
+          once("""    nuplan_lidar = None
+              if (structured_lidar is None
+          """, """    nuplan_lidar = None
+              _multi = []
+              _LIDAR_OFF = int(os.environ.get("NUPLAN_LIDAR_TIME_OFFSET_US", "0"))
+              if (structured_lidar is None
+          """)
+          once("""            probe = _first_lidar_modality(scene)
+                      if probe is not None:
+                          cand = NuplanStructuredLidar()
+                          if cand.calibrate(probe):
+                              nuplan_lidar = cand
+          """, """            from navsafe.gs3d_converter.nuplan_multi_lidar import load_sensors
+                      _multi = load_sensors()
+                      nuplan_lidar = _multi[0]
+          """)
+          once("""                       "bracket, so falling back to the flattened path")
+                  nuplan_lidar = None
+          """, """                       "bracket, so falling back to the flattened path")
+                  # nuReasoning has frame poses only; its structured frames have zero duration, so those poses are enough
+                  if os.environ.get("NUR_LIDAR_FRAME_POSES") != "1":
+                      raise RuntimeError("the structured LiDAR needs the native ego trajectory")
+          """)
+
+          # 2. one writer and one static pose per sensor (the repo's single structured writer stays unused)
+          once("""    lidar_struct_w = None if nuplan_lidar is None else writer.register_component_writer(
+                  LidarSensorComponent.Writer, _STRUCT_LIDAR_ID, group_name=_STRUCT_LIDAR_ID
+              )
+          """, """    lidar_struct_w = None
+              _multi_w = {_s.component_id: writer.register_component_writer(
+                  LidarSensorComponent.Writer, _s.component_id, group_name=_s.component_id) for _s in _multi}
+          """)
+          once("""    n_structured_frames = 0
+              n_nuplan_struct_frames = 0
+          """, """    for _s in _multi:
+                  poses_w.store_static_pose(_s.component_id, _RIG_FRAME_ID, np.asarray(_s.extrinsic, dtype=_POSE_DTYPE))
+              n_structured_frames = 0
+              n_nuplan_struct_frames = 0
+          """)
+
+          # 3. merged cloud: same points, frame time moved by the offset
+          once("""                    per_ray_ts = np.full(len(xyz), ts_us, dtype=np.uint64)
+          """, """                    per_ray_ts = np.full(len(xyz), ts_us + _LIDAR_OFF, dtype=np.uint64)
+          """)
+          once("""                        intensity=intensity.astype(np.float32)[None, :],   # (1, N)
+                                  frame_timestamps_us=np.array([ts_us, ts_us], dtype=np.uint64),
+          """, """                        intensity=intensity.astype(np.float32)[None, :],   # (1, N)
+                                  frame_timestamps_us=np.array([ts_us + _LIDAR_OFF, ts_us + _LIDAR_OFF], dtype=np.uint64),
+          """)
+
+          # 4. structured sweeps of every sensor
+          once("""                if lidar_struct_w is not None:
+                              srec = nuplan_lidar.decode(mod, int(ts_us))
+          """, """                for _s in _multi:
+                              _r = _s.decode(mod, int(ts_us) + _LIDAR_OFF)
+                              if _r is None:
+                                  continue
+                              _multi_w[_s.component_id].store_frame(
+                                  direction=_r["direction"], timestamp_us=_r["timestamp_us"],
+                                  model_element=_r["model_element"], distance_m=_r["distance_m"][None, :],
+                                  intensity=_r["intensity"][None, :],
+                                  frame_timestamps_us=np.array([_r["frame_timestamp_us"], _r["frame_end_timestamp_us"]], dtype=np.uint64),
+                                  generic_data={}, generic_meta_data={})
+                              _s.points = getattr(_s, "points", 0) + len(_r["distance_m"])
+                              _s.duplicates = getattr(_s, "duplicates", 0) + _r["dropped_duplicates"]
+                          if lidar_struct_w is not None:
+                              srec = nuplan_lidar.decode(mod, int(ts_us))
+          """)
+
+          # 5. spinning model per sensor
+          once("""    if lidar_struct_w is not None and n_nuplan_struct_frames:
+          """, """    for _s in _multi:
+                  assert _s.n_frames > 0, _s.name
+                  intr_w.store_lidar_intrinsics(_s.component_id, _s.spinning_params())
+                  logger.warning("NCoreBridge: %s: %d sweeps, %d rays, %d second returns dropped, frame time offset %d us",
+                                 _s.component_id, _s.n_frames, _s.points, _s.duplicates, _LIDAR_OFF)
+              if lidar_struct_w is not None and n_nuplan_struct_frames:
+          """)
+          open(path, "w").write(src)
+          print("BRIDGE_PATCHED", path)
+          PATCH_BRIDGE_PY
+          cat > /scratch/repo/navsafe/gs3d_converter/nuplan_multi_lidar.py <<'ROOF_LIDAR_PY'
+          """Structured component for nuReasoning's roof LiDAR (overlay for the NCore bridge, not part of the NavSafe repo).
+
+          Installed inside the conversion job as navsafe/gs3d_converter/nuplan_multi_lidar.py, the name the bridge patch
+          imports (patch_bridge.py, shared with the nuPlan work).
+
+          Why only the roof sensor: calibrate_lidars.py fits a cone-per-ring model. The roof LiDAR (lidar_info 0, 128 rings,
+          360 deg, about 43 % of the first returns) fits to 0.0005 deg with its mount at [1.808, 0.000, 1.467] m, the same
+          position the label fix found from the range field. The four body LiDARs (lidar_info 1-4) do not fit (2-3.5 deg
+          scatter), so their ring index is not a beam elevation and they get no model.
+
+          The sweeps are read from the raw clip, not from the py123d Lidar object: the raw .pcd has every field (ring,
+          is_second_return) under its original name. Second returns are dropped. The cloud is motion-compensated, so every ray
+          carries the frame time and the frame has zero duration, exactly like the merged component the bridge already writes.
+
+          env: NUPLAN_LIDAR_CALIB_JSON  output of calibrate_lidars.py
+               NUR_LIDAR_RAW_CLIP       raw clip directory (metadata.json and lidar/)
+               NUPLAN_LIDAR_COLUMNS     azimuth columns, default 3600 (0.1 deg, the sensor's own step at 10 Hz)
+          """
+          from __future__ import annotations
+
+          import json
+          import logging
+          import os
+          import struct
+
+          import numpy as np
+
+          logger = logging.getLogger(__name__)
+          N_COLUMNS = int(os.environ.get("NUPLAN_LIDAR_COLUMNS", "3600"))
+
+
+          def _lzf_decompress(src: bytes, out_len: int) -> bytes:
+              out = bytearray(out_len)
+              ip = op = 0
+              n = len(src)
+              while ip < n:
+                  ctrl = src[ip]; ip += 1
+                  if ctrl < 32:
+                      out[op:op + ctrl + 1] = src[ip:ip + ctrl + 1]
+                      ip += ctrl + 1; op += ctrl + 1
+                  else:
+                      length = ctrl >> 5
+                      ref = op - ((ctrl & 0x1F) << 8) - 1
+                      if length == 7:
+                          length += src[ip]; ip += 1
+                      ref -= src[ip]; ip += 1
+                      length += 2
+                      if ref + length <= op:                       # no overlap: one slice copy
+                          out[op:op + length] = out[ref:ref + length]
+                      else:                                        # overlapping run: repeat the pattern
+                          for k in range(length):
+                              out[op + k] = out[ref + k]
+                      op += length
+              return bytes(out[:op])
+
+
+          def read_pcd(path):
+              raw = open(path, "rb").read()
+              line_end = raw.index(b"\n", raw.index(b"DATA "))
+              header = {line.split()[0]: line.split()[1:] for line in raw[:line_end].decode().splitlines() if not line.startswith("#")}
+              fields, sizes = header["FIELDS"], [int(v) for v in header["SIZE"]]
+              n = int(header["POINTS"][0])
+              dtype = np.dtype([(f, {"F": "f", "U": "u", "I": "i"}[t] + str(s)) for f, s, t in zip(fields, sizes, header["TYPE"])])
+              body = raw[line_end + 1:]
+              if header["DATA"][0] == "binary":
+                  return np.frombuffer(body[: n * dtype.itemsize], dtype=dtype).copy()
+              assert header["DATA"][0] == "binary_compressed", header["DATA"]
+              compressed, uncompressed = struct.unpack("<II", body[:8])
+              buf = _lzf_decompress(body[8: 8 + compressed], uncompressed)
+              assert len(buf) == uncompressed == n * dtype.itemsize, (len(buf), uncompressed, n * dtype.itemsize)
+              out = np.empty(n, dtype=dtype)
+              offset = 0
+              for f, s in zip(fields, sizes):
+                  out[f] = np.frombuffer(buf[offset: offset + n * s], dtype=dtype[f])
+                  offset += n * s
+              return out
+
+
+          def _rot(roll, pitch):
+              cr, sr, cp, sp = np.cos(roll), np.sin(roll), np.cos(pitch), np.sin(pitch)
+              return (np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]])
+                      @ np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]]))
+
+
+          class RoofLidar:
+              name = "roof"
+              component_id = "lidar_top_structured"
+              sweep_us = 1          # zero-duration frames: the sequence interval needs no extra tail
+              deskew = False
+
+              def __init__(self, calib: dict, raw_clip: str):
+                  self.raw_lidar_info = int(calib["raw_lidar_info"])
+                  self._R = _rot(float(calib["roll_rad"]), float(calib["pitch_rad"]))
+                  self._t = np.asarray(calib["mount_xyz_m"], dtype=np.float64)
+                  elev = np.asarray(calib["ring_elevations_rad"], dtype=np.float64)
+                  self.n_rows = len(elev)
+                  order = np.argsort(elev)[::-1]                    # NCore: row 0 is the highest beam
+                  self._ring_to_row = np.empty(self.n_rows, np.int64)
+                  self._ring_to_row[order] = np.arange(self.n_rows)
+                  self.row_elevations = elev[order].astype(np.float32)
+                  assert np.all(np.diff(self.row_elevations) < 0), "beam elevations are not strictly ordered"
+                  self.n_columns = N_COLUMNS
+                  self.fit_residual_deg = float(calib["fit_scatter_deg"])
+                  self.extrinsic = np.eye(4, dtype=np.float64)
+                  self.extrinsic[:3, :3] = self._R.T
+                  self.extrinsic[:3, 3] = self._t
+                  meta = json.load(open(os.path.join(raw_clip, "metadata.json")))
+                  self._sweeps = {int(f["timestamp_us"]): os.path.join(raw_clip, f["sensors"]["lidar"]["point_cloud_path"]) for f in meta["frames"]}
+                  self.n_frames = 0
+                  self._intensity_scale = None
+
+              def spinning_params(self):
+                  from ncore.impl.data.types import RowOffsetStructuredSpinningLidarModelParameters
+                  az = ((np.arange(self.n_columns, dtype=np.float64) + 0.5) / self.n_columns * 2.0 * np.pi - np.pi).astype(np.float32)
+                  return RowOffsetStructuredSpinningLidarModelParameters(
+                      spinning_frequency_hz=10.0, spinning_direction="ccw", n_rows=self.n_rows, n_columns=self.n_columns,
+                      row_elevations_rad=self.row_elevations, column_azimuths_rad=az,
+                      row_azimuth_offsets_rad=np.zeros(self.n_rows, np.float32))
+
+              def decode(self, lidar_mod, frame_ts_us: int):
+                  p = read_pcd(self._sweeps[int(frame_ts_us)])
+                  p = p[(p["lidar_info"] == self.raw_lidar_info) & (p["is_second_return"] == 0)]
+                  P = np.stack([p["x"], p["y"], p["z"]], 1).astype(np.float64)
+                  ring = p["ring"].astype(np.int64)
+                  ok = np.isfinite(P).all(axis=1) & (ring < self.n_rows)
+                  if self._intensity_scale is None:                 # decided once, on the first sweep
+                      top = float(p["intensity"].max())
+                      self._intensity_scale = 255.0 if top > 1.5 else 1.0
+                      logger.warning("nureasoning_roof_lidar: intensity max %.3f in the first sweep -> divided by %.0f", top, self._intensity_scale)
+                  P, ring, inten = P[ok], ring[ok], (p["intensity"][ok].astype(np.float32) / self._intensity_scale).clip(0.0, 1.0)
+                  v = (P - self._t) @ self._R.T
+                  dist = np.linalg.norm(v, axis=1)
+                  ok = dist > 1e-3
+                  v, dist, ring, inten = v[ok], dist[ok], ring[ok], inten[ok]
+                  col = np.clip(((np.arctan2(v[:, 1], v[:, 0]) + np.pi) / (2.0 * np.pi) * self.n_columns).astype(np.int64), 0, self.n_columns - 1)
+                  row = self._ring_to_row[ring]
+                  key = row * self.n_columns + col                     # one return per (row, column): keep the nearer
+                  order = np.lexsort((dist, key))
+                  first = order[np.concatenate([[True], np.diff(key[order]) != 0])]
+                  self.n_frames += 1
+                  return {
+                      "model_element": np.column_stack([row[first], col[first]]).astype(np.uint16),
+                      "direction": (v[first] / dist[first, None]).astype(np.float32),
+                      "distance_m": dist[first].astype(np.float32),
+                      "intensity": inten[first].astype(np.float32),
+                      "timestamp_us": np.full(len(first), frame_ts_us, np.uint64),
+                      "frame_timestamp_us": int(frame_ts_us),
+                      "frame_end_timestamp_us": int(frame_ts_us),
+                      "dropped_duplicates": int(len(key) - len(first)),
+                  }
+
+
+          def load_sensors() -> list:
+              calib = json.load(open(os.environ["NUPLAN_LIDAR_CALIB_JSON"]))
+              (name, entry), = [(k, v) for k, v in calib["sensors"].items() if v["raw_lidar_info"] == 0]
+              sensor = RoofLidar(entry, os.environ["NUR_LIDAR_RAW_CLIP"])
+              logger.warning("nureasoning_roof_lidar: %s -> %s, %d beams x %d columns, mount [%.3f %.3f %.3f] m, scatter %.4f deg, %d sweeps listed",
+                             name, sensor.component_id, sensor.n_rows, sensor.n_columns, *sensor._t, sensor.fit_residual_deg, len(sensor._sweeps))
+              return [sensor]
+          ROOF_LIDAR_PY
+          cat > /scratch/overlay/convert_structured.py <<'CONVERT_PY'
+          """NCore conversion of one nuReasoning clip with the roof LiDAR as an extra structured component.
+
+          Runs the NCore half of navsafe.gs3d_converter.convert_nureasoning on a patched COPY of the repository (the Arrow half is
+          not needed: the reader works on the parser directly). convert_nureasoning itself forces NUPLAN_STRUCTURED_LIDAR=0, so
+          it cannot be used as it is.
+          env: NUR_DATA_ROOT, NUR_CLIP_ID, NUR_OUTPUT (root that gets ncore/clips/<clip>), plus the env of nureasoning_roof_lidar.py
+          """
+          import json
+          import os
+          from pathlib import Path
+
+          os.environ["NUPLAN_STRUCTURED_LIDAR"] = "1"
+          os.environ["NUR_LIDAR_FRAME_POSES"] = "1"
+          os.environ.pop("NUREC_NO_LIDAR", None)
+
+          import navsafe.gs3d_converter.ncore_bridge as bridge
+          import navsafe.gs3d_converter.nuplan_multi_lidar as roof
+          from navsafe.gs3d_converter.log_ingestion import NuReasoningLogReader
+          from navsafe.gs3d_converter.nureasoning_upstream import NuReasoningParser
+
+          for module in (bridge, roof):
+              assert module.__file__.startswith("/scratch/repo/"), f"{module.__name__} comes from {module.__file__}, not the patched copy"
+          assert "NUR_LIDAR_FRAME_POSES" in Path(bridge.__file__).read_text()
+
+          clip, out = os.environ["NUR_CLIP_ID"], Path(os.environ["NUR_OUTPUT"])
+          parser = NuReasoningParser(Path(os.environ["NUR_DATA_ROOT"]), split="nureasoning-mini_train", clip_ids=[clip])
+          assert [log.clip_id for log in parser.logs] == [clip] and parser.logs[0].has_lidar
+          done = []
+          for scene in NuReasoningLogReader(parser=parser).iter_scenes():
+              clip_dir = bridge.NCoreBridge.prepare(scene, out / "ncore")
+              source = next(log.provenance() for log in parser.logs if log.clip_id == scene.clip_id)
+              source["structured_lidar"] = {"component": "lidar_top_structured", "raw_lidar_info": 0, "calibration": os.environ["NUPLAN_LIDAR_CALIB_JSON"],
+                                            "note": "roof LiDAR, first returns, zero-duration frames (the sweep is motion-compensated)"}
+              (Path(clip_dir) / "nureasoning_source.json").write_text(json.dumps(source, indent=2) + "\n")
+              done.append(str(clip_dir))
+              print("NCORE_DONE", clip_dir, flush=True)
+          assert len(done) == 1, done
+          CONVERT_PY
+          printf '%s  %s\n' "$SHA_PATCH" /scratch/overlay/patch_bridge.py "$SHA_ROOF" /scratch/repo/navsafe/gs3d_converter/nuplan_multi_lidar.py "$SHA_CONVERT" /scratch/overlay/convert_structured.py | sha256sum -c -
+          export PATH=/scratch/convert-venv/bin:$PATH PYTHONPATH=/scratch/repo
+          python /scratch/overlay/patch_bridge.py /scratch/repo/navsafe/gs3d_converter/ncore_bridge.py
+          cd /scratch
+          python -u /scratch/overlay/convert_structured.py
+          test -s "$DEST/pai_$NUR_CLIP_ID.json"
+          test -s "$DEST/nurec_origin_offset.json"
+          grep -q lidar_top_structured "$DEST/pai_$NUR_CLIP_ID.json"
+          test -s "$DEST/pai_$NUR_CLIP_ID.ncore4-lidar_top_structured.zarr.itar"
+          cmp "$DEST/nurec_origin_offset.json" "$OLD_NCORE_DIR/nurec_origin_offset.json"
+          ls -l "$DEST"
+          (cd "$DEST" && sha256sum pai_*.itar pai_*.json > "$NUR_OUTPUT/diagnostics/$NUR_CLIP_ID/ncore.sha256")
+          date -u +%FT%TZ > "$NUR_OUTPUT/diagnostics/$NUR_CLIP_ID/convert.ready"
+          echo "CONVERT_COMPLETE $NUR_CLIP_ID"
+        env:
+        - name: NUR_CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NUR_DATA_ROOT
+          value: /hugsim-storage/nuReasoning_mini/data
+        - name: NUR_OUTPUT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/lidar-structured-20261009
+        - name: NUR_LIDAR_RAW_CLIP
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NUPLAN_LIDAR_CALIB_JSON
+          value: /hugsim-storage/nuReasoning_mini/pipeline/lidar-structured-20261009/calib/660c2f7a.json
+        - name: OLD_NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: SHA_PATCH
+          value: a471d87309dd27658ed0182b620c56fab516ab31d8dafd6f4a88d26ee418c455
+        - name: SHA_ROOF
+          value: 558d2b461eae6870408c8eba588bc57b55c1a4eeb7e5fc2575a6225a482d3517
+        - name: SHA_CONVERT
+          value: fb4407279afea48e8af7c5a612dac462d1ad3f7950a0677d8fc6f939bb5eba74
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        resources:
+          requests:
+            cpu: '4'
+            memory: 16Gi
+            ephemeral-storage: 160Gi
+          limits:
+            cpu: '4'
+            memory: 16Gi
+            ephemeral-storage: 160Gi
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: scratch
+          mountPath: /scratch
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 150Gi  # the conversion environment (uv venv + cache) alone exceeds 35Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule
+      - key: nautilus.io/cogrob
+        operator: Exists
+        effect: NoSchedule

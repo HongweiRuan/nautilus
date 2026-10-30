@@ -1,0 +1,137 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-moge2-depth-20261011
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: moge2-depth
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 14400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - name: export
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          OUT="$ROOT/aux_depth_moge2_20261011/$C"
+          if [ -s "$OUT/ready" ]; then echo ALREADY_DONE; fi
+          mkdir -p "$OUT/$HOSTNAME" /work/ncore
+          exec > >(tee -a "$OUT/$HOSTNAME/export.log") 2>&1
+          cp -a "$ROOT/inputs_lidar4_20261009/$C/clips/$C/." /work/ncore/
+          cat > /work/export.py <<'EXPORT_PY'
+          import json, os, pathlib
+          from ncore.data.v4 import SequenceComponentGroupsReader, SequenceLoaderV4
+          manifest = pathlib.Path(os.environ["MOGE_MANIFEST"]); work = pathlib.Path("/work")
+          m = json.loads(manifest.read_text())
+          loader = SequenceLoaderV4(SequenceComponentGroupsReader([manifest.parent / s["path"] for s in m["component_stores"]]))
+          cams = {}
+          for cam in sorted(loader.camera_ids):
+              s = loader.get_camera_sensor(cam); p = s.model_parameters
+              cams[cam] = {"width": int(p.resolution[0]), "height": int(p.resolution[1]), "fx": float(p.focal_length[0])}
+              (work / "images" / cam).mkdir(parents=True, exist_ok=True)
+              stamps = [int(t) for t in s.get_frames_timestamps_us()]
+              for i, ts in enumerate(stamps):
+                  (work / "images" / cam / f"{ts}.jpg").write_bytes(bytes(s.get_frame_data(i)._encoded_image_data))
+              print("EXPORTED", cam, len(stamps), cams[cam], flush=True)
+          json.dump(cams, open(work / "cameras.json", "w"))
+          EXPORT_PY
+          R=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main
+          PY="$R/internal/scripts/pycena/runtime/pycena_run_venv_deps.venv/bin/python"
+          export PYTHONPATH="$R"
+          MOGE_MANIFEST=/work/ncore/pai_$C.json "$PY" /work/export.py
+          rm -r /work/ncore
+          find /work/images -name "*.jpg" | wc -l
+          echo EXPORT_STAGE_DONE
+        resources:
+          requests: {cpu: '3', memory: 16Gi, ephemeral-storage: 60Gi}
+          limits: {cpu: '3', memory: 19Gi, ephemeral-storage: 60Gi}
+        volumeMounts: &id003
+        - {name: avl-west-vol, mountPath: /avl-west}
+        - {name: work, mountPath: /work}
+      containers:
+      - name: moge2
+        image: pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          OUT="$ROOT/aux_depth_moge2_20261011/$C"
+          mkdir -p "$OUT/$HOSTNAME"
+          exec > >(tee -a "$OUT/$HOSTNAME/moge2.log") 2>&1
+          if [ -s "$OUT/ready" ]; then echo ALREADY_DONE; exit 0; fi
+          nvidia-smi --query-gpu=index,name,memory.total --format=csv
+          export DEBIAN_FRONTEND=noninteractive HF_HOME=/work/hf
+          apt-get update -qq && apt-get install -y -qq git libgl1 libglib2.0-0 >/dev/null
+          pip install -q opencv-python-headless "git+https://github.com/microsoft/MoGe.git"
+          pip freeze > "$OUT/$HOSTNAME/packages.txt"
+          cat > /work/infer.py <<'INFER_PY'
+          import json, math, pathlib, time
+          import cv2, numpy as np, torch
+          from moge.model.v2 import MoGeModel
+          MAXD = 300.0
+          out = pathlib.Path("/work/depth"); cams = json.load(open("/work/cameras.json"))
+          model = MoGeModel.from_pretrained("Ruicheng/moge-2-vitl-normal").cuda().eval()
+          t0 = time.time(); n = 0
+          for cam, c in cams.items():
+              fov_x = math.degrees(2 * math.atan(c["width"] / (2 * c["fx"])))
+              (out / cam).mkdir(parents=True, exist_ok=True)
+              files = sorted((pathlib.Path("/work/images") / cam).glob("*.jpg"))
+              med = []
+              for f in files:
+                  img = cv2.cvtColor(cv2.imread(str(f)), cv2.COLOR_BGR2RGB)
+                  assert img.shape[:2] == (c["height"], c["width"]), img.shape
+                  x = torch.tensor(img / 255.0, dtype=torch.float32, device="cuda").permute(2, 0, 1)
+                  with torch.no_grad():
+                      r = model.infer(x, fov_x=fov_x)
+                  d = r["depth"].float().cpu().numpy(); mask = r["mask"].cpu().numpy().astype(bool)
+                  d[~mask | ~np.isfinite(d)] = 0
+                  assert d.shape == img.shape[:2], d.shape
+                  assert cv2.imwrite(str(out / cam / (f.stem + ".png")), np.clip(d / MAXD * 65535.0, 0, 65535).astype(np.uint16))
+                  med.append(float(np.median(d[d > 0])) if (d > 0).any() else 0.0); n += 1
+              print("MOGE2", cam, len(files), "frames, fov_x %.1f deg, median depth %.1f m, valid share of the last frame %.2f, %.2f s per image so far" % (
+                  fov_x, float(np.median(med)), float((d > 0).mean()), (time.time() - t0) / n), flush=True)
+          json.dump({"max_depth_m": MAXD, "model": "Ruicheng/moge-2-vitl-normal", "frames": n, "fov_from": "stored focal length"}, open(out / "meta.json", "w"))
+          print("MOGE2_DONE", n, flush=True)
+          INFER_PY
+          python /work/infer.py
+          test "$(find /work/depth -name '*.png' | wc -l)" -eq "$(find /work/images -name '*.jpg' | wc -l)"
+          mkdir -p "$OUT/depth"
+          cp -a /work/depth/. "$OUT/depth/"
+          test "$(find "$OUT/depth" -name '*.png' | wc -l)" -eq "$(find /work/images -name '*.jpg' | wc -l)"
+          date -u +%FT%TZ > "$OUT/ready"
+          echo MOGE2_STAGE_DONE
+        resources:
+          requests: {cpu: '3', memory: 16Gi, ephemeral-storage: 60Gi, nvidia.com/gpu: '1'}
+          limits: {cpu: '3', memory: 19Gi, ephemeral-storage: 60Gi, nvidia.com/gpu: '1'}
+        volumeMounts: *id003
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: work
+        emptyDir: {sizeLimit: 50Gi}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

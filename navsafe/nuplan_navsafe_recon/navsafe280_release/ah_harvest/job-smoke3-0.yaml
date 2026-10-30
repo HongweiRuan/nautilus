@@ -1,0 +1,113 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-ah-smoke3-0
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-ah
+    stage: harvest
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: harvest
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          nvidia-smi -L || exit 3
+
+          FAILED=
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/005f87dd980253a5/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/005f87dd980253a5 harvest 005f87dd980253a5 --max-assets 30; rc=$?; echo "[ah] 005f87dd980253a5 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/005f87dd980253a5/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/005f87dd980253a5/NOTHING_TO_HARVEST ]; then echo "[ah] 005f87dd980253a5 EMPTY"; else FAILED="$FAILED 005f87dd980253a5"; fi; }
+
+          echo "AH_LANE_DONE failed:$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NAVSAFE_AH_HOME
+          value: /avl-west/asset_harvester
+        - name: HF_HOME
+          value: /avl-west/asset_harvester/hf
+        - name: NAVSAFE_WORK
+          value: /avl-west/navsafe280_release_20261021/ah_work
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 12Gi
+            ephemeral-storage: 40Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '3'
+            memory: 14Gi
+            ephemeral-storage: 40Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-eval-r1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

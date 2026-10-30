@@ -1,0 +1,44 @@
+# navsafe-promo-util2 -- CPU-only utility pod for the promo video (read metrics_all, cut clips with ffmpeg).
+# Bare pod, 6 h activeDeadlineSeconds -- it self-terminates.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: navsafe-promo-util2
+  namespace: cogrob
+  labels: {k8s-app: navsafe-promo-util2}
+  annotations:
+    nrp.ai/username: http://cilogon.org/serverE/users/439386
+spec:
+  activeDeadlineSeconds: 21600
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: topology.kubernetes.io/region, operator: In, values: [us-west]}
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  containers:
+  - name: util
+    image: robinwangucsd/metabench:latest
+    imagePullPolicy: IfNotPresent
+    command: [bash, -lc]
+    args: ["echo 'navsafe-promo-util2 up'; sleep infinity"]
+    env:
+    - name: PYTHONPATH
+      value: "/hugsim-storage/NexusSim:/hugsim-storage/NexusSim/third_party/nurec_protos:/hugsim-storage/NexusSim/third_party"
+    - name: NAVSAFE_WORK
+      value: "/avl-west/navsafe_dev"
+    resources:
+      limits:   {cpu: '4', memory: 24Gi, ephemeral-storage: 20Gi}
+      requests: {cpu: '2', memory: 16Gi, ephemeral-storage: 20Gi}
+    volumeMounts:
+    - {mountPath: /avl-west,      name: avl-west-vol}
+    - {mountPath: /hugsim-storage, name: hugsim-storage}
+  volumes:
+  - name: avl-west-vol
+    persistentVolumeClaim: {claimName: avl-west-vol}
+  - name: hugsim-storage
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}

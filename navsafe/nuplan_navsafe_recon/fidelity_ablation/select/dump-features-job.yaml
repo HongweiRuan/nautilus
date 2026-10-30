@@ -1,0 +1,49 @@
+# One GPU, about 40 min: features of the earlier fidelity evaluation, per frame and per window (see dump_features.py).
+apiVersion: batch/v1
+kind: Job
+metadata: {name: navsafe-fidabl-dump-features-1012, namespace: cogrob, labels: {app: navsafe-fidelity-ablation, stage: select}}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 14400
+  template:
+    metadata: {labels: {app: navsafe-fidelity-ablation, stage: select}}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ue
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command: ["bash", "-c"]
+        args:
+        - |
+          set -o pipefail
+          unset PYTHONPATH
+          ROOT=/avl-west/drivearena_bench
+          source /opt/conda/etc/profile.d/conda.sh
+          conda activate $ROOT/envs/ue
+          cd $ROOT/unified_evaluator && source env.sh
+          export OUT=/avl-west/navsafe_fidelity_ablation_20261012/select
+          mkdir -p $OUT
+          python3 /cfg/dump_features.py 2>&1 | tee $OUT/dump.$HOSTNAME.log
+          grep -q DUMP_DONE $OUT/dump.$HOSTNAME.log
+        resources:
+          requests: {cpu: "3", memory: 24Gi, nvidia.com/gpu: "1", ephemeral-storage: 20Gi}
+          limits: {cpu: "3", memory: 28Gi, nvidia.com/gpu: "1", ephemeral-storage: 20Gi}
+        volumeMounts:
+        - {name: dshm, mountPath: /dev/shm}
+        - {name: avl-west-vol, mountPath: /avl-west}
+        - {name: cfg, mountPath: /cfg}
+      volumes:
+      - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 8Gi}}
+      - {name: avl-west-vol, persistentVolumeClaim: {claimName: avl-west-vol}}
+      - {name: cfg, configMap: {name: navsafe-fidabl-select-1012}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-11.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

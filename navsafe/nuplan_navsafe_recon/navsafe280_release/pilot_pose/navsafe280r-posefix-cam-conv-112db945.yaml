@@ -1,0 +1,119 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-posefix-cam-conv-112db945
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-pilot
+    stage: convert
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: convert
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - 'set -euo pipefail
+
+          mkdir -p /avl-west/navsafe280_release_20261021/posefix_cam/lidar_calib /avl-west/navsafe280_release_20261021/posefix_cam/audit8 /avl-west/navsafe280_release_20261021/posefix_cam/aux/112db94505025ec5
+
+          [ -s /avl-west/navsafe280_release_20261021/posefix_cam/lidar_calib/2021.08.30.16.16.44_veh-40_01099_01351.json ] || cp /avl-west/navsafe280_release_20261021/lidar_calib/2021.08.30.16.16.44_veh-40_01099_01351.json /avl-west/navsafe280_release_20261021/posefix_cam/lidar_calib/2021.08.30.16.16.44_veh-40_01099_01351.json
+
+          bash /pipeline/convert.sh
+
+          grep -q "NCORE_RIG_ROT=0.37,1.13" /avl-west/navsafe280_release_20261021/posefix_cam/prep/112db94505025ec5/*/convert.log
+
+          cat /avl-west/navsafe280_release_20261021/posefix_cam/prep/112db94505025ec5/*/convert.log | grep -c "NCORE_CAM_ROT camera_" | grep -qx 8
+
+          cp /avl-west/navsafe280_release_20261021/inputs/112db94505025ec5/clips/112db94505025ec5/112db94505025ec5.aux.*.zarr.itar /avl-west/navsafe280_release_20261021/posefix_cam/inputs/112db94505025ec5/clips/112db94505025ec5/
+
+          cp /avl-west/navsafe280_release_20261021/aux/112db94505025ec5/aux.sha256 /avl-west/navsafe280_release_20261021/posefix_cam/aux/112db94505025ec5/aux.sha256
+
+          (cd /avl-west/navsafe280_release_20261021/posefix_cam/inputs/112db94505025ec5/clips/112db94505025ec5 && sha256sum -c --quiet /avl-west/navsafe280_release_20261021/posefix_cam/aux/112db94505025ec5/aux.sha256)
+
+          [ -s /avl-west/navsafe280_release_20261021/posefix_cam/audit8/112db94505025ec5.json ] || cp /avl-west/navsafe280_release_20261021/audit8/112db94505025ec5.json /avl-west/navsafe280_release_20261021/posefix_cam/audit8/112db94505025ec5.json
+
+          date -u +%FT%TZ > /avl-west/navsafe280_release_20261021/posefix_cam/aux/112db94505025ec5/ready
+
+          echo POSEFIX_CLIP_READY 112db94505025ec5
+
+          '
+        env:
+        - name: ROOT
+          value: /avl-west/navsafe280_release_20261021/posefix_cam
+        - name: C
+          value: 112db94505025ec5
+        - name: LOG
+          value: 2021.08.30.16.16.44_veh-40_01099_01351
+        - name: T0
+          value: '1630341561950081'
+        - name: T1
+          value: '1630341582049994'
+        - name: NCORE_RIG_ROT
+          value: 0.37,1.13
+        - name: NCORE_CAM_ROT
+          value: pcam_b0:0.0275,-0.0360,0.0912;pcam_f0:0.0890,0.2076,-0.1581;pcam_l0:0.0708,0.1273,-0.0011;pcam_l1:0.1229,0.2370,-0.1106;pcam_l2:0.0730,0.1134,-0.0162;pcam_r0:-0.0936,0.1139,0.1029;pcam_r1:0.0100,-0.2420,0.0589;pcam_r2:0.0888,-0.1864,-0.1059
+        resources:
+          requests:
+            cpu: '3'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '3'
+            memory: 33Gi
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-pilot-pose
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

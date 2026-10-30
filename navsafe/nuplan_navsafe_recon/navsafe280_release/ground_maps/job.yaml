@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-groundmap
+  namespace: cogrob
+  labels: {app: navsafe280-groundmap}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: {app: navsafe280-groundmap}
+    spec:
+      restartPolicy: Never
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+      containers:
+      - name: gm
+        image: robinwangucsd/metabench:latest
+        command: [bash, -lc]
+        args:
+        - |
+          unset PYTHONPATH; source /opt/conda/etc/profile.d/conda.sh; conda activate /avl-west/drivearena_bench/envs/ue
+          O=/avl-west/navsafe280_release_20261021/ground_maps; mkdir -p $O
+          todo=$(for t in $(cat /cfg/order.txt); do [ -s $O/$t.npz ] || echo $t; done)
+          echo "todo $(echo $todo | wc -w)"
+          set -- $todo; a=""; b=""; i=0
+          for t in "$@"; do if [ $((i % 2)) -eq 0 ]; then a="$a $t"; else b="$b $t"; fi; i=$((i + 1)); done
+          python /cfg/make_ground_maps.py $O $a 2>&1 | grep -v Warning & pa=$!
+          python /cfg/make_ground_maps.py $O $b 2>&1 | grep -v Warning & pb=$!
+          wait $pa; ra=$?; wait $pb; rb=$?
+          n=$(for t in $(cat /cfg/order.txt); do [ -s $O/$t.npz ] && echo $t; done | wc -l)
+          echo "GROUNDMAP_DONE maps=$n rc=$ra,$rb"; [ "$n" -eq 280 ]
+        resources:
+          requests: {cpu: "2", memory: 16Gi}
+          limits: {cpu: 2400m, memory: 19Gi}
+        volumeMounts:
+        - {name: avl-west, mountPath: /avl-west}
+        - {name: cfg, mountPath: /cfg}
+      volumes:
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: cfg
+        configMap: {name: navsafe280r-groundmap}

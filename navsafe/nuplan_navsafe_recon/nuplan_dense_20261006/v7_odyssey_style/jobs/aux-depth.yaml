@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-aux-depth-20261010
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: aux
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: nre-aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          # Metric Depth Anything V2 for every camera image (NRE aux tool). Used for the camera `distance` loss and for
+          # camera-depth points in the initialisation. Written to a new directory; the other aux stores are not touched.
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          SRC="$ROOT/inputs_lidar4_20261009/$C/clips/$C"
+          OUT="$ROOT/aux_depth_20261010/$C"
+          mkdir -p "$OUT/$HOSTNAME" "$OUT/store" /scratch/ncore /scratch/out
+          exec > >(tee -a "$OUT/$HOSTNAME/aux.log") 2>&1
+          if [ -s "$OUT/ready" ]; then echo AUX_DEPTH_ALREADY_READY; exit 0; fi
+          nvidia-smi --query-gpu=index,uuid,name,temperature.gpu --format=csv
+          cp -a "$SRC"/pai_$C.json "$SRC"/pai_$C.ncore4*.zarr.itar /scratch/ncore/
+          /app/apps/nre_tools ncore-aux-data --dataset-path=/scratch/ncore/pai_$C.json --output-dir=/scratch/out --segmentation-backend=none --no-ego-mask --no-lidar-seg-camvis --depth-backend=depthanythingv2 --max-depth-m=80 --zarr-store-type=itar --store-meta
+          ls -l /scratch/out
+          n=0; for f in /scratch/out/*.aux.*.zarr.itar; do test -s "$f"; cp "$f" "$OUT/store/$C.aux.${f##*.aux.}"; n=$((n+1)); done
+          test "$n" -ge 1
+          ls -l "$OUT/store"
+          (cd "$OUT/store"; sha256sum *.itar) > "$OUT/aux_depth.sha256"
+          date -u +%FT%TZ > "$OUT/ready"
+          echo AUX_DEPTH_DONE "$C"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        resources:
+          requests:
+            cpu: '4'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '4'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 172800

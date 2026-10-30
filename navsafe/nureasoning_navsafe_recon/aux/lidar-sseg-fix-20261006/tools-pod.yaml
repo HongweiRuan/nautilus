@@ -1,0 +1,34 @@
+# CPU-only pod (no GPU) with the NRE GA26.04 nre-tools (aux) runtime and both PVCs: inspects aux stores and verifies the
+# regenerated lidar-sseg. Finite sleep so it exits on its own after 3h.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nur-auxfix-tools
+  namespace: cogrob
+  labels: {app: navsafe-nureasoning-audit}
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+  - name: tools
+    image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+    command: ["bash", "-c", "sleep 10800"]
+    resources:
+      requests: {cpu: "4", memory: 24Gi, ephemeral-storage: 20Gi}
+      limits: {cpu: "4", memory: 24Gi, ephemeral-storage: 20Gi}
+    volumeMounts:
+    - {name: avl-west, mountPath: /avl-west}
+    - {name: hugsim, mountPath: /hugsim-storage}
+  volumes:
+  - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+  - {name: hugsim, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [ry-gpu-06.sdsc.optiputer.net, ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+  tolerations:
+  - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}

@@ -1,0 +1,1595 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: navsafe-nuplan20-ltf-bench-cfg-20261012-r7
+  namespace: cogrob
+data:
+  audit_models.py: "\"\"\"Audit actual final checkpoints in the native NRE environment before serving.\"\"\"\nimport glob\nimport json\nimport os\nfrom pathlib import Path\nimport zipfile\nimport torch\n\npaths = sorted(glob.glob(os.environ['NAVSAFE_ARTIFACT_GLOB']))\nassert len(paths) == int(os.environ['NAVSAFE_EXPECTED_MODELS']), paths\nrows = []\nfor p in paths:\n    with zipfile.ZipFile(p) as z:\n        with z.open('checkpoint.ckpt') as stream:\n            checkpoint = torch.load(stream, map_location='cpu', weights_only=False)\n        step = int(checkpoint['global_step'])\n        assert step == int(os.environ.get('NAVSAFE_EXPECTED_STEP', '160000')), (p, step)\n        del checkpoint\n        r = json.loads(z.read('rig_trajectories.json'))\n    cams = sorted(k.split('@')[0] for k in r['camera_calibrations'])\n    assert {'camera_pcam_f0', 'camera_pcam_b0', 'camera_pcam_l0', 'camera_pcam_r0'} <= set(cams)\n    rows.append({'path': p, 'global_step': step, 'cameras': cams,\n                 'world_to_nre': r['world_to_nre'], 'sequence_id': r['rig_trajectories'][0]['sequence_id']})\nPath(os.environ['NAVSAFE_MODEL_AUDIT']).write_text(json.dumps(rows, indent=2))\nprint('ACTUAL_160K_MODELS_AUDITED', len(rows), flush=True)\n"
+  fixer_worker.py: "\"\"\"Resident Odyssey Fixer worker for the NavSafe benchmark (runs in the Fixer environment, on the evaluator's GPU).\n\nUses Odyssey's own Restorer (OdysseyRenderer/fixer/fixer_server.py: fine-tuned h1_b16_e1_model_11001.pkl, torch bf16,\none denoising step, timestep 250, network at 576x1024). One request = all camera images of one step as one batch.\nWire format on a local socket: 12-byte header (n, h, w as int32) + n*h*w*3 uint8 BGR, reply in the same layout.\n\"\"\"\nimport json, os, sys, time\nfrom multiprocessing.connection import Listener\nimport numpy as np\nimport torch\n\nROOT = os.environ[\"FIXER_ROOT\"]\nsys.path.insert(0, ROOT); os.chdir(ROOT)\nfrom fixer_server import Restorer, PROC_H, PROC_W, TIMESTEP  # noqa: E402\n\nOUT = os.environ.get(\"BENCH_OUT\", \"/tmp/bench\")\nt0 = time.time()\nr = Restorer(os.path.join(ROOT, \"models/finetuned/h1_b16_e1_model_11001.pkl\"), os.path.join(ROOT, \"src\"))\nfor _ in range(3):                                   # warm-up at the benchmark batch size\n    r.restore(np.zeros((3, 1080, 1920, 3), np.uint8), bgr=True)\ntorch.cuda.synchronize(); torch.cuda.reset_peak_memory_stats()\nprint(\"FIXER_READY load_s %.1f proc %dx%d timestep %d cudnn_benchmark_disabled %s\" % (time.time() - t0, PROC_H, PROC_W, TIMESTEP, getattr(r, \"cudnn_benchmark_disabled\", None)), flush=True)\nlog = open(os.path.join(OUT, \"fixer_worker.jsonl\"), \"a\", buffering=1)\nlistener = Listener((\"127.0.0.1\", 8091), authkey=b\"navsafe-bench\")\ncalls = 0\nwhile True:\n    conn = listener.accept()\n    try:\n        while True:\n            head = np.frombuffer(conn.recv_bytes(), np.int32)\n            if head[0] == 0:\n                raise EOFError\n            n, h, w = (int(x) for x in head)\n            batch = np.frombuffer(conn.recv_bytes(), np.uint8).reshape(n, h, w, 3)\n            torch.cuda.synchronize(); t = time.perf_counter()\n            out = r.restore(np.ascontiguousarray(batch), bgr=True)\n            torch.cuda.synchronize(); ms = (time.perf_counter() - t) * 1e3\n            conn.send_bytes(np.ascontiguousarray(out).tobytes())\n            log.write(json.dumps({\"call\": calls, \"n\": n, \"restore_ms\": ms, \"max_allocated_mib\": torch.cuda.max_memory_allocated() / 2**20,\n                                  \"max_reserved_mib\": torch.cuda.max_memory_reserved() / 2**20}) + \"\\n\")\n            if calls in (20, 100, 180):                # a few before/after pairs to look at\n                try:\n                    from PIL import Image\n                    for k in range(n):\n                        Image.fromarray(batch[k][:, :, ::-1]).save(os.path.join(OUT, \"sample_call%03d_cam%d_in.jpg\" % (calls, k)), quality=92)\n                        Image.fromarray(out[k][:, :, ::-1]).save(os.path.join(OUT, \"sample_call%03d_cam%d_fixer.jpg\" % (calls, k)), quality=92)\n                except Exception as exc:\n                    print(\"sample save failed\", repr(exc), flush=True)\n            calls += 1\n    except EOFError:\n        conn.close()\n"
+  nuplan_training_optimizations.py: "\"\"\"nuPlan NRE ablation entrypoint: lens-only or validated optimizations 2/3/4/5.\n\nInvoked directly with /app/run run-script; all training flags live in the Job YAML.\nSource NCore images, auxiliary labels and cuboid trajectories are never rewritten.\n\"\"\"\nimport os\nimport json\nfrom pathlib import Path\nimport numpy as np\n\nACTOR_SCALE_CAP = 0.5\nDEFORMABLE_RELOCATE_END_STEP = 35000\nRELOCATE_TRACK_FLOOR = {\"dynamic_rigids\": 400, \"static_rigids\": 400, \"dynamic_deformables\": 3000}\nREPORT_DIR = Path(os.environ.get(\"NAVSAFE_REPORT_DIR\", \"/tmp/navsafe_reports\"))\n\ndef _say(*args):\n    print(\"[navsafe-nuplan]\", *args, flush=True)\n\ndef _write_report(name, data):\n    REPORT_DIR.mkdir(parents=True, exist_ok=True)\n    (REPORT_DIR / name).write_text(json.dumps(data, indent=2))\n\n\ndef install_camera_distortion_patch(lens):\n    # nuPlan ships measured Brown-Conrady radial AND tangential coefficients.\n    # Existing matching calibration stays untouched; a conflicting one fails.\n    import dataclasses\n    from ncore.impl.data.v4.compat import SequenceLoaderV4\n    original = SequenceLoaderV4.get_camera_sensor\n    reported = {}\n    def calibrated(self, sensor_id):\n        sensor = original(self, sensor_id)\n        expected = lens[sensor_id]\n        params = sensor._model_parameters\n        radial = np.asarray(expected[\"radial\"], dtype=np.float32)\n        tangential = np.asarray(expected[\"tangential\"], dtype=np.float32)\n        same = np.allclose(params.radial_coeffs, radial, atol=1e-7) and np.allclose(params.tangential_coeffs, tangential, atol=1e-7)\n        if not same:\n            if np.any(params.radial_coeffs) or np.any(params.tangential_coeffs):\n                raise RuntimeError(f\"Conflicting nuPlan calibration: {sensor_id}\")\n            sensor._model_parameters = dataclasses.replace(params, radial_coeffs=radial, tangential_coeffs=tangential)\n        if sensor_id not in reported:\n            reported[sensor_id] = {\"already_correct\": bool(same), **expected}\n            _write_report(\"lens_calibration.json\", reported)\n            _say(\"lens\", sensor_id, \"already correct\" if same else \"restored from DB\")\n        return sensor\n    SequenceLoaderV4.get_camera_sensor = calibrated\n\n\ndef allocate_track_budget(weights, total, floor):\n    \"\"\"Largest-remainder allocation preserving the original layer's total budget.\"\"\"\n    weights = np.asarray(weights, dtype=float)\n    n = len(weights)\n    if not n:\n        return np.array([], dtype=np.int64)\n    floor = min(floor, total // n)\n    shares = weights / weights.sum() * (total - n * floor)\n    counts = np.floor(shares).astype(np.int64) + floor\n    extra = int(total - counts.sum())\n    counts[np.argsort(-(shares - np.floor(shares)), kind=\"stable\")[:extra]] += 1\n    assert int(counts.sum()) == total and np.all(counts > 0)\n    return counts\n\n\ndef install_track_target_patch():\n    import torch\n    import nre.models.gaussians.initializations as initializations\n    original = initializations.DynamicTracksInitialization.initialize_from_datasource\n    reports = []\n    def initialize(self, datasource, **kwargs):\n        tracks = kwargs.get(\"cuboid_tracks\")\n        tokens = list(tracks.tracks_id) if tracks is not None else []\n        if not tokens:\n            return original(self, datasource, **kwargs)\n        dims = tracks.cuboids_dims.detach().cpu().numpy()\n        # Surface area allocates more points to buses and trucks than small actors.\n        weights = np.maximum(dims[:, 0]*dims[:, 1] + dims[:, 0]*dims[:, 2] + dims[:, 1]*dims[:, 2], 1e-6)\n        previous_per_track = self.config.num_point_cloud_points_per_track\n        previous_layer = self.config.num_point_cloud_points_in_layer\n        total = len(tokens) * previous_per_track\n        if previous_layer is not None:\n            total = min(total, previous_layer)\n        floor = 3000 if self.config.get(\"symmetric_axis\") is None else 400\n        counts = allocate_track_budget(weights, total, floor)\n        targets = dict(enumerate(map(int, counts)))\n        saved = initializations.subsample_points\n        # Raise the temporary per-track cap so big actors can reach their allocation.\n        self.config.num_point_cloud_points_per_track = int(counts.max())\n        self.config.num_point_cloud_points_in_layer = total\n        initializations.subsample_points = targeted_subsample(saved, targets)\n        try:\n            result = original(self, datasource, **kwargs)\n        finally:\n            initializations.subsample_points = saved\n            self.config.num_point_cloud_points_per_track = previous_per_track\n            self.config.num_point_cloud_points_in_layer = previous_layer\n        ids = self.gaussian_cuboid_ids\n        ids = torch.cat([g.reshape(-1) for g in ids]) if isinstance(ids, (list, tuple)) else ids.reshape(-1)\n        actual = torch.bincount(ids.long(), minlength=len(tokens)).cpu().tolist()\n        if actual != counts.tolist():\n            raise RuntimeError(f\"Track allocation mismatch: wanted {counts.tolist()}, got {actual}\")\n        reports.append({\"total\": total, \"targets\": {str(t): int(k) for t, k in zip(tokens, counts)}, \"actual\": actual})\n        _write_report(\"track_budgets.json\", reports)\n        _say(\"actor initialization\", len(tokens), \"tracks\", total, \"points; min/max\", int(counts.min()), int(counts.max()))\n        return result\n    initializations.DynamicTracksInitialization.initialize_from_datasource = initialize\n\ndef install_camera_clock_patch(metadata_path):\n    import torch\n    import nre.datasets.ncore as nc\n    from ncore.impl.common.transformations import PoseInterpolator\n\n    raw_clock = json.load(open(metadata_path))[\"clock\"]\n    clock = {camera: {int(stamp): int(capture) for stamp, capture in table.items()}\n             for camera, table in raw_clock.items()}\n    original = nc.NCOREDataSource.get_rig_trajectories\n    reported = {\"done\": False}\n\n    def get_rig_trajectories_capture_clock(self):\n        rts = original(self)\n        stats = {}\n        for rt in rts.rig_trajectories:\n            pose_ts = rt.T_rig_world_timestamps_us.cpu().numpy()\n            lo, hi = int(pose_ts.min()), int(pose_ts.max())\n            for unique_id, ts in list(rt.cameras_frame_timestamps_us.items()):\n                logical = rts.camera_calibrations[unique_id].logical_sensor_name\n                table = clock.get(logical)\n                if table is None:\n                    raise RuntimeError(f\"navsafe nuPlan: no capture clock for camera {logical}\")\n                stamped = ts.cpu().numpy().astype(np.int64)\n                found = np.array([int(e) in table for e in stamped[:, 1]])\n                if not found.all():\n                    raise RuntimeError(f\"navsafe nuPlan: capture clock covers only {found.mean():.1%} of {logical} frames\")\n                capture = np.array([table.get(int(e), int(e)) for e in stamped[:, 1]], dtype=np.int64)\n                clipped = (capture < lo) | (capture > hi)\n                capture = np.clip(capture, lo, hi)\n                for i in range(1, len(capture)):  # keep strictly increasing frame times\n                    if capture[i] <= capture[i - 1]:\n                        capture[i] = stamped[i, 1] if stamped[i, 1] > capture[i - 1] else capture[i - 1] + 1\n                new = np.stack([capture, capture], axis=1)\n                rt.cameras_frame_timestamps_us[unique_id] = torch.from_numpy(new).to(ts.dtype)\n                if rt.cameras_frame_T_rig_worlds is not None and unique_id in rt.cameras_frame_T_rig_worlds:\n                    interp = PoseInterpolator(rt.T_rig_worlds.cpu().numpy(), pose_ts)\n                    T = interp.interpolate_to_timestamps(capture, dtype=np.float64)\n                    rt.cameras_frame_T_rig_worlds[unique_id] = torch.from_numpy(np.stack([T, T], axis=1))\n                off = (capture - stamped[:, 1]) / 1e3\n                stats[logical] = {\n                    \"clipped_logical_times_us\": stamped[:, 1][clipped].tolist(),\n                    \"frames\": len(capture),\n                    \"coverage\": float(found.mean()),\n                    \"offset_ms_median\": float(np.median(off)),\n                    \"offset_ms_min\": float(off.min()),\n                    \"offset_ms_max\": float(off.max()),\n                    \"frames_abs_offset_gt_30ms\": int(np.sum(np.abs(off) > 30)),\n                }\n        if not reported[\"done\"]:\n            reported[\"done\"] = True\n            _write_report(\"camera_clock.json\", {\"metadata\": metadata_path, \"cameras\": stats})\n            _say(\"camera clock:\", json.dumps({k: round(v[\"offset_ms_median\"], 1) for k, v in stats.items()}))\n        return rts\n\n    nc.NCOREDataSource.get_rig_trajectories = get_rig_trajectories_capture_clock\n    _say(\"installed camera capture-clock patch\", metadata_path)\n\n\ndef exact_subsample(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts):\n    \"\"\"Avoid NRE's per-frame truncation losing points from a track's allocation.\"\"\"\n    import torch\n    sizes = np.asarray([pc.n_points for pc in point_clouds], dtype=np.int64)\n    total = int(sizes.sum())\n    if total <= num_points:\n        return point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts\n    shares = sizes * (float(num_points) / total)\n    quotas = np.floor(shares).astype(np.int64)\n    extra = int(num_points - quotas.sum())\n    quotas[np.argsort(-(shares - quotas), kind=\"stable\")[:extra]] += 1\n    out = ([], [], [], [])\n    for pc, gid, scale, observed, quota in zip(point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts, quotas):\n        if not quota:\n            continue\n        indices = torch.as_tensor(np.random.choice(pc.n_points, int(quota), replace=False), device=pc.xyz_start.device)\n        for collected,\
+    \ part in zip(out, (pc[indices], gid[indices], scale[indices], observed)):\n            collected.append(part)\n    return out\n\n\ndef targeted_subsample(original, targets):\n    \"\"\"Replacement for NRE's subsample_points that gives every track its own number of points.\n\n    NRE fills each track of a layer to the same per-track count and then thins the whole layer by one\n    ratio, so a telehandler and a cone start with the same number of Gaussians. Relocation does not\n    repair that: Gaussians of small objects stay faintly visible instead of dying, so in the first\n    scene-budget run the telehandler ended at 8k of its 27k target. Here the layer-wide thinning is\n    replaced by one pass per track down to targets[track index]; measured (LiDAR) points are kept\n    before random filler. Calls that cover a single track are NRE's own per-track step and pass through.\n    \"\"\"\n\n    def subsample(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts):\n        owner = [int(g.reshape(-1)[0]) if g.numel() else None for g in gaussian_cuboid_ids]\n        tracks = sorted({t for t in owner if t is not None})\n        if len(tracks) <= 1 or any(t not in targets for t in tracks):\n            return exact_subsample(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts)\n        out = ([], [], [], [])\n        for track in tracks:\n            pieces = [i for i, o in enumerate(owner) if o == track]\n            measured = [i for i in pieces if observed_counts[i] > 0]\n            filler = [i for i in pieces if observed_counts[i] == 0]\n            n_measured = sum(point_clouds[i].n_points for i in measured)\n            want = targets[track]\n            parts = []\n            if n_measured > 0:\n                parts.append((min(want, n_measured), measured))\n            if filler and want > n_measured:\n                parts.append((want - n_measured, filler))\n            for n, selection in parts:\n                kept = exact_subsample(n, [point_clouds[i] for i in selection], [gaussian_cuboid_ids[i] for i in selection],\n                                [gaussian_scales[i] for i in selection], [observed_counts[i] for i in selection])\n                for collected, part in zip(out, kept):\n                    collected.extend(part)\n        return out\n\n    return subsample\n\n\ndef protect_track_floor(model, floor, opacity_threshold):\n    \"\"\"Keep at least `floor` Gaussians in every track of this layer during the next relocation pass.\n\n    Relocation takes dead Gaussians (opacity <= threshold) from anywhere in the layer and re-creates them on\n    alive ones sampled by opacity, so a small or rarely seen object can be emptied by its neighbours (e08a9f05:\n    one of two dynamic_deformables tracks ended with 0 of 60000). For every track with fewer than `floor`\n    alive Gaussians, enough of its dead ones are lifted just above the threshold to stay where they are.\n    Returns the number of Gaussians held back.\n    \"\"\"\n    import torch\n\n    ids = model.gaussian_cuboid_ids.long().view(-1)\n    opacity = model.get_densities().detach().view(-1)\n    dead = opacity <= opacity_threshold\n    if not bool(dead.any()):\n        return 0\n    n_tracks = int(ids.max()) + 1\n    need = (floor - torch.bincount(ids[~dead], minlength=n_tracks)).clamp(min=0)\n    dead_idx = torch.where(dead)[0]\n    order = torch.argsort(ids[dead_idx], stable=True)\n    sorted_idx, sorted_ids = dead_idx[order], ids[dead_idx][order]\n    rank = torch.arange(len(sorted_ids), device=ids.device) - torch.searchsorted(sorted_ids, sorted_ids)\n    keep = sorted_idx[rank < need[sorted_ids]]\n    if len(keep):\n        lifted = torch.full((len(keep),), opacity_threshold * 1.05, dtype=model.densities.dtype, device=ids.device)\n        with torch.no_grad():\n            model.densities.data.view(-1)[keep] = model.density_activation_inv(lifted)\n    return int(len(keep))\n\n\ndef cap_actor_scales(model, factor):\n    \"\"\"Keep every Gaussian of an actor layer no larger than `factor` x the longest side of its object's box.\n\n    Nothing bounds the scale of actor Gaussians (the layers are outside the MCMC strategy), and over long runs a few\n    grow to metres inside sub-metre objects: 660c2f7a sbt had 13 opaque dynamic-rigid Gaussians above 1 m at 40k\n    steps and 62 at 80k, one of them 19 m long in a 0.3 x 0.6 x 1.7 m object, which shows as a dark band on the road.\n    Returns the number of Gaussians that were clamped.\n    \"\"\"\n    import torch\n\n    tracks = getattr(model, \"cuboid_tracks\", None)\n    if tracks is None:\n        return 0\n    ids = model.gaussian_cuboid_ids.long().view(-1)\n    limit = (tracks.cuboids_dims.max(dim=1).values * factor)[ids].unsqueeze(-1)\n    raw_limit = model.scale_activation_inv(limit).to(model.scales.dtype).expand_as(model.scales.data)\n    with torch.no_grad():\n        over = int((model.scales.data > raw_limit).any(dim=1).sum())\n        if over:\n            model.scales.data.copy_(torch.minimum(model.scales.data, raw_limit))\n    return over\n\n\ndef install_actor_relocation_patch(layers):\n    \"\"\"Relocate dead Gaussians inside each actor layer on the MCMC relocation schedule.\n\n    v2 keeps actor layers out of the global MCMC so the background cannot drain them, but then\n    nothing recycles their dead Gaussians: in the v2 3M/40k checkpoint 96-98% of every actor\n    layer ended with opacity < 0.05. Here each listed layer gets its own relocation pass: dead\n    Gaussians (opacity <= threshold) move onto alive ones of the same layer (cuboid ids follow\n    the target), counts stay fixed, nothing crosses layers. Death is opacity-only; the\n    invisible-steps rule would recycle actors that are simply off-screen for a while.\n\n    Deformable layers degrade when this keeps running: 660c2f7a checkpoints after relocation\n    to 35k / 70k / 140k steps had 0 / 3 / 6 of 9 dynamic_deformables tracks collapsed into\n    needles (median anisotropy > 100, scales of metres) and the cyclist lost 2/3 of its\n    Gaussians to other tracks; without relocation (v2, 160k) none collapse. Rigid layers stay\n    healthy at every length. NUR_V3_DEFORMABLE_RELOCATE_END_STEP stops it for deformables only.\n    \"\"\"\n    from nre.models.gaussians.strategies.mcmc import MCMCStrategy\n\n    original = MCMCStrategy.update_step_train_batch_end\n    logged = {\"n\": 0, \"budget\": False}\n\n    def update_step_with_actor_relocation(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):\n        if not logged[\"budget\"]:\n            actor_count = sum(gaussians_nodes[k].get_num_gaussians() for k in layers if k in gaussians_nodes)\n            original_budget = self.config.add.max_n_gaussians\n            self.config.add.max_n_gaussians = original_budget - actor_count\n            if self.config.add.max_n_gaussians <= 0:\n                raise RuntimeError(\"Actors exceed the legacy Gaussian budget\")\n            _write_report(\"global_budget.json\", {\"original_eligible_budget\": original_budget, \"fixed_actor_points\": actor_count, \"background_budget\": self.config.add.max_n_gaussians, \"road_budget_unchanged\": True})\n            _say(\"background budget\", self.config.add.max_n_gaussians, \"actor budget\", actor_count)\n            logged[\"budget\"] = True\n        original(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs)\n        relocate = self.config.relocate\n        if ACTOR_SCALE_CAP > 0 and global_step % relocate.frequency == 0:\n            capped = {layer: cap_actor_scales(gaussians_nodes[layer], ACTOR_SCALE_CAP) for layer in layers\n                      if layer in gaussians_nodes and gaussians_nodes[layer].get_num_gaussians() > 0}\n            if global_step % (50 * relocate.frequency) == 0:\n                _say(\"actor scale cap at step\", global_step, \"clamped\", capped)\n        if not self._check_step_condition(\n            step=global_step, start=relocate.start_iteration, end=relocate.end_iteration, freq=relocate.frequency\n        ):\n            return\n        saved_exclude, saved_invisible = list(self.config.exclude_layer_ids), relocate.max_invisible_steps\n        held = {}\n        try:\n            relocate.max_invisible_steps = None\n            for layer in layers:\n                if layer not in gaussians_nodes or gaussians_nodes[layer].get_num_gaussians() == 0:\n                    continue\n                if \"deformables\" in layer and 0 < DEFORMABLE_RELOCATE_END_STEP < global_step:\n                    continue\n                if RELOCATE_TRACK_FLOOR.get(layer, 0) > 0:\n                    held[layer] = protect_track_floor(gaussians_nodes[layer], RELOCATE_TRACK_FLOOR[layer], self.config.opacity_threshold)\n                self.config.exclude_layer_ids = [name for name in gaussians_nodes.keys() if name != layer]\n                self.relocate_gaussians(gaussians_nodes)\n        finally:\n            self.config.exclude_layer_ids = saved_exclude\n            relocate.max_invisible_steps = saved_invisible\n        if logged[\"n\"] < 3:\n            logged[\"n\"] += 1\n            _say(\"actor relocation pass at step\", global_step, \"layers\", layers, \"held back by track floor\", held)\n\n    MCMCStrategy.update_step_train_batch_end = update_step_with_actor_relocation\n    _say(\"installed actor-layer relocation patch\", layers, \"deformable end step\", DEFORMABLE_RELOCATE_END_STEP or \"same as rigid\",\n         \"track floor\", RELOCATE_TRACK_FLOOR or \"none\", \"scale cap\", ACTOR_SCALE_CAP or \"none\")\n\n\n\ndef install_actor_health_logging():\n    \"\"\"Observe actor survival and scale at identical steps in both variants.\"\"\"\n    import torch\n    from nre.models.gaussians.strategies.mcmc import MCMCStrategy\n    original = MCMCStrategy.update_step_train_batch_end\n    def update(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):\n        original(self,\
+    \ epoch, global_step, batch, system, gaussians_nodes, **kwargs)\n        if global_step % 5000:\n            return\n        row = {\"step\": global_step, \"layers\": {}}\n        with torch.no_grad():\n            for name in RELOCATE_TRACK_FLOOR:\n                if name not in gaussians_nodes:\n                    continue\n                model = gaussians_nodes[name]\n                if model.get_num_gaussians() == 0:\n                    continue\n                ids = model.gaussian_cuboid_ids.long().view(-1)\n                n_tracks = len(model.cuboid_tracks.tracks_id)\n                opacity = model.get_densities().view(-1)\n                counts = torch.bincount(ids, minlength=n_tracks)\n                alive = torch.bincount(ids[opacity > self.config.opacity_threshold], minlength=n_tracks)\n                row[\"layers\"][name] = {\"points\": int(counts.sum()), \"tracks\": n_tracks, \"empty_tracks\": int((counts == 0).sum()), \"tracks_without_live_points\": int((alive == 0).sum()), \"opacity_le_005_fraction\": float((opacity <= 0.05).float().mean()), \"track_counts\": counts.cpu().tolist(), \"live_track_counts\": alive.cpu().tolist()}\n        _write_report(f\"actor_health_{global_step:06d}.json\", row)\n    MCMCStrategy.update_step_train_batch_end = update\n\n\ndef install_weights_only_validation():\n    \"\"\"NRE already loads the stripped USDZ weights in its model constructor.\n\n    Prevent Lightning's second restore from expecting discarded training-loop\n    state. This hook is installed only in evaluation processes, never training.\n    \"\"\"\n    import pytorch_lightning as pl\n    original = pl.Trainer.validate\n    def validate(self, *args, **kwargs):\n        if kwargs.get(\"ckpt_path\"):\n            _say(\"evaluating restored artifact weights; skipping training-loop restore\")\n            kwargs[\"ckpt_path\"] = None\n        return original(self, *args, **kwargs)\n    pl.Trainer.validate = validate\n\n\ndef install_paired_evaluation_logging():\n    \"\"\"Record original image timestamps, so 20s and four 5s models pair exactly.\"\"\"\n    from nre.systems.base import BaseSystemSO\n    original = BaseSystemSO.collect_metric\n    finish = BaseSystemSO.on_validation_end\n    rows = []\n    def collect(self, name, value, is_lidar=False, frame_meta=None, timestamps_startend_us=None, sequence_id=None, reduce_fx=None):\n        if frame_meta is not None and not is_lidar:\n            ds = self.datamodule.get_datasource()\n            camera = ds.all_camera_ids[frame_meta.unique_sensor_idx]\n            idx = frame_meta.unique_frame_idx - ds.camera_linear_start_frame_indices[camera] + ds.camera_frame_ranges[camera].start\n            stamp = int(ds.camera_sensors[camera].get_frame_timestamp_us(idx))\n            rows.append({\"camera\": camera, \"image_timestamp_us\": stamp, \"metric\": name, \"value\": float(value)})\n        return original(self, name, value, is_lidar=is_lidar, frame_meta=frame_meta, timestamps_startend_us=timestamps_startend_us, sequence_id=sequence_id, reduce_fx=reduce_fx)\n    def end(self):\n        finish(self)\n        _write_report(\"paired_metrics.json\", rows)\n        _say(\"paired evaluation\", len(rows), \"metric samples\")\n    BaseSystemSO.collect_metric = collect\n    BaseSystemSO.on_validation_end = end\n\n\ndef main():\n    audit_path = os.environ[\"NAVSAFE_INPUT_AUDIT\"]\n    audit = json.loads(Path(audit_path).read_text())\n    variant = os.environ[\"NAVSAFE_VARIANT\"]\n    install_camera_distortion_patch(audit[\"lens\"])\n    if variant in (\"v2\", \"eval_capture\"):\n        install_camera_clock_patch(audit_path)\n    if variant == \"v2\":\n        install_track_target_patch()\n        install_actor_relocation_patch([\"dynamic_rigids\", \"dynamic_deformables\", \"static_rigids\"])\n    elif variant not in (\"v1\", \"eval_capture\", \"eval_legacy\"):\n        raise ValueError(variant)\n    if variant in (\"v1\", \"v2\"):\n        install_actor_health_logging()\n    else:\n        install_weights_only_validation()\n        install_paired_evaluation_logging()\n    args = [a for a in Path(os.environ[\"NAVSAFE_ARGS_FILE\"]).read_text().splitlines() if a]\n    _say(\"variant\", variant, \"optimizations\", [2, 3, 4, 5] if variant == \"v2\" else [3])\n    from nre.run.main import main as nre_main\n    nre_main.main(args=args, standalone_mode=False)\n\nif __name__ == \"__main__\":\n    main()\n"
+  patch_batch.py: "\"\"\"Patch a CHECKOUT of navsafe/render/nurec_grpc.py (inside the benchmark job): render all cameras of one step with ONE\nbatch_render_rgb call instead of one render_rgb call per camera.\n\nEach camera's RGBRenderRequest is built by the unchanged _render_one code (the send is intercepted, so the request is\nbyte-for-byte the one the per-camera path would send), then the requests go out together as BatchRGBRenderRequest items.\nThe returned images are decoded by the unchanged _decode. A failed item raises inside the original try block.\nEach replacement must match exactly once.\n\"\"\"\nimport sys\n\npath = sys.argv[1]\nsrc = open(path).read()\nfor old, new in (\n    ('        images: Dict[str, np.ndarray] = {}\\n        for name, cfg in cam_configs.items():\\n',\n     '        images: Dict[str, np.ndarray] = {}\\n'\n     '        _pre = {}\\n'\n     '        if self._renderable and len(cam_configs) > 1:\\n'\n     '            _reqs, _names = [], []\\n'\n     '            self._send_render = lambda req, t0us: (_reqs.append(req), b\"\")[1]\\n'\n     '            try:\\n'\n     '                for _n, _c in cam_configs.items():\\n'\n     '                    _k = len(_reqs)\\n'\n     '                    self._render_one(_n, _c, rig2world, t0, dyn_objs)\\n'\n     '                    if len(_reqs) > _k:\\n'\n     '                        _names.append(_n)\\n'\n     '            finally:\\n'\n     '                del self._send_render\\n'\n     '            if _names:\\n'\n     '                _sspb = self._g[\"sspb\"]\\n'\n     '                _ret = self._batch_call(_sspb.BatchRGBRenderRequest(items=[\\n'\n     '                    _sspb.BatchRGBRenderRequestItem(camera_name=_n, request=_r)\\n'\n     '                    for _n, _r in zip(_names, _reqs)]))\\n'\n     '                assert sorted(i.camera_name for i in _ret.items) == sorted(_names), \"batch reply does not match the request\"\\n'\n     '                for _it in _ret.items:\\n'\n     '                    _pre[_it.camera_name] = _it\\n'\n     '        for name, cfg in cam_configs.items():\\n'),\n    ('                    rgb = self._render_one(name, cfg, rig2world, t0, dyn_objs)\\n',\n     '                    if name in _pre:\\n'\n     '                        if not _pre[name].success:\\n'\n     '                            raise RuntimeError(\"batch_render_rgb item failed: \" + _pre[name].error_message)\\n'\n     '                        rgb = self._decode(_pre[name].result.image_bytes)\\n'\n     '                    else:\\n'\n     '                        rgb = self._render_one(name, cfg, rig2world, t0, dyn_objs)\\n'),\n    ('    def _send_render(self, req, t0: int) -> bytes:\\n',\n     '    def _batch_call(self, breq):\\n'\n     '        return self._stub.batch_render_rgb(breq, timeout=self._timeout)\\n\\n'\n     '    def _send_render(self, req, t0: int) -> bytes:\\n'),\n):\n    assert src.count(old) == 1, (src.count(old), old)\n    src = src.replace(old, new)\nopen(path, 'w').write(src)\nprint('BATCH_RENDER_PATCHED', path)\n"
+  patch_fixer.py: "\"\"\"Patch a CHECKOUT of navsafe/render/nurec_grpc.py (inside the benchmark job): send the rendered camera images of a\nstep through the Odyssey Fixer worker (cfg/fixer_worker.py) before they are returned to the policy.\n\nThis REPLACES the renderer's Harmonizer with a different enhancer, so the images are different by design.\nEach replacement must match exactly once.\n\"\"\"\nimport sys\n\npath = sys.argv[1]\nsrc = open(path).read()\nfor old, new in (\n    ('        if self._render_steps is not None:\\n            self._last_images = {k: v.copy() for k, v in images.items()}\\n        return images\\n',\n     '        images = self._fixer_restore(images)\\n'\n     '        if self._render_steps is not None:\\n            self._last_images = {k: v.copy() for k, v in images.items()}\\n        return images\\n'),\n    ('    def _send_render(self, req, t0: int) -> bytes:\\n',\n     '    def _fixer_restore(self, images):\\n'\n     '        if not images:\\n'\n     '            return images\\n'\n     '        if getattr(self, \"_fixer_conn\", None) is None:\\n'\n     '            from multiprocessing.connection import Client\\n'\n     '            self._fixer_conn = Client((\"127.0.0.1\", 8091), authkey=b\"navsafe-bench\")\\n'\n     '        names = list(images)\\n'\n     '        batch = np.ascontiguousarray(np.stack([images[n] for n in names]))\\n'\n     '        n, h, w, _ = batch.shape\\n'\n     '        self._fixer_conn.send_bytes(np.array([n, h, w], np.int32).tobytes())\\n'\n     '        self._fixer_conn.send_bytes(batch.tobytes())\\n'\n     '        out = np.frombuffer(self._fixer_conn.recv_bytes(), np.uint8).reshape(n, h, w, 3)\\n'\n     '        return {name: out[i].copy() for i, name in enumerate(names)}\\n\\n'\n     '    def _send_render(self, req, t0: int) -> bytes:\\n'),\n):\n    assert src.count(old) == 1, (src.count(old), old)\n    src = src.replace(old, new)\nopen(path, 'w').write(src)\nprint('FIXER_PATCHED', path)\n"
+  patch_noisaac.py: "\"\"\"Patch a CHECKOUT (inside the benchmark job) so the evaluator runs WITHOUT Isaac Sim / Isaac Lab.\n\nAn experiment, not a proposal: it answers \"what does the evaluation lose when the simulator app is never started\".\n  * eval_entry.py: no glib preload re-exec, no AppLauncher; `simulation_app` becomes a stub.\n  * navsafe_env.py: with NAVSAFE_NO_ISAAC=1 the IsaacLab import is treated as missing, which selects the\n    environment's own pure-Python path (`_HAS_ISAACLAB = False`).\nEach replacement must match exactly once.\n\"\"\"\nimport sys\n\nroot = sys.argv[1]\nfor path, pairs in (\n    (root + \"/navsafe/cli/eval_entry.py\", (\n        ('ensure_isaac_glib_preload()\\n', 'pass  # no Isaac: nothing to preload\\n'),\n        ('from isaaclab.app import AppLauncher\\n\\nAppLauncher.add_app_launcher_args(ap)\\n', ''),\n        ('app_launcher = AppLauncher(args)\\nsimulation_app = app_launcher.app\\n',\n         'class _NoApp:\\n    def close(self):\\n        pass\\n\\n\\nsimulation_app = _NoApp()\\nprint(\"[navsafe-eval] NO ISAAC: AppLauncher skipped\", flush=True)\\n'),\n    )),\n    (root + \"/navsafe/env/navsafe_env.py\", (\n        ('try:\\n    from isaaclab.envs import DirectRLEnv\\n',\n         'try:\\n    if os.environ.get(\"NAVSAFE_NO_ISAAC\") == \"1\":\\n        raise ImportError(\"NAVSAFE_NO_ISAAC=1\")\\n    from isaaclab.envs import DirectRLEnv\\n'),\n    )),\n):\n    src = open(path).read()\n    for old, new in pairs:\n        assert src.count(old) == 1, (path, src.count(old), old)\n        src = src.replace(old, new)\n    open(path, 'w').write(src)\nprint('NO_ISAAC_PATCHED', root)\n"
+  patch_parallel.py: "\"\"\"Patch a CHECKOUT of navsafe/render/nurec_grpc.py (inside the benchmark job): send the camera requests of one step\nat the same time instead of one after the other.\n\nThe requests of one step are independent: the same timestamp, the same rig pose and the same dynamic-object list, one\ncamera each. Each camera's request and its decoding are unchanged (the same _render_one call); only the waiting\noverlaps. Errors surface in the same place, because the result is read inside the original try block.\nEach replacement must match exactly once.\n\"\"\"\nimport sys\n\npath = sys.argv[1]\nsrc = open(path).read()\nfor old, new in (\n    ('        images: Dict[str, np.ndarray] = {}\\n        for name, cfg in cam_configs.items():\\n',\n     '        images: Dict[str, np.ndarray] = {}\\n'\n     '        _pre = {}\\n'\n     '        if self._renderable and len(cam_configs) > 1:\\n'\n     '            from concurrent.futures import ThreadPoolExecutor\\n'\n     '            with ThreadPoolExecutor(len(cam_configs)) as _ex:\\n'\n     '                _pre = {n: _ex.submit(self._render_one, n, c, rig2world, t0, dyn_objs)\\n'\n     '                        for n, c in cam_configs.items()}\\n'\n     '        for name, cfg in cam_configs.items():\\n'),\n    ('                    rgb = self._render_one(name, cfg, rig2world, t0, dyn_objs)\\n',\n     '                    rgb = (_pre[name].result() if name in _pre\\n'\n     '                           else self._render_one(name, cfg, rig2world, t0, dyn_objs))\\n'),\n):\n    assert src.count(old) == 1, (src.count(old), old)\n    src = src.replace(old, new)\nopen(path, 'w').write(src)\nprint('PARALLEL_CAMERAS_PATCHED', path)\n"
+  patch_raw.py: "\"\"\"Patch a CHECKOUT of navsafe/render/nurec_grpc.py (inside the benchmark job) to ask the renderer for raw pixels.\n\nThe repository requests JPEG quality 95 for every camera image and decodes it with PIL. The protocol also offers\nRGB_UINT8_PLANAR (uncompressed, 3 x H x W). Each replacement must match exactly once.\n\"\"\"\nimport sys\n\npath = sys.argv[1]\nsrc = open(path).read()\nfor old, new in (\n    ('image_format=g[\"ImageFormat\"].JPEG, image_quality=95,',\n     'image_format=g[\"ImageFormat\"].RGB_UINT8_PLANAR,'),\n    ('        return self._decode(self._send_render(req, int(t0)))\\n',\n     '        return self._decode_planar(self._send_render(req, int(t0)), h, w)\\n'),\n    ('    @staticmethod\\n    def _decode(image_bytes: bytes) -> Optional[np.ndarray]:\\n',\n     '    @staticmethod\\n    def _decode_planar(image_bytes: bytes, h: int, w: int) -> Optional[np.ndarray]:\\n'\n     '        if not image_bytes:\\n            return None\\n'\n     '        assert len(image_bytes) == 3 * h * w, (len(image_bytes), h, w)\\n'\n     '        return np.ascontiguousarray(np.frombuffer(image_bytes, np.uint8).reshape(3, h, w).transpose(1, 2, 0))\\n\\n'\n     '    @staticmethod\\n    def _decode(image_bytes: bytes) -> Optional[np.ndarray]:\\n'),\n):\n    assert src.count(old) == 1, (src.count(old), old)\n    src = src.replace(old, new)\nopen(path, 'w').write(src)\nprint('RAW_PIXELS_PATCHED', path)\n"
+  prepare_bench.py: "\"\"\"Hand-off string for one continuous 20 s reconstruction (no legacy 5 s windows, no render-clock clamp).\"\"\"\nimport argparse\nimport json\nfrom pathlib import Path\nimport zipfile\n\np = argparse.ArgumentParser()\np.add_argument('--scenario', required=True)\np.add_argument('--artifact', required=True)\np.add_argument('--origin-file', required=True)\np.add_argument('--output-dir', required=True, type=Path)\na = p.parse_args()\nwith zipfile.ZipFile(a.artifact) as z:\n    data = json.loads(z.read('rig_trajectories.json'))\nr = data['rig_trajectories'][0]\nassert r['sequence_id'] == a.scenario, r['sequence_id']\ncams = sorted(k.split('@')[0] for k in data['camera_calibrations'])\nrow = {'scene_id': a.scenario, 'artifact': a.artifact, 'origin_file': a.origin_file,\n       't_start_us': int(r['T_rig_world_timestamps_us'][0]), 't_stop_us': int(r['T_rig_world_timestamps_us'][-1]) + 1}\nprepared = {'scenario': a.scenario, 'cameras_in_model': cams, 'handoff_rows': [row],\n            'handoff_string': f\"{row['scene_id']},{row['origin_file']},{row['t_start_us']},{row['t_stop_us']}\"}\na.output_dir.mkdir(parents=True, exist_ok=True)\n(a.output_dir / 'prepared_inputs.json').write_text(json.dumps(prepared, indent=2))\nprint('PREPARED', a.scenario, 'cameras', cams, flush=True)\n"
+  prepare_inputs.py: "\"\"\"Audit aligned recon windows and export the exact logged physical trajectory.\"\"\"\nimport argparse\nimport json\nimport os\nfrom pathlib import Path\nimport zipfile\n\nimport numpy as np\nfrom navsafe.scenario.py123d_dataset import scenario_description_by_index, list_scene_ids\n\nROOT = Path('/avl-west/navsafe_nuplan_dense_20261006')\nBUNDLES = Path('/avl-west/navsafe_eval/full_test')\n\n\ndef rig(path):\n    with zipfile.ZipFile(path) as z:\n        data = json.loads(z.read('rig_trajectories.json'))\n    return data, data['rig_trajectories'][0]\n\n\ndef main():\n    p = argparse.ArgumentParser()\n    p.add_argument('--scenario', required=True)\n    p.add_argument('--method', choices=['legacy', 'v2'], required=True)\n    p.add_argument('--output-dir', required=True, type=Path)\n    a = p.parse_args(); C = a.scenario; out = a.output_dir\n    out.mkdir(parents=True, exist_ok=True)\n    arrow = BUNDLES / C / 'arrow'\n    ids = list_scene_ids(arrow)\n    assert len(ids) == 1, ids\n    sd = scenario_description_by_index(arrow, 0)\n    meta = sd['metadata']; track = sd['tracks'][meta['sdc_id']]['state']\n    timestamps = np.asarray(meta['ts'], dtype=np.int64)\n    assert len(timestamps) == 200, len(timestamps)\n    reference = {'scenario': C, 'arrow_scene_id': ids[0], 'positions': np.asarray(track['position']).tolist(),\n                 'headings': np.asarray(track['heading']).tolist(), 'timestamps_us': timestamps.tolist(),\n                 'origin_xy': meta.get('scenario_origin_xy'), 'coordinate': meta['coordinate'],\n                 'sampling_hz': 10, 'ego_reference': 'same recentered Arrow bounding-box center as evaluator'}\n    (out / 'log_reference.json').write_text(json.dumps(reference))\n    old = []\n    for s in range(1, 5):\n        E = f'{C}s{s}'\n        artifact = Path('/avl-west/navsafe_5s_500') / E / 'output_5cam' / E / 'artifacts/last.usdz'\n        data, r = rig(artifact)\n        cameras = {k.split('@')[0] for k in data['camera_calibrations']}\n        assert {'camera_pcam_f0', 'camera_pcam_b0', 'camera_pcam_l0', 'camera_pcam_r0'} <= cameras, cameras\n        old.append({'scene_id': E, 'artifact': str(artifact),\n                    'origin_file': str(Path('/avl-west/navsafe_5s_500') / E / 'clips' / E / 'nurec_origin_offset.json'),\n                    't_start_us': int(r['T_rig_world_timestamps_us'][0]),\n                    't_stop_us': int(r['T_rig_world_timestamps_us'][-1]) + 1})\n    common = timestamps.copy()\n    for index in range(200):\n        row = old[index // 50]\n        common[index] = np.clip(timestamps[index], row['t_start_us'], row['t_stop_us'] - 1)\n    if a.method == 'legacy':\n        handoff = old\n    else:\n        artifact = ROOT / 'train/v2' / C / 'artifacts/last.usdz'\n        data, r = rig(artifact)\n        assert {'camera_pcam_f0', 'camera_pcam_b0', 'camera_pcam_l0', 'camera_pcam_r0'} <= {k.split('@')[0] for k in data['camera_calibrations']}\n        handoff = [{'scene_id': C, 'artifact': str(artifact),\n                    'origin_file': str(ROOT / 'inputs' / C / 'clips' / C / 'nurec_origin_offset.json'),\n                    't_start_us': int(r['T_rig_world_timestamps_us'][0]),\n                    't_stop_us': int(r['T_rig_world_timestamps_us'][-1]) + 1}]\n    prepared = {'scenario': C, 'method': a.method, 'arrow_scene_id': ids[0], 'frame_count': 200,\n                'nominal_sim_timestamps_us': timestamps.tolist(), 'shared_render_timestamps_us': common.tolist(),\n                'clamp_us': (common - timestamps).tolist(), 'handoff_rows': handoff,\n                'handoff_string': ';'.join(f\"{r['scene_id']},{r['origin_file']},{r['t_start_us']},{r['t_stop_us']}\" for r in handoff),\n                'boundary_policy': 'Both recipes clamp renderer clock to same legacy coverage; physical simulation/traffic clock untouched',\n                'render_pose_clamp_m': 0, 'handoff_mode': 'time', 'traffic_mode': 'log_replay',\n                'controller': 'pure_pursuit', 'warmup_frames': 8, 'scored_frame_limit': 192, 'seed': 42}\n    (out / 'prepared_inputs.json').write_text(json.dumps(prepared, indent=2))\n    print('PREPARED', C, a.method, 'frames', 200, 'shared_clock_clamps', int((common != timestamps).sum()),\n          'max_clamp_us', int(np.max(abs(common - timestamps))), flush=True)\n\n\nif __name__ == '__main__':\n    main()\n"
+  run_bench.py: "\"\"\"Run the repository's closed-loop CLI unchanged and time every render call of the NuRec gRPC backend.\n\nWrites $BENCH_OUT/render_timing.jsonl:\n  {\"kind\": \"rgb\", \"ms\": ..., \"bytes\": ..., \"h\": ..., \"w\": ..., \"t\": ...}   one renderer round trip (one camera image)\n  {\"kind\": \"step\", \"ms\": ..., \"cameras\": [...], \"t\": ...}                  one get_camera_images call (all cameras)\n  {\"kind\": \"decode\", \"fn\": ..., \"ms\": ..., \"bytes\": ...}                   decoding one returned image on the client\nNothing in the renderer or the policy is changed; the hook only wraps two methods with a clock.\n\"\"\"\nimport importlib.abc\nimport importlib.machinery\nimport json\nimport os\nimport runpy\nimport sys\nimport time\n\nLOG = open(os.path.join(os.environ['BENCH_OUT'], 'render_timing.jsonl'), 'a', buffering=1)\n\n# BENCH_PROF=1: attribute the time of get_camera_images. A sampler thread reads the main thread's stack every 10 ms\n# while a step is running; each step row also gets the process CPU time, the main thread CPU time and the cgroup\n# throttling counters. Nothing in the rendered images or the policy input changes.\nPROF = os.environ.get('BENCH_PROF') == '1'\nIN_STEP = [False]\nSTEP_NO = [-1]\nSAMPLES = {}\n\n\ndef _cgroup():\n    out = {}\n    try:\n        for line in open('/sys/fs/cgroup/cpu.stat'):\n            k, v = line.split()\n            out[k] = int(v)\n    except OSError:\n        pass\n    return out\n\n\ndef _sampler(main_id):\n    import collections\n    while True:\n        time.sleep(0.01)\n        if not IN_STEP[0]:\n            continue\n        frame = sys._current_frames().get(main_id)\n        nav, leaf = [], None\n        while frame is not None:\n            code = frame.f_code\n            if leaf is None:\n                leaf = '%s:%s:%d' % (os.path.basename(code.co_filename), code.co_name, frame.f_lineno)\n            if '/navsafe/' in code.co_filename and len(nav) < 3:\n                nav.append('%s:%s:%d' % (os.path.basename(code.co_filename), code.co_name, frame.f_lineno))\n            frame = frame.f_back\n        key = ' <- '.join(nav) + ' || leaf ' + str(leaf)\n        SAMPLES[key] = SAMPLES.get(key, 0) + 1\n\n\ndef _dump_samples():\n    with open(os.path.join(os.environ['BENCH_OUT'], 'stack_samples.json'), 'w') as f:\n        json.dump(sorted(SAMPLES.items(), key=lambda kv: -kv[1]), f, indent=1)\n\n\nif PROF:\n    import atexit\n    import threading\n    threading.Thread(target=_sampler, args=(threading.main_thread().ident,), daemon=True).start()\n    atexit.register(_dump_samples)\n\n\ndef instrument(module):\n    backends = [obj for obj in vars(module).values()\n                if isinstance(obj, type) and '_send_render' in vars(obj) and 'get_camera_images' in vars(obj)]\n    assert len(backends) == 1, backends\n    backend = backends[0]\n    send, images = backend._send_render, backend.get_camera_images\n\n    def timed_send(self, req, t0):\n        start = time.perf_counter()\n        out = send(self, req, t0)\n        LOG.write(json.dumps({'kind': 'rgb', 'ms': (time.perf_counter() - start) * 1e3, 'bytes': len(out),\n                              'h': int(getattr(req, 'resolution_h', 0)), 'w': int(getattr(req, 'resolution_w', 0)),\n                              't': time.time()}) + '\\n')\n        return out\n\n    def timed_images(self, *args, **kwargs):\n        if PROF:\n            cpu0, thr0, cg0 = time.process_time(), time.thread_time(), _cgroup()\n            IN_STEP[0] = True\n        start = time.perf_counter()\n        out = images(self, *args, **kwargs)\n        row = {'kind': 'step', 'ms': (time.perf_counter() - start) * 1e3,\n               'cameras': sorted(out) if isinstance(out, dict) else None, 't': time.time()}\n        if PROF:\n            IN_STEP[0] = False\n            cg1 = _cgroup()\n            row.update(proc_cpu_ms=(time.process_time() - cpu0) * 1e3, main_thread_cpu_ms=(time.thread_time() - thr0) * 1e3,\n                       throttled_ms=(cg1.get('throttled_usec', 0) - cg0.get('throttled_usec', 0)) / 1e3,\n                       nr_throttled=cg1.get('nr_throttled', 0) - cg0.get('nr_throttled', 0),\n                       cg_usage_ms=(cg1.get('usage_usec', 0) - cg0.get('usage_usec', 0)) / 1e3)\n            if _dump_samples and len(SAMPLES) and int(row['t']) % 20 == 0:\n                _dump_samples()\n        LOG.write(json.dumps(row) + '\\n')\n        if PROF and isinstance(out, dict):\n            # Fingerprint of what the policy receives, taken after the clock stopped: exact hash + a coarse 8x8 mean\n            # grid per camera. Lets two variants be compared image by image without saving the images.\n            import hashlib\n            import numpy as np\n            STEP_NO[0] += 1\n            for cam in sorted(out):\n                a = np.ascontiguousarray(out[cam])\n                hh, ww = (a.shape[0] // 8) * 8, (a.shape[1] // 8) * 8\n                grid = a[:hh, :ww].reshape(8, hh // 8, 8, ww // 8, -1).mean(axis=(1, 3, 4))\n                LOG.write(json.dumps({'kind': 'img', 'call': STEP_NO[0], 'cam': cam, 'shape': list(a.shape),\n                                      'sha1': hashlib.sha1(a.tobytes()).hexdigest(), 'mean': float(a.mean()),\n                                      'grid': [round(float(x), 3) for x in grid.ravel()]}) + '\\n')\n        return out\n\n    backend._send_render, backend.get_camera_images = timed_send, timed_images\n    if '_fixer_restore' in vars(backend):               # cfg/patch_fixer.py: Odyssey Fixer on the returned images\n        fixer = backend._fixer_restore\n\n        def timed_fixer(self, imgs):\n            start = time.perf_counter()\n            out = fixer(self, imgs)\n            if imgs:\n                LOG.write(json.dumps({'kind': 'fixer', 'ms': (time.perf_counter() - start) * 1e3, 'n': len(imgs), 't': time.time()}) + '\\n')\n            return out\n\n        backend._fixer_restore = timed_fixer\n    if '_batch_call' in vars(backend):                  # cfg/patch_batch.py: one call for all cameras of a step\n        batch = backend._batch_call\n\n        def timed_batch(self, breq):\n            start = time.perf_counter()\n            out = batch(self, breq)\n            LOG.write(json.dumps({'kind': 'rgb', 'ms': (time.perf_counter() - start) * 1e3, 'batch': len(breq.items),\n                                  'bytes': sum(len(i.result.image_bytes) for i in out.items), 't': time.time()}) + '\\n')\n            return out\n\n        backend._batch_call = timed_batch\n    for name in ('_decode', '_decode_planar'):          # client-side decoding of the returned image\n        if name in vars(backend):\n            decode = getattr(backend, name)\n\n            def timed_decode(image_bytes, *args, _decode=decode, _name=name):\n                start = time.perf_counter()\n                out = _decode(image_bytes, *args)\n                LOG.write(json.dumps({'kind': 'decode', 'fn': _name, 'ms': (time.perf_counter() - start) * 1e3,\n                                      'bytes': len(image_bytes or b''), 't': time.time()}) + '\\n')\n                return out\n\n            setattr(backend, name, staticmethod(timed_decode))\n    print('BENCH_TIMING_INSTALLED', backend.__name__, flush=True)\n\n\nclass Finder(importlib.abc.MetaPathFinder):\n    def find_spec(self, fullname, path, target=None):\n        if fullname != 'navsafe.render.nurec_grpc':\n            return None\n        spec = importlib.machinery.PathFinder.find_spec(fullname, path)\n        if spec is None:\n            return None\n        underlying = spec.loader\n\n        class Loader(importlib.abc.Loader):\n            def create_module(self, module_spec):\n                return underlying.create_module(module_spec)\n\n            def exec_module(self, module):\n                underlying.exec_module(module)\n                instrument(module)\n\n        spec.loader = Loader()\n        return spec\n\n\n\n\ndef shared_clock(module):\n    \"\"\"Codex's render-clock clamp for the four 5 s models: each frame's render time stays inside its own model.\"\"\"\n    prepared = json.loads(open(os.environ['NAVSAFE_PREPARED_INPUTS']).read())\n    original_load = module.Py123DLoader.load\n\n    def load(self, cfg):\n        sd = original_load(self, cfg)\n        meta = sd['metadata']\n        assert [int(t) for t in meta['ts']] == prepared['nominal_sim_timestamps_us']\n        t0 = int(meta['real2sim_start_timestamp_us'])\n        meta['nurec_frame_timestamps'] = [(int(t) - t0) / 1e6 for t in prepared['shared_render_timestamps_us']]\n        print('SHARED_RENDER_CLOCK_APPLIED', flush=True)\n        return sd\n\n    module.Py123DLoader.load = load\n\n\nclass ClockFinder(importlib.abc.MetaPathFinder):\n    def find_spec(self, fullname, path, target=None):\n        if fullname != 'navsafe.env.loaders.py123d':\n            return None\n        spec = importlib.machinery.PathFinder.find_spec(fullname, path)\n        if spec is None:\n            return None\n        underlying = spec.loader\n\n        class Loader(importlib.abc.Loader):\n            def create_module(self, module_spec):\n                return underlying.create_module(module_spec)\n\n            def exec_module(self, module):\n                underlying.exec_module(module)\n                shared_clock(module)\n\n        spec.loader = Loader()\n        return spec\n\n\ndef _instrument_repo_fixer(module):\n    \"\"\"Working-tree runs: time FixerEnhancer.restore (the cfg/patch_fixer.py hook does not exist there).\n    Installed when the module is imported: nothing of navsafe may be imported before the simulator app boots.\"\"\"\n    FixerEnhancer = module.FixerEnhancer\n    restore = FixerEnhancer.restore\n\n    def timed_restore(self, imgs):\n        start = time.perf_counter()\n        out = restore(self, imgs)\n        if imgs:\n            LOG.write(json.dumps({'kind': 'fixer', 'ms': (time.perf_counter() - start) * 1e3, 'n': len(imgs),\
+    \ 't': time.time()}) + '\\n')\n        return out\n\n    FixerEnhancer.restore = timed_restore\n\n\n# BENCH_ISAAC_PROBE=1: what Isaac Sim / Isaac Lab actually does during an evaluation. Counts and times the env's\n# per-frame hooks, counts every SimulationContext / SimulationApp call, samples the main thread over the whole rollout\n# and marks the samples that are inside Isaac / Omniverse / USD code, and records when each start-up phase ends.\nPROBE = os.environ.get('BENCH_ISAAC_PROBE') == '1'\nPROBE_T0 = time.time()\nPROBE_DATA = {'phases': {'process_start': 0.0}, 'calls': {}, 'samples': {}, 'isaac_leaf': {}, 'stage': {}}\nISAAC_MARKS = ('/isaacsim/', '/isaaclab', '/omni/', '/pxr/', '/carb/', 'omni.', '/kit/', '/warp/')\nROLLOUT = [False]\n\n\ndef _phase(name):\n    PROBE_DATA['phases'].setdefault(name, round(time.time() - PROBE_T0, 2))\n\n\ndef _count(owner, method, label):\n    orig = getattr(owner, method, None)\n    if orig is None or getattr(orig, '_probe', False):\n        return\n    rec = PROBE_DATA['calls'].setdefault(label, {'n': 0, 'ms': 0.0, 'n_rollout': 0, 'ms_rollout': 0.0})\n\n    def wrapped(*a, **k):\n        start = time.perf_counter()\n        try:\n            return orig(*a, **k)\n        finally:\n            ms = (time.perf_counter() - start) * 1e3\n            rec['n'] += 1; rec['ms'] += ms\n            if ROLLOUT[0]:\n                rec['n_rollout'] += 1; rec['ms_rollout'] += ms\n    wrapped._probe = True\n    setattr(owner, method, wrapped)\n\n\ndef _probe_sampler(main_id):\n    while True:\n        time.sleep(0.005)\n        if not ROLLOUT[0]:\n            continue\n        frame = sys._current_frames().get(main_id)\n        chain, isaac_leaf = [], None\n        while frame is not None:\n            fn = frame.f_code.co_filename\n            if isaac_leaf is None and any(m in fn for m in ISAAC_MARKS):\n                isaac_leaf = '%s:%s' % ('/'.join(fn.split('/')[-3:]), frame.f_code.co_name)\n            if '/navsafe/' in fn and len(chain) < 2:\n                chain.append('%s:%s' % (os.path.basename(fn), frame.f_code.co_name))\n            frame = frame.f_back\n        key = ('ISAAC | ' if isaac_leaf else 'other | ') + ' <- '.join(chain)\n        PROBE_DATA['samples'][key] = PROBE_DATA['samples'].get(key, 0) + 1\n        if isaac_leaf:\n            PROBE_DATA['isaac_leaf'][isaac_leaf] = PROBE_DATA['isaac_leaf'].get(isaac_leaf, 0) + 1\n\n\ndef _probe_dump_now():\n    with open(os.path.join(os.environ['BENCH_OUT'], 'isaac_probe.json'), 'w') as f:\n        json.dump(PROBE_DATA, f, indent=1)\n\n\ndef _probe_dump():\n    _phase('exit')\n    with open(os.path.join(os.environ['BENCH_OUT'], 'isaac_probe.json'), 'w') as f:\n        json.dump(PROBE_DATA, f, indent=1)\n\n\ndef probe_env(module):\n    _phase('env_module_imported')            # the first navsafe import after the app boot\n    env_cls = module.NavSafeEnv\n    PROBE_DATA['has_isaaclab'] = bool(getattr(module, '_HAS_ISAACLAB', None))\n    for name in ('step', 'step_ego', '_step_ego_physics', '_update_agents', '_advance_replay_agent_prims',\n                 '_collect_agent_states_for_renderer', 'check_collision_at_fault', 'get_ego_state', '_setup_scene',\n                 '_pre_physics_step', '_apply_action', '_get_observations', 'reset', '_reset_idx'):\n        _count(env_cls, name, 'env.' + name)\n    init = env_cls.__init__\n\n    def timed_init(self, *a, **k):\n        _phase('env_init_begin')\n        init(self, *a, **k)\n        _phase('env_init_end')\n        try:\n            stage = self.sim.stage\n            types = {}\n            for prim in stage.Traverse():\n                types[prim.GetTypeName() or '(untyped)'] = types.get(prim.GetTypeName() or '(untyped)', 0) + 1\n            PROBE_DATA['stage'] = {'prims': sum(types.values()), 'by_type': dict(sorted(types.items(), key=lambda kv: -kv[1])[:25]),\n                                   'agent_prims': len(getattr(getattr(self, 'agent_manager', None), 'agent_prims', {}) or {})}\n        except Exception as exc:\n            PROBE_DATA['stage'] = {'error': repr(exc)[:200]}\n        try:\n            for name in ('step', 'render', 'reset', 'forward', 'update_fabric'):\n                _count(type(self.sim), name, 'sim.' + name)\n            PROBE_DATA['sim_class'] = type(self.sim).__module__ + '.' + type(self.sim).__name__\n        except Exception as exc:\n            PROBE_DATA['sim_class'] = 'none: ' + repr(exc)[:120]\n        try:\n            import isaacsim\n            from isaacsim import SimulationApp\n            _count(SimulationApp, 'update', 'simulation_app.update')\n        except Exception:\n            pass\n    env_cls.__init__ = timed_init\n\n\ndef probe_evaluator(module):\n    cls = module.Evaluator\n    step = cls._step\n\n    def timed_step(self, *a, **k):\n        if not ROLLOUT[0]:\n            _phase('first_eval_step')\n            ROLLOUT[0] = True\n        out = step(self, *a, **k)\n        PROBE_DATA['frames'] = PROBE_DATA.get('frames', 0) + 1\n        # The simulator app ends the process without running atexit handlers, so write as the rollout goes.\n        if not out or PROBE_DATA['frames'] % 25 == 0:\n            if not out:\n                ROLLOUT[0] = False\n                _phase('rollout_end')\n            _probe_dump_now()\n        return out\n    cls._step = timed_step\n    for name in ('_run_inference_and_cache', '_capture_observer_images'):\n        _count(cls, name, 'evaluator.' + name)\n\n\nclass ProbeFinder(importlib.abc.MetaPathFinder):\n    HOOKS = {'navsafe.env.navsafe_env': probe_env, 'navsafe.evaluation.evaluator': probe_evaluator}\n    if not PROBE:\n        HOOKS = {}\n    HOOKS['navsafe.render.fixer'] = _instrument_repo_fixer\n\n    def find_spec(self, fullname, path, target=None):\n        hook = self.HOOKS.get(fullname)\n        if hook is None:\n            return None\n        spec = importlib.machinery.PathFinder.find_spec(fullname, path)\n        if spec is None:\n            return None\n        underlying = spec.loader\n\n        class Loader(importlib.abc.Loader):\n            def create_module(self, module_spec):\n                return underlying.create_module(module_spec)\n\n            def exec_module(self, module):\n                underlying.exec_module(module)\n                hook(module)\n\n        spec.loader = Loader()\n        return spec\n\n\nif PROBE:\n    import atexit as _atexit\n    import threading as _threading\n    _threading.Thread(target=_probe_sampler, args=(_threading.main_thread().ident,), daemon=True).start()\n    _atexit.register(_probe_dump)\nsys.meta_path.insert(0, ProbeFinder())\nsys.meta_path.insert(0, Finder())\nif os.environ.get('BENCH_SHARED_CLOCK') == '1':\n    sys.meta_path.insert(0, ClockFinder())\nrunpy.run_module('navsafe.cli.eval_entry', run_name='__main__')\n"
+  source_files.sha256: 'af95c7abcb7f43bf6e1bc0ad0ebf5393a61428989049f6e95a4dcce10fb60522  .github/workflows/package-checks.yml
+
+    9aa80d207f71c9d9d9664255b1f812931d905076a419ec0b6d2ba467f05b7f16  .gitignore
+
+    9aaca32e4ef37f11512a1ef3dd717800df55b12f11c07f703f6f2c8903837cd9  .gitmodules
+
+    cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE
+
+    f0dcd68f283ac80ac1018cf0385877d16eaf6417ee16cb19a7be8c3855e7874e  README.md
+
+    85c38b1cf6fa3cffa722d99b19d9c86c6a860eb92905041710768c24e8b50c36  THIRD_PARTY_NOTICES.md
+
+    ed748990c38f7b13a43592be9a6d64b851443680a0a105012535225c3da5365c  assets/readme/README.md
+
+    834143a1cbe6bd2a54722ef69badc7cc87caefc3d5264628740eded3a4b44bf4  assets/readme/dataset.svg
+
+    ead7109fd3207e30a9bd25ffbf40fe6d1f26155f2aa6137890da8ca3949cb072  assets/readme/framework.png
+
+    67d4cc8bbfd19eedc035763a596cab6735aec970c53351b841da339980a054b4  assets/readme/navsafe-logo.png
+
+    6a0937b752404e46d10f27a5528835f488e646d307854c3f054a8d4a10fad64f  assets/readme/paper.svg
+
+    b03c69c6404d9604c5d27b9b557eeae05721bb074da2a1753a227301c5428a51  assets/readme/teaser.png
+
+    c82716e65853da7e5ec8e1e4494a7b2406cd706fac8b5d652a29494ddd15ea79  assets/readme/website.svg
+
+    938232ce5d5f14d75a7a2a0f6dafcd24c14efd2506d078d493e2bbfdf501085b  deploy/nautilus/README.md
+
+    b9e7fbd5bb179affaee7bb732675ff3d5659207951283a97f1a620e4be6efc66  docs/gtrs.md
+
+    a8b3bed374bc2864affcc84f244953439c8954a4ec82cefbe57206573a8c4532  docs/installation.md
+
+    e0000855143a5aeb511b536bcafa1c441effde67fafbe6ad816aa072da658ef4  docs/navsafe_eval.md
+
+    e0cc71bc99c6596acbf012c8289e37bc6516b397c5fee9857f65aaeaae4a1a4f  docs/navsafe_eval_edited_scene.md
+
+    d175d6befb7fea917fd3ca64f42c37010ef52578eeb6ad89bbba402546a78054  docs/navsafe_getting_started.md
+
+    50b023789cd0d3af1f5b7808913fcb7e42fc6da330b0b531c3653b00227844ae  docs/navsafe_harvested_actors.md
+
+    e51996941c55c97f9cb8d4d113a0e946499d0f2f71764a0b2f3493466216ca81  docs/navsafe_termination_and_success.md
+
+    eee85ba5f59909fc115dfbd877e17e8fb0820be33d547a9d14fcdace94400a88  docs/public-data-layout.md
+
+    e047056f98e6ad764ee8a7a14d76f08f838beed2075972d1e165762129c9d8cf  docs/reconstruct_navsim_nuplan.md
+
+    966c9b61e23a94a58036ae8b7ab163f7162209899e464beac64e6dae071dccf2  navsafe/__init__.py
+
+    8498ad8ac6f87b6c5783e216e8077f7801999689a4d5d75597647ff5eb0187df  navsafe/__main__.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/__init__.py
+
+    f91d1bc9ddcd42f0535e0c980ed3b604767845d52c94451a3d693aff60df16b6  navsafe/benchmark/__main__.py
+
+    08f1df201b563ec12f3ea0363341ee3040c76bf9be9b5db1b569f8c01a29e59e  navsafe/benchmark/config.py
+
+    7d7c1c97c4d84591cd98f3a755f53d6556b872aaff7b6827456102d8d05a32bc  navsafe/benchmark/configs/nuplan-navsafe.yaml
+
+    6a2ac924b65fb34373ded874a0f43a19cfa75a4bb8d866de1b8e07265ce8de3c  navsafe/benchmark/editing/__init__.py
+
+    8fd2e5b88136cd7299e69f4f12c28e2c49e22267580f32f61227fc8877918f81  navsafe/benchmark/editing/assets/__init__.py
+
+    2be9d4ce27760622adce8e74d9a75e6b600b71a13ce28e658c95cdae7e4d1da2  navsafe/benchmark/editing/assets/acquire.py
+
+    cca3a462e8feba9575af982e567450a76f2ba1d16f7bee4f56940738103e4017  navsafe/benchmark/editing/assets/animate.py
+
+    2b18e5077093d3cc15870994e111ad91b6ccd3626ebf32af70c5d13904455582  navsafe/benchmark/editing/assets/calibrate.py
+
+    13da18ba7484340656dd51fa746e389208d422b34fb6d0c9d2dc0774d3ec9c4d  navsafe/benchmark/editing/assets/compose.py
+
+    bdffa3a052f60dfcc8318faf98c6767c22da8a552eadc1aee90105647952d27b  navsafe/benchmark/editing/assets/ply_io.py
+
+    b9ec17b877058c0dfe868e7f2a14659b88ada72b03397cf72b5bae58d011f521  navsafe/benchmark/editing/assets/quadruped.py
+
+    aa2372def32de40f2c9f9917f9da9a15b4dd9d1fcae69f02da50991e4040ce64  navsafe/benchmark/editing/assets/registry.py
+
+    c11fc5733e9c3e1a590e392e21a4525a8e403262638ab1d809034a140b82c611  navsafe/benchmark/editing/assets/registry.yaml
+
+    5daaf055a25a9ea2dd86b6f35642d886dfb74f806fbc430cc64e030a378f351d  navsafe/benchmark/editing/author.py
+
+    90c0a44cb2bc788abb744f14bbbe2a333a961bd7017e42ad939704a4636c6006  navsafe/benchmark/editing/autoselect.py
+
+    076358ea26e047ca6c331a883a26bcec2ad91fedef4ad7837f760fa57af63a89  navsafe/benchmark/editing/cli.py
+
+    d3d9491375770d452081416bf025c0093da00b95037c1c7386ad6f35090b49f6  navsafe/benchmark/editing/ground_z.py
+
+    5941176fb69f773b6eed530276155ed1c023dfe913b2044823aed0e71bc9eeef  navsafe/benchmark/editing/host.py
+
+    fa2ff493d69ef87cacef1bce268d5af0856857d5b1f02eac301b4547110ce1de  navsafe/benchmark/editing/place_board.html
+
+    a9f3f7fab465c2d601b555270210eb7fe3de446350cafcd62f9e6c70753a6134  navsafe/benchmark/editing/place_board.py
+
+    cefc9a7f687ddad99fd8413496e879e02588190e09dfa0e1d81aa8667c8445c1  navsafe/benchmark/editing/placement/__init__.py
+
+    48080503c6a132bb45b4ea6cc3c74c63f3142d67749710666d8f673b8bfc786f  navsafe/benchmark/editing/placement/anchors.py
+
+    5311d1a058bb03a99cdd2313453f9baad5876c23c0f68d1c99a02b6ad3390860  navsafe/benchmark/editing/placement/probe.py
+
+    01f30bb7631ecd78caf683b7ab909d5136b5ebe9c1eefa33319925176c38cd2d  navsafe/benchmark/editing/placement/solve.py
+
+    b4977fa25445dce19a113389e5ef1ed94bb514242922be0c02aa01f285cf140f  navsafe/benchmark/editing/placement/visibility.py
+
+    a2e2d9e1adb6b662ac9afd936457de77e818bd8156b233a4e00ccd9b95fd2992  navsafe/benchmark/editing/qualify.py
+
+    b41d45a69c83a9369aeac16f9bc6af71e121e3e6746aa8ff4b0da4a80a196c82  navsafe/benchmark/editing/recipe/__init__.py
+
+    4f5b0d9993fedf2d562fdde6e2c6d2ddd1a2eab5c5f7c7e5cd02ce3e15d0961d  navsafe/benchmark/editing/recipe/freeze.py
+
+    1b8a89fe2894bd60e889337de2abff0f83627d8d42b3e96b35a78fdf335439ea  navsafe/benchmark/editing/recipe/replay.py
+
+    94ed6996f1994d318f39309c79b919d59a6982c5d926b860b7ebde32ee9e2f3a  navsafe/benchmark/editing/recipe/schema.py
+
+    8a903f90615794e077d4aaed8bba04ad4adf04bf2e1d942490af8b847514ac89  navsafe/benchmark/editing/review/__init__.py
+
+    f31b4a73a57209b9598f6105bcf963df7791e96a244ecd5e482de878e5260966  navsafe/benchmark/editing/review/cards.py
+
+    7d91a5af2fbc186a3f69000567c655e618f87103fa713cdba757668ab9a17424  navsafe/benchmark/editing/trajectory/__init__.py
+
+    5bd8f01dbb87f746eb75fed8efcf07ac70738371119b73fbb8ec7b74349334b4  navsafe/benchmark/editing/trajectory/bake.py
+
+    8ec1137205eda53274f71dde0c07d908ed9ea6d3a40061cce72039a570d3c6b6  navsafe/benchmark/editing/trajectory/templates.py
+
+    17cb88eec3f14dce9659d241745e3ad74f00b18803c335e19fc8eab580aa4d62  navsafe/benchmark/editor/README.md
+
+    f8663335908df74be387a5f1858bec000ca07943c9d583f638607b0a7e68d67d  navsafe/benchmark/editor/__init__.py
+
+    a3411a38b82ccbe7a9199d1dd167d87b38b9f1cbba9ab63610a78321061aa5be  navsafe/benchmark/editor/server.py
+
+    43cb10716371af245e9e45ffb7793dff659f4130bbddbd89d480805a668826a2  navsafe/benchmark/editor/static/app.js
+
+    79a159d0f4eef48731938377a65b33a81fb66e92c856c7af1ec1cb1a3c35b2a1  navsafe/benchmark/editor/static/index.html
+
+    703622330b88c9a4f8c93cd8c3198b289f8d97668dbbb22c2fc62cb0d8921206  navsafe/benchmark/editor/static/style.css
+
+    95335be50068ca25402734f8abe278ea8d17fb48aa43a596f83ac7257e15dda1  navsafe/benchmark/eval/PIPELINE.md
+
+    7eed4c6f909103f0899098dc677dcfd1f907ea4d4617bd895aabfb43b2cf3c5a  navsafe/benchmark/eval/README.md
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/eval/__init__.py
+
+    ef085199c6591a8597a6016003b576f753274cc5e569b764d7bdcb8af4a5db39  navsafe/benchmark/eval/bundle.py
+
+    096806cf0065c4308843529808e65579e6119ffc4d60e08c745676c421bedca7  navsafe/benchmark/eval/fetch_bundle.py
+
+    42496ae9e0b792829bcd3d1d5e00d7327b05b2dfd8063312789f3afe7c0d8486  navsafe/benchmark/eval/fetch_usdz.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/eval/gif_batch_jobs.py
+
+    eed33961fa185cfb8bb744d05b79719d3e1171ea498e1fe9b003ee5a707ecb0f  navsafe/benchmark/eval/make_arrow.sh
+
+    020a2eddc3480fc468069b59480dff7e736854e57d46c9ee8f4051021ef95bad  navsafe/benchmark/eval/nuplan-navhard.yaml
+
+    1eee0f46ebe428997fabe08a87a1bcb627c308b2d96d5abf4bf3b7cfb755a94b  navsafe/benchmark/eval/render_gif_batch.sh
+
+    41bc17486367d4838fcaf06d82e0c4154ed875fa87c66970bdf927e28199e599  navsafe/benchmark/eval/run_bundle_eval.sh
+
+    3e42a2b7798d3785254d8f4b2ab3d9e461e049d5d2f6573f67a74985a786c694  navsafe/benchmark/eval/run_recipe_sweep.sh
+
+    cd7820294f562befa1cac097690baae4857687e194a83f10d14e7aa2cd395b72  navsafe/benchmark/eval/scenario_taxonomy.py
+
+    1982324c4f3847705bbbc195a1dea336769db6e11ebed507f3dc65151ca8de86  navsafe/benchmark/eval/stitch_eval.sh
+
+    2fc1a12b7b18554c9d3dc51f7b12e0a2d03679cbed6dcd58151fa38db00fd764  navsafe/benchmark/eval/stitch_jobs.tsv
+
+    07f47102f8592f1a6b808e1c7fd45f229270fbb1c81c92988f74214cbe19dae9  navsafe/benchmark/eval/upload_bundle.py
+
+    3ee601aec99f36fad8ed6d52e021eabef341d1143384c7d6954d025084de8b58  navsafe/benchmark/harvest/__init__.py
+
+    e13d7eb14e95c92842383bbab47fb702c94b9b26ffe675369c07e51f43edeb47  navsafe/benchmark/harvest/__main__.py
+
+    03a3fe0a44bdb723641fa0fef7441148d9af96f01e9df2ea216f657e57185d5c  navsafe/benchmark/harvest/ah.py
+
+    64d91b1a360623653e07f55107ce98614850200fbc3a69face36539cd2722b75  navsafe/benchmark/harvest/cli.py
+
+    9d27f06e710b20d4d35fee99a9b8ffaa17c996a9f8802541d3f60a31644445e3  navsafe/benchmark/harvest/manifest.py
+
+    85ff82bb8d8d200b8e5162569c5169d948dd7baf72efef2da0e948e3c4bd53d2  navsafe/benchmark/harvest/motion.py
+
+    c1fdf2ffbedd4a3878c68092ecc43e51f4abe55636f52d6e54e00d740e6a3a8c  navsafe/benchmark/harvest/select.py
+
+    a9384441a170c28ed6c70fa1e7e040ba96d030c395faef8538df9eff3954980b  navsafe/benchmark/leaves/C-10.md
+
+    1cb56a7b89d7f1f7918f430d86e8b294bdab3cdc19ba9e8de34bd7c9be888186  navsafe/benchmark/leaves/C-10.yaml
+
+    942ecb3a9a89f149ed116ee0906bc1dd8aa70a6e7d15945b4d3c9de71ada6fd2  navsafe/benchmark/leaves/C-7.md
+
+    595eb2f5e56e649d707ef130f0e37d86f4e9c430996cf1f19a16b3467c8bd8c5  navsafe/benchmark/leaves/C-7.yaml
+
+    97b2fe0ec464ba5cf11d78a5fa4b66c8a97cc622da56e92facc08137da591087  navsafe/benchmark/leaves/I-3.md
+
+    11a2bf3bc2e8471ae2ca94a8ab8df2fd1ed6b692f463728b9bbf2e2af41758c9  navsafe/benchmark/leaves/I-3.yaml
+
+    84aa68fb815a44d26c315859b5d7da3cd09aad71257bf21720270b45a4b97cbf  navsafe/benchmark/leaves/R-2.md
+
+    e93723afb03f2917ccff4ac56a8a655eb0b05e892a8eff050753749c6079a073  navsafe/benchmark/leaves/R-2.yaml
+
+    4700f8c0f2526f2ce1fbb6afb102b815ad036aa3b77a14d39447b77726ee65fb  navsafe/benchmark/leaves/R-3.md
+
+    ec556e3dfd624258309bb95888fb2ffdffd8aeb02b3de3d5706166a8220248ab  navsafe/benchmark/leaves/R-3.yaml
+
+    925a7b7143a9f083976418bb915d2b0eab9382c98f336107d4dd64e004ee3df8  navsafe/benchmark/leaves/R-4.md
+
+    40af656245ae5aaba0a4f49773e8c01f0fe2baea0ffe5001ca588b5b60a24ee8  navsafe/benchmark/leaves/R-4.yaml
+
+    4409ae2baca0fbed34353bbf026375defca38139e93994a668187be1309143de  navsafe/benchmark/leaves/V-10.md
+
+    02da0a6f819308b8b833f0e79c1df335c1e8a30c38d0c9702ce02e2224d5fb99  navsafe/benchmark/leaves/V-10.yaml
+
+    f3b0e0d55096abab7672dcc5eba3ea64d056cd11d28ab5c1e114c401981df913  navsafe/benchmark/leaves/V-11.md
+
+    45fb6b70bae4d7763da5632d1e24681778b94806149cd75438ba2360c4eb03d7  navsafe/benchmark/leaves/V-11.yaml
+
+    f903bf7b31ede076b4ca309f04309ac6b4e4f8af320fb950532295a4f229d833  navsafe/benchmark/leaves/V-8.md
+
+    e1309f604f24556a4efad26389ffeb34cfa4b17e8acbac805c027d6372879c98  navsafe/benchmark/leaves/V-8.yaml
+
+    896fbe934c58abc66d388095f6eed018d7b3eb4da3080b2b1ff68fc6c5b7144d  navsafe/benchmark/leaves/__init__.py
+
+    171c686ce2f44acd1f7d19caf10f45b73d1a37ed281c7d15a97ae782702dfe64  navsafe/benchmark/leaves/hosts.py
+
+    af43001abab025ba6a877b7dc3c1a111f40658def984fc316d005a63a34a0058  navsafe/benchmark/leaves/registry.py
+
+    2054e0c99decd050557bdd0fdd77717df263700eeed826ef4a9d869f5963368a  navsafe/benchmark/leaves/rule.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/mining/__init__.py
+
+    008829391ef69a4a2fd7ee9977330e1c9426f68358b0221f4da9e7b25b9099c4  navsafe/benchmark/mining/bev_preview.py
+
+    73856251e74c4f37e6844219616d758b3cab6c1d644c9a9260e913475b665554  navsafe/benchmark/mining/evidence.py
+
+    1d2c0e4fd9e7f9ad51931b4d7ffc4ef9f7ab45ffc3bd979a83473d59a908eb42  navsafe/benchmark/mining/leaf_miners/__init__.py
+
+    deb07fecf681af225b718dbd380a147940a059325e69cfffc0b40fa05b306015  navsafe/benchmark/mining/leaf_miners/base.py
+
+    dbb309bb11cb4a74f08b2252a8f7050402387837b9851e0df4bcbbf0fe370097  navsafe/benchmark/mining/leaf_miners/tag_miner.py
+
+    178de6b91f1f6a696315cff1bacc983fb8baef0341f2d6f9dcf27b02672934c2  navsafe/benchmark/mining/leaf_miners/two_way.py
+
+    81d3facb6af96745841a8163f942b630664d6c5ef9bba01f78642155c2a792ea  navsafe/benchmark/mining/leaf_miners/v10_merge.py
+
+    ee0881a8fb5e7138f984e6d2593bc0f64b196c55a4a739673382c7ddb75e8b08  navsafe/benchmark/mining/mine.py
+
+    09a94bc898389c3faa973e16e8228d342799476210fb97cbbf11b4e84bfc3b8d  navsafe/benchmark/mining/nuplan_map.py
+
+    0b236d3a58117ba901e0d5a5ac2057ac0d9734aea5fb4fe99bba84ad1096cde5  navsafe/benchmark/mining/review.py
+
+    560fd4e0689c664b8160b4a80d5a054be66603ea2bfbbbdc94279f8034593485  navsafe/benchmark/mining/scan_scenario_tags.py
+
+    2edf4be21095e55d4753773c3d704c575ba76f2e1eaa06d9d13f7111ec9c5310  navsafe/benchmark/mining/select_candidates.py
+
+    22bb23c1a54cbd97ede42c3a0fc6be6428ac913d6be74d63d0abe81d399cae39  navsafe/benchmark/mining/windowing.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/outcome/__init__.py
+
+    4e207dc7e457e670c82bd404d3b11f20186172550d74bf80c0d93b6ec9e8514b  navsafe/benchmark/outcome/labeler.py
+
+    c73f30342c83b0fde89c2ea0a4c9df9f8bbf580b3ea3e9fbfd73878d5352aa1e  navsafe/benchmark/recipes/benchmark/C-10.06a1f481118057b2.yaml
+
+    563b5cecf15e4fbe1b9d4a505937626510a33b052f3f83bd21069d604e4d62a5  navsafe/benchmark/recipes/benchmark/C-10.07bf0601ad425977.yaml
+
+    c9e928dae871f4c24f22a79fd0f47c4bab6c0dab97837024f73a2f7b075af6f5  navsafe/benchmark/recipes/benchmark/C-10.17cac31ef9135faf.yaml
+
+    08ff342e4d01cb8fa5fcd489ce4795754b6f67ad079255eb656817aca2e7433d  navsafe/benchmark/recipes/benchmark/C-10.2bd04a0902095129.yaml
+
+    96495c45f55fea18cb8cc474ace9e1742f6492a264d7e2aece8fc31b1b85e369  navsafe/benchmark/recipes/benchmark/C-10.2c337eb368fb54ca.yaml
+
+    985cf976eaff5a9ca876c235af9717612af3b9b0a859c4fc8173bf597b3eb4c2  navsafe/benchmark/recipes/benchmark/C-10.2ccebcdb0da25be5.yaml
+
+    648d6cf6e75c0997f33a779dda6dc5d1d6a82cc96256c1796f5f152562a9e222  navsafe/benchmark/recipes/benchmark/C-10.2d24100bcb1e57e2.yaml
+
+    27c41c34e1aabd556495d69ddc9cc385b547f8909ec50e35ecb127054279578b  navsafe/benchmark/recipes/benchmark/C-10.3067f3d3d5a75989.yaml
+
+    0cd61aecdf59729fa96e3edcf752388e0e55a47350c98145bc98e97508af3a32  navsafe/benchmark/recipes/benchmark/C-10.42a20478abeb54d5.yaml
+
+    9425cf0c25c75ed65cd46387cb77dc8410af86ec3b3374dd203e896468c31637  navsafe/benchmark/recipes/benchmark/C-10.4d6456183bd056bc.yaml
+
+    943b62a894b5f184a6640eb117d9c0718fd96a8c71f09c9e9dfaade06d6682f7  navsafe/benchmark/recipes/benchmark/C-7.05bcef7a11d65c6a.yaml
+
+    8d0fc099711bdea8bb5f3f8bf67bf62b0b3edcb7dcea9f2eec16c94e972007e7  navsafe/benchmark/recipes/benchmark/C-7.0dd3256035e75770.yaml
+
+    bbcfb16558e420346be4f4427e50b41a446a22d55157b4b6dc68fab6b58f354c  navsafe/benchmark/recipes/benchmark/C-7.0ebb578555b25ab2.yaml
+
+    863a0c0c6ec4e6b36358a05455f5ae4b6ca530df7e90a77491a9f16ba6845a48  navsafe/benchmark/recipes/benchmark/C-7.112db94505025ec5.yaml
+
+    f60db3621d7e74a80648a400a74accab297e89b05dfea97712f22ac1f9c7d0df  navsafe/benchmark/recipes/benchmark/C-7.1bdfacbfcff75c27.yaml
+
+    b8dd25237014a807b7b54ee81168db6bbe812a5758051bdf9f3f0edaac9a482d  navsafe/benchmark/recipes/benchmark/C-7.1e9350ac2bc25f59.yaml
+
+    1c043b4b724cc97196afeb387814c1a3b49114ff2deeab6bd7682ed1f55f2a96  navsafe/benchmark/recipes/benchmark/C-7.54ae4b189e79541b.yaml
+
+    7b7cb337a5a298a00c9dd6dd0bc8005d047b486d95ce9c805396f62f23d7e922  navsafe/benchmark/recipes/benchmark/C-7.599c8b2bc9b252a7.yaml
+
+    77c0a3d3803efa2570fa566fa7ae058f8b7773ec4a0287b0a665d8d9dafa98be  navsafe/benchmark/recipes/benchmark/C-7.5d12ad55fdd858e1.yaml
+
+    98599f3bfad13066264c80fbbc985008b5e4e8f2dae016c4860a287e9da5f426  navsafe/benchmark/recipes/benchmark/C-7.6b7c5199f84e5aac.yaml
+
+    13dbc492b1e625d2c18c8d02c00dd5d3acccf24ae2b2c6faa332f61b14bbed6b  navsafe/benchmark/recipes/benchmark/I-3.03b66343e1ac5d68.yaml
+
+    2932c06b26e6913ed73a9a59998cdb5437615e6007dd95e3208a7a9d707603b1  navsafe/benchmark/recipes/benchmark/I-3.050284885b2059e9.yaml
+
+    f048155150220d640f374be63e8d16a96ec56e007738b67312d405b6bbfd8e36  navsafe/benchmark/recipes/benchmark/I-3.131a036a111e54f3.yaml
+
+    ecd350186752ac7c5eb2053fd5722c5ae4dcb65265653d4307a4314c770c639d  navsafe/benchmark/recipes/benchmark/I-3.4fff5f5a86be53d5.yaml
+
+    b370c6e4b6bab69f64d75bc076ca47a935d77e0e732b52ff525ac50064160cce  navsafe/benchmark/recipes/benchmark/I-3.76da778ff251508d.yaml
+
+    9a183b5847e669f3d4b64566a2eb28b23995bea24160b745f2a2ae1b4a7931af  navsafe/benchmark/recipes/benchmark/I-3.84acc78da95f56d3.yaml
+
+    17c6862f9e88f9161eda4043527f31a7881dfa4efdd527c90ed29dc26f20d7db  navsafe/benchmark/recipes/benchmark/I-3.89e02236312d5038.yaml
+
+    6437a0d9478286321880f5144cbe97a55e1f82cd41216732ed3d9a5756cbe4ff  navsafe/benchmark/recipes/benchmark/I-3.a43dbb1d34665f24.yaml
+
+    2d2765030bdddb0440fdd146064238f5c0c1e01eb35f0183b320545fd16cb1b0  navsafe/benchmark/recipes/benchmark/I-3.a6b9a83019915658.yaml
+
+    2e784cd4b516706a8c58ad5fcb6af4180f1595200c95d424ec4ffbaed3d7bf86  navsafe/benchmark/recipes/benchmark/I-3.b023b7bcbab05bcb.yaml
+
+    d31f60aab4d3837d7813f56c4b48ef49cc23504c17336efbfc1db3ded8571a04  navsafe/benchmark/recipes/benchmark/R-2.0057ce5b81c35a81.yaml
+
+    29dd738ebdeebf6bf9075ae28b8c5f6a715b90db44be003f35778ed44f4805d5  navsafe/benchmark/recipes/benchmark/R-2.00c1e4eb4a045f20.yaml
+
+    677e97149061f0361c8eac7112b872ed952eeab96b06ec9c57c61262b5f5c953  navsafe/benchmark/recipes/benchmark/R-2.02b68b9cc51f506a.yaml
+
+    9e6dec38d72e4bacc6c458f0b4a9fb627969dc265c8930a85fe800bfd2592287  navsafe/benchmark/recipes/benchmark/R-2.02f1ad081f41550e.yaml
+
+    5712775de84d51d01d2cfe8ad29bbb8f69bafc30e50b8452ba6386a0075fadbf  navsafe/benchmark/recipes/benchmark/R-2.054e4984e1b55ec9.yaml
+
+    ae99a060eca5d82dfaddb4af13bb42bc84e006e951cc67c0648bbef3c8b1c5bf  navsafe/benchmark/recipes/benchmark/R-2.190bf8dd22a25d1c.yaml
+
+    b8704f7114f649a1d763c43519295e45ae03c7daa1f28a82fee51d3b01b57c15  navsafe/benchmark/recipes/benchmark/R-2.20cc0fdb7e2d5c3f.yaml
+
+    0637c953cc055320a6eb8d2047a2238b2a3213aa473e48b759448897d118e6a7  navsafe/benchmark/recipes/benchmark/R-2.2575048779565f0b.yaml
+
+    d39c8bd34734eeeb2780fa178db23579128bc2bcbc862ab64e5037f8d5bbb86b  navsafe/benchmark/recipes/benchmark/R-2.99a98a7ffb075389.yaml
+
+    22e3fbbdc38719049aa7cfe8a281e60dd7c5e691db24f2c46eca2a943ef2d84b  navsafe/benchmark/recipes/benchmark/R-2.ac01c31d1a5a5ed2.yaml
+
+    4c3556a49d8fd6e9747c5878f1d272956f4dab8ce96466d053d6cff835b360d7  navsafe/benchmark/recipes/benchmark/R-3.02379e524f105926.yaml
+
+    13583b9b988cde730166f2aa92dea658f67483a4e55a84bc7b90ee881b15b86b  navsafe/benchmark/recipes/benchmark/R-3.0777f5a7263758be.yaml
+
+    aaaa0216192361a209a600d38d0556f4d94e7e3a0f3e09fa805ba2d8f57d4944  navsafe/benchmark/recipes/benchmark/R-3.0802a51b0a1d512c.yaml
+
+    6ff50c87fc5d46c7aa9f35f6cdf8a5f77867f863755c85d5e5f2e4e0324509ec  navsafe/benchmark/recipes/benchmark/R-3.087df0996ade50d3.yaml
+
+    f9e51dc61b49dc839e08eecaac044888113f33f0f77ee66a2f7da2a1b72712c8  navsafe/benchmark/recipes/benchmark/R-3.0a51eb8adf8e5391.yaml
+
+    1b4662858978f5f730cc6b1c56d23fec4ce9e1a7f1860dc203272991c105577e  navsafe/benchmark/recipes/benchmark/R-3.132307b3c1a55f97.yaml
+
+    c234f06c20e6ff7ff519e0a76d61fb74d4e4594569a046bef0b853fd7a8afd9e  navsafe/benchmark/recipes/benchmark/R-3.17b0992157365222.yaml
+
+    c72e00eb60c7aaa24b8a3835066b4d508296b56191ad60841cb18809d823c394  navsafe/benchmark/recipes/benchmark/R-3.2462c21ce2bb5f2d.yaml
+
+    2dc494d1c4c9991fc5bda79f0e7313784e79a206f6050f458acdd29880cb214e  navsafe/benchmark/recipes/benchmark/R-3.34489cf42e005e93.yaml
+
+    83acc75075046033fe2951c3d1b5fb8dc967e6b2f840f80f7367a123524c4da5  navsafe/benchmark/recipes/benchmark/R-3.687dc7e79cf65570.yaml
+
+    97fbe06ca666038d56c8aa0edeab485679f9b77ae230b1e1a76623138abb37df  navsafe/benchmark/recipes/benchmark/R-4.005f87dd980253a5.yaml
+
+    4737d86ce2a7821626b144dde29d526b023c3b1c8b2981ddede3f35ae314b5cc  navsafe/benchmark/recipes/benchmark/R-4.02015675e4585611.yaml
+
+    4144f1b32b844669fc9df04710a5177507c58b3857b4e4e09cf01c8d10fb6589  navsafe/benchmark/recipes/benchmark/R-4.0371700bf65b51e0.yaml
+
+    84e819fdc93b2ca14267fda4ab7609284c45eb41c5b838e463d6df9327fd34ac  navsafe/benchmark/recipes/benchmark/R-4.05f1a5cbc0905d8e.yaml
+
+    a5b0062f3e59b836af1fd2ca40cc9087c0555d5163311c28de40e29860ff4134  navsafe/benchmark/recipes/benchmark/R-4.061e7e1700945b03.yaml
+
+    77a037ecff92470c9d0842f8f847e919df62c9bee55a5242cb8a775836e49bc1  navsafe/benchmark/recipes/benchmark/R-4.173369dc059d5fe9.yaml
+
+    4c70fd2519ea58472e51bc1655b83921e4757cd52d60fff3eadefdbca9d1a8b4  navsafe/benchmark/recipes/benchmark/R-4.225eb6e22af55972.yaml
+
+    c9df9781dcc9c3d231fbab2164a8dffd4e97d2a9d094b516f4f64befeda9c937  navsafe/benchmark/recipes/benchmark/R-4.25b5cecdb3b75e7c.yaml
+
+    16c4479d31a312cceee4cd87be811668efd85d55cf69e150460702026a7a262f  navsafe/benchmark/recipes/benchmark/R-4.2ee44628526e524c.yaml
+
+    820d4a4dba4c63e903e3fddf536827403bd286d2c3dc56791ff3d6d8da7fa6fc  navsafe/benchmark/recipes/benchmark/R-4.a2c2e046132e5596.yaml
+
+    1dee7382dab143ea4be3192c6f8bbf1e7df18c48650c0418005b68f20818bc0c  navsafe/benchmark/recipes/benchmark/README.md
+
+    8ebfe824b9e79d470116006c046064096a736818d120e88f81a3ce0462ddbe07  navsafe/benchmark/recipes/benchmark/V-10.07846b829b3a575e.yaml
+
+    7d9bccc22bfaf785b712ade8b5b20f20c457f168492c30a7a070ce0250f3b561  navsafe/benchmark/recipes/benchmark/V-10.13805e7752fe5685.yaml
+
+    75635410392cdb4235fd42ca48ac06a68ded4426c69a026edf75f59b8aa076c8  navsafe/benchmark/recipes/benchmark/V-10.13c555e68671524f.yaml
+
+    74067f497c70da84f32537365e40ebf72bbd82d5e6d6046fcc18dff8785639e6  navsafe/benchmark/recipes/benchmark/V-10.14d171fcb9295596.yaml
+
+    c4223871d32f5551ca5244e8d6284b59f935a968927db828c979667b4e4a0cee  navsafe/benchmark/recipes/benchmark/V-10.34ac200e359653b5.yaml
+
+    6f9c1f6ed1aaa2cce1f0c93acf0f0851e63b17b660291ea58fcf5f218ffff515  navsafe/benchmark/recipes/benchmark/V-10.49a0d29c7058501c.yaml
+
+    1107e8f7b974e8d566713be486519ecc4c4b46745ae404f7fb1f5ad32ff1d4a6  navsafe/benchmark/recipes/benchmark/V-10.63c145828c3b5fd8.yaml
+
+    a07b498d601b256712d8bf4c433b1e1ba0b6386d0d42e5cb8dcdd28e0eb752e9  navsafe/benchmark/recipes/benchmark/V-10.6c9e40634f705f56.yaml
+
+    6d9cea24ceace613beef52b06cf30205df55a8730946707b3f7273bc7c71115d  navsafe/benchmark/recipes/benchmark/V-10.bbee1ab465af50c2.yaml
+
+    4f30cb8afd226330694a5e41c00db00453e621bef6f5b0470d780fba63078b2c  navsafe/benchmark/recipes/benchmark/V-10.be36f75d360c502f.yaml
+
+    c1c54875d99ad4f8db23a171c4610a013166ae0240d90771c2b1a068eaa93eb3  navsafe/benchmark/recipes/benchmark/V-11.0093ff0188ea5b90.yaml
+
+    c1f61cb5efd35b248a5d29bcf055536da35edabbd9ce87fc5a44d7e0539ae544  navsafe/benchmark/recipes/benchmark/V-11.0317b218061b5c4d.yaml
+
+    000728e35bb244ecb499807106b3d81f84ad9a3dc9f00ad432f03e63360bd29b  navsafe/benchmark/recipes/benchmark/V-11.18b5995484435fbe.yaml
+
+    5f89215314cbe517c8870045dc727569002130d1eb89bc84e25d06a2982903fb  navsafe/benchmark/recipes/benchmark/V-11.2073f76964735ff7.yaml
+
+    ae51aaf4894e6115c5aad0ce255f1ff4226d6c536df1f1c9764771510142f026  navsafe/benchmark/recipes/benchmark/V-11.227d62f5dfd95624.yaml
+
+    32ec2bf6cc7ad6e1447374c9a518a03f0a94635da0978ee0f9ee222a7352e60c  navsafe/benchmark/recipes/benchmark/V-11.2b7bf25209dd5705.yaml
+
+    3b5f8409365642ba82b90b1d6eed6ac0c43200925093301006c2153e83347015  navsafe/benchmark/recipes/benchmark/V-11.32d85d373126537e.yaml
+
+    3a380745d464e3cbf879d17e3285af792430478a17efc2cf0a16020c17890c81  navsafe/benchmark/recipes/benchmark/V-11.a18d2b32f8415373.yaml
+
+    51803bb9879d1e8aee20e26b573e3c56b9b753535c531d789a48fdeaadfc52af  navsafe/benchmark/recipes/benchmark/V-11.a4581d8af5f755a9.yaml
+
+    a27b5d95ed8b2f37c6b8e0669c328cdf7d028f5a5384e046420dd056e88e0d5e  navsafe/benchmark/recipes/benchmark/V-11.bf896d504b4356c7.yaml
+
+    7ab128fa7879db64c22c249931a60789842d2cfeb249ed5dd9650789fd0fa92d  navsafe/benchmark/recipes/benchmark/V-8.0980dd9cdc0e543a.yaml
+
+    10b241b010267ced55a5852437d497684bba2805934e7377cde907bb4380af12  navsafe/benchmark/recipes/benchmark/V-8.14c0a657ac3e5bb7.yaml
+
+    54d0f73aa0067e49c13ec9feca9800b7e9e7e1127b62542983315d2f219abc42  navsafe/benchmark/recipes/benchmark/V-8.61b3149306a3501a.yaml
+
+    e2e893edbc941cb14f1e839285a372b3feed19af5ab029e39f2df7d1838d0dab  navsafe/benchmark/recipes/benchmark/V-8.67eb77e9004a503f.yaml
+
+    d92072b746c492e60e2a5395d3608ce4e97ff0b44de641190063b961625609af  navsafe/benchmark/recipes/benchmark/V-8.7c00774138ae5805.yaml
+
+    abdb67b08dcf41e9fb767be365eebfa5ffa6c104d4fed9e30d569302f85c8e41  navsafe/benchmark/recipes/benchmark/V-8.8decf23c348f5b65.yaml
+
+    be7d758b2c0c20d438ef4cf67e263c77869ab783ae4be6348c28a6dcbc5b0a5a  navsafe/benchmark/recipes/benchmark/V-8.b66f23071e675170.yaml
+
+    6b534da5240d0ded199812e4d24c8f391e6b794f428444300995fbd5dda41a00  navsafe/benchmark/recipes/benchmark/V-8.c8600743d9e050a9.yaml
+
+    6874f17ceafe892cce35a56ad59b6ca1316b94eee935edc84850ec702c7bbd7c  navsafe/benchmark/recipes/benchmark/V-8.e1526251bd0a53ee.yaml
+
+    a9fb978bea078a347f6cdfa8c4294afa5a313037d5f6ca6e84af04e65b169d43  navsafe/benchmark/recipes/benchmark/V-8.e9567d54464052f7.yaml
+
+    9651c0d981201de5d4d9fb6f9509604e231d0e10abfc206ce038e5d8f51511da  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-1.02902d180b405100.cut_in.baseline.yaml
+
+    da894375f4fc9bb580a63328862fa4b49e0fcbbeea6ef64113e16a46cb699835  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-1.02902d180b405100.cut_in.event.yaml
+
+    7b0ce655dc4bf3ae420434bf725f337c695c860c01f964779e920f41c847bbf5  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-1.02902d180b405100.lead_brake.baseline.yaml
+
+    3f8f52de86848f4b78db2de290b448873cd43cecd7a3e7a91b10cd6737baf8d2  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-1.02902d180b405100.lead_brake.event.yaml
+
+    c7eb81f6995dfd9435907432758a7c53d9aa3a27818c1c154db8451463dd29c1  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-10.2bd04a0902095129.cut_in.baseline.yaml
+
+    476e5217e18754b884725cad676be482bb76e14c046625ef4bf25cc35defc846  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-10.2bd04a0902095129.cut_in.event.yaml
+
+    8ba84a8d46f9debac895755a4bef67dc40398f14a7fdfe62c82191e0dc15e5e1  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-10.2bd04a0902095129.lead_brake.baseline.yaml
+
+    5d2b6e32583d089b8bda54b381bd2f36be7f743508df240e8f33ed88329c9fcc  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-10.2bd04a0902095129.lead_brake.event.yaml
+
+    900595c40501176b51723eee3e177f26e15ed7075c42694c31fbf4da5e1ecba9  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-2.f077a062ad9b55e9.cut_in.baseline.yaml
+
+    c723dfacb09575a30a471da4c93f7fd7fbed581f251facc36ac3b5df01e9e5c4  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-2.f077a062ad9b55e9.cut_in.event.yaml
+
+    90d8507659a4f83e9f191da203a0e9ee8f065a41d2398c6eee940917da001299  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-2.f077a062ad9b55e9.vru_cross.baseline.yaml
+
+    629fe13bcb65c8306785a64b2af6ec27a8986b8ebf0c64421ebb3e16c943689d  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-2.f077a062ad9b55e9.vru_cross.event.yaml
+
+    7463c83cd6c6892212b46f4c38cbc4aa879ebe7e5ec2b3b16cdd70ac60b294b6  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-3.273f424fa2fc55ad.cut_in.baseline.yaml
+
+    03fd040b766e24a068dc2bb1d8ca1ca7816422f23a2b9d1399b2ed97844ac7e5  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-3.273f424fa2fc55ad.cut_in.event.yaml
+
+    fff96089dd1b2d4cb3312c5795c769bb6e99927a3bcf9fdc3c730e26494d52a3  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-3.273f424fa2fc55ad.lead_brake.baseline.yaml
+
+    f6303ca6fc047efd3fabeb9bc51dcb80a8ade51ae6f0fab99507d4110c6a2055  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-3.273f424fa2fc55ad.lead_brake.event.yaml
+
+    e8c312cdac3f379ed4b91a32f7e8ac9c149fe535ab2bfda8bee29cc9e36249eb  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-4.238f1cddb9415996.lead_brake.baseline.yaml
+
+    568511c1ce309417a37bccdd06a6203e1fe78d58d8b3aa8f6a68146c824a3758  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-4.238f1cddb9415996.lead_brake.event.yaml
+
+    56c9d77c52461984d70907b648f062af7f7d72225bc9b5655baa8c294c59e7dd  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-4.238f1cddb9415996.vru_cross.baseline.yaml
+
+    66de2458474334876be10c63de1d6cd49128c7c8e09afda2b4d9e3077f040aed  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-4.238f1cddb9415996.vru_cross.event.yaml
+
+    7ecb41b0f79a619afe45a033f675d660ff0d10f54582b2f29483e5a800c7d474  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-5.58d69daf413c5d5a.lead_brake.baseline.yaml
+
+    7f0780d86abcb31befbb111b55e1228f0af604b623a9ca5a4f6bb0c57f0b7a3f  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-5.58d69daf413c5d5a.lead_brake.event.yaml
+
+    4585205eef0d5c13f7391907769558ff28b0a937c8c46bac890ce1e44ec29c4a  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-5.58d69daf413c5d5a.vru_cross.baseline.yaml
+
+    ad19049027c1aa0ed5eb5207eedfa44fb12f35e1d170544453737898ab94af27  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-5.58d69daf413c5d5a.vru_cross.event.yaml
+
+    92a304eaccc35162e9aa65f846fef87882e6ea277fc33833ac09ce9a2de2c0bb  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-6.0122ce98b2735558.cut_in.baseline.yaml
+
+    e607cd8cea3ec8bd1db9755a385c649040ea6cf65c182df507248ab0425f9820  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-6.0122ce98b2735558.cut_in.event.yaml
+
+    5b4d3f5141883b3a3cb2cbde58b2cf3300f29df6f66a12d03b08fa95dd6408af  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-6.0122ce98b2735558.lead_brake.baseline.yaml
+
+    c7d5afd21d0082129a01322ba38d25751e3c18473d0aed9636b2439b53979f79  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-6.0122ce98b2735558.lead_brake.event.yaml
+
+    adc2839c6628575fe9555de15161d707e4e8627d39f5f8785cf31c8b84a2bc15  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-7.1e9350ac2bc25f59.lead_brake.baseline.yaml
+
+    0edb26b17bef578d68f885f2260dcd2404ef954836e5d3200835e6c53f7da172  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-7.1e9350ac2bc25f59.lead_brake.event.yaml
+
+    2d74419033799ad9aeb200443e5cf362797e37d4b813ae1a745df808af89d483  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-7.1e9350ac2bc25f59.vru_cross.baseline.yaml
+
+    105a94dbfe501b1a5441476de3effe10e31fb373a1b02e74c8ee58b5848c8d9c  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-7.1e9350ac2bc25f59.vru_cross.event.yaml
+
+    7939a7f3cf76733c105e655b37d8ee66ad8db46b4627186df37b3ae1341f2fe9  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-8.5ac972b34e2e5614.lead_brake.baseline.yaml
+
+    9511579179dcf366fb2f20dcc1e9eabb7034151d033e59d675d18fc62600ff2a  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-8.5ac972b34e2e5614.lead_brake.event.yaml
+
+    73180eb8fe1a87225c9e64c54b17ff8e33b55dfa95fdd9850e97fccafe463d48  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-8.5ac972b34e2e5614.vru_cross.baseline.yaml
+
+    b54cf3eb5f4c9e11d292cb3404c6372343017903e3a1b805aee7afd00c68650a  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-8.5ac972b34e2e5614.vru_cross.event.yaml
+
+    caff989c29cc5eb1580b96595cf2e5c7f64af64109570aa4d14335676e44fbe4  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-9.6704953640e55b83.lead_brake.baseline.yaml
+
+    aa8a45ee2a605833f6ced28d76ed4eef459e4ccea65d9670e9e71b45263adb0d  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-9.6704953640e55b83.lead_brake.event.yaml
+
+    2ae5bb6a700f34604baab5b5fcef5d70935e09327715801f6c4fbbfd45efb431  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-9.6704953640e55b83.vru_cross.baseline.yaml
+
+    03ccc0f009d046a83a057f1cb31bf9e53dcb474c35c74d43a1f2b04aeb6bf65b  navsafe/benchmark/recipes/proxy_set_state_perturbation/C-9.6704953640e55b83.vru_cross.event.yaml
+
+    c112bc3857d405b700d08bf38c562314cf46db6b9c68e210d0b9bc478ddb85c6  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-1.6fc91bf02f225d1b.cut_in.baseline.yaml
+
+    8b5046159baded00e7fd294145fd8fe0148a2bea233150c1cb9036c8f5ce1e36  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-1.6fc91bf02f225d1b.cut_in.event.yaml
+
+    01a73b6e67a1e46b5460dc34bd58878b22a34fa2849ac812b4e9e62bc13e125c  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-1.6fc91bf02f225d1b.lead_brake.baseline.yaml
+
+    74654bb7d21a5897bb558cfae0b9fb639c78f6034facfc9307730883e57bd303  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-1.6fc91bf02f225d1b.lead_brake.event.yaml
+
+    3619beea03407119f4a2a311a4f16e6824d2d7aa04466e3b2d06d2b25e1771e9  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-2.0d5b8da00d505be0.lead_brake.baseline.yaml
+
+    de988bb6a18af4896c261867aabad53c907bcbacce3ea03425b72db175d82f28  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-2.0d5b8da00d505be0.lead_brake.event.yaml
+
+    e4dd923f6ddc725c4b6971c05b9fcbb94a60464329543d6ab07b4d5788f93e91  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-2.0d5b8da00d505be0.vru_cross.baseline.yaml
+
+    553b8405c8bc4cf0af1a5213c1a9181bafa4a4818d4f2d34f0a3cda9710f8c50  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-2.0d5b8da00d505be0.vru_cross.event.yaml
+
+    c3e80665adc9c11dfece47cd008a7af6ab7f2883e81f8f48032f1d514731518b  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-3.84acc78da95f56d3.lead_brake.baseline.yaml
+
+    8718b1d739178e49d6f5c89f5fc0483990186169cd3ce503baaab406fc1cb5b9  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-3.84acc78da95f56d3.lead_brake.event.yaml
+
+    c2ca0c63bbb5ed724a620ccb076aaf7fe128315abf0754438a1491e3a8cbd4f8  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-3.84acc78da95f56d3.vru_cross.baseline.yaml
+
+    10a8ee0fcb4c580d66bbe5d9e9509a0e53c9fb3201d8af89104feb0f6bff2c91  navsafe/benchmark/recipes/proxy_set_state_perturbation/I-3.84acc78da95f56d3.vru_cross.event.yaml
+
+    e24b254c6912d4efe8ddd535f24a1bbddf07059e5052f6b86d57a15fc29622d0  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-1.0027991369e05ab2.lead_brake.baseline.yaml
+
+    31c3d2a0e5ee7c8568a9ed80f96260d5144a5f01c9e3219ac80c88f69feb25c4  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-1.0027991369e05ab2.lead_brake.event.yaml
+
+    1423a66b90df8e75c80e32ac6eb76a1f9d97b842c9b58360a2a6e09e0ac7aed3  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-1.0027991369e05ab2.vru_cross.baseline.yaml
+
+    41d24979a1d0b83f699159106746050fd95a67218063e983ac73667cba8a10aa  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-1.0027991369e05ab2.vru_cross.event.yaml
+
+    e34a32bdbfdf80e8282c53e3504fb84a556bd1eb11d270ec3936c13053c7f6b0  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-2.20cc0fdb7e2d5c3f.cut_in.baseline.yaml
+
+    04c55c4fbaa6188639d156450abd446109d2deb338398ede0e52662f4347f1ba  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-2.20cc0fdb7e2d5c3f.cut_in.event.yaml
+
+    289dd9b3e940893b6d14dc18efc54e35a96981a1c31df2773284ba82025eaccb  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-2.20cc0fdb7e2d5c3f.vru_cross.baseline.yaml
+
+    26558eb88b9501de599489cdb560d1740cc8b79ef427f6a02f591453263900d5  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-2.20cc0fdb7e2d5c3f.vru_cross.event.yaml
+
+    b6c6194ea35bbba8f06bbee3c2e40be4e56c210c2f408ea7ae590a2de623b00c  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-3.132307b3c1a55f97.lead_brake.baseline.yaml
+
+    a5e5a5afde5ff24730bb81531eee0dd4f7f2755547b24181f2e1b8870a1e5753  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-3.132307b3c1a55f97.lead_brake.event.yaml
+
+    4ac7416eaccaf517dfb401e66df80d0b71d0763e4ddc5aeb9e02c1d6af044f65  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-3.132307b3c1a55f97.vru_cross.baseline.yaml
+
+    f982239176b64d210a485055c8771508a41fdd4ff9755e20e81cf26612f0ce71  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-3.132307b3c1a55f97.vru_cross.event.yaml
+
+    e63c3a3a034d27cf0df198288b4a30955af0adfa099168ae47ddb9aea5dd5ebf  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-4.225eb6e22af55972.cut_in.baseline.yaml
+
+    17ee31448509d6a3d7356275947e5bcc284a2ff3b59a493555718d46adc138a5  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-4.225eb6e22af55972.cut_in.event.yaml
+
+    b7fe814e7d1da876698b89947bab0fe75791940c09e5252ace6e1c691ae1c353  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-4.225eb6e22af55972.vru_cross.baseline.yaml
+
+    86ede20d5b0bc7bee142bb4d37feb17a9d0f70ec3ef4fa90a9eb66201c5a1e10  navsafe/benchmark/recipes/proxy_set_state_perturbation/R-4.225eb6e22af55972.vru_cross.event.yaml
+
+    b208987901d0beccf70facbcb03749be7e30da1d050e04ca7752b9c2ec540a60  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-1.42af8e33480d53b3.cut_in.baseline.yaml
+
+    c671d0788708a7214d13c04e2124399385af2d023efbf2bbe65a32f1297cc5cd  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-1.42af8e33480d53b3.cut_in.event.yaml
+
+    adec2b1a53acfa31aea4bc3e7aed0b4404e8033a2450e15456aef9fe4f48a544  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-1.42af8e33480d53b3.lead_brake.baseline.yaml
+
+    e6e11f9abeb0f937ad6134f4fbb7ed8af319c2a3fd73d3575ebb586be092b91d  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-1.42af8e33480d53b3.lead_brake.event.yaml
+
+    74c26dfd9a426c17dbaa9450f2ed8eb85ab4b8418ffc50000a92b00fdc0d076d  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-10.63c145828c3b5fd8.cut_in.baseline.yaml
+
+    bb35ba5b0118ec75daefccc407eb86823f8ad12851110bfd04eee9bf175a434c  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-10.63c145828c3b5fd8.cut_in.event.yaml
+
+    cc4a29f2091bb3689c1150a372b73c00c00d0ad8ffd49ef8e4fb26f0a99afbb8  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-10.63c145828c3b5fd8.vru_cross.baseline.yaml
+
+    f73e6ea75a89182a39064d71c8080768c34c53815c0941aa29d5a58d8c156f78  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-10.63c145828c3b5fd8.vru_cross.event.yaml
+
+    5636df51c6d31dbc5713e5225e480118f6f780bf276ac8a61bf9e2d075bd0180  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-11.32d85d373126537e.cut_in.baseline.yaml
+
+    7c32ecc045e36f63d08c1d730fb8e754ec57cdd37bafd8b1edbac77e85cb7cde  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-11.32d85d373126537e.cut_in.event.yaml
+
+    64ce804261010081a946f5dd576fa122de1796cbfff7238eaca079f0032a8fbd  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-11.32d85d373126537e.vru_cross.baseline.yaml
+
+    a64ef2d5c072f2fd9e3fec40171099c4a6face09550b40528925ecd0703854c4  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-11.32d85d373126537e.vru_cross.event.yaml
+
+    5944844d6cbedcaea533f61e999f6a22dca877421d56223250b34493dc2052a9  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-2.3d324bda0cec57ab.lead_brake.baseline.yaml
+
+    c91464efc8225274f1462dc7eb4c9ce3ce42d7d52efe68a551435abf26354dce  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-2.3d324bda0cec57ab.lead_brake.event.yaml
+
+    d261180884f7cd0650376d54172f539ab3229a987864c404a9b891de40fb684e  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-2.3d324bda0cec57ab.vru_cross.baseline.yaml
+
+    7c53a570815cf8f4dc89d689026f96414f8ba783a8bde78434357b876045a607  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-2.3d324bda0cec57ab.vru_cross.event.yaml
+
+    18c8e38ba08127be6d229d06ae2e1d2b7a8c161c1490541005cd13017a577ec1  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-3.c41f71c68ad45f21.lead_brake.baseline.yaml
+
+    d0b5396fedfa0db001bfe7bb573dbf87ec97b23b142426ac2fb4fe3c5f7f5aa4  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-3.c41f71c68ad45f21.lead_brake.event.yaml
+
+    50fca8dd0628b94739c3998e6214aa302b155c03798779589646b120343e5cdb  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-3.c41f71c68ad45f21.vru_cross.baseline.yaml
+
+    df7014b94fff2d283379913a81ae48ccddc385eccf3f00085fc3679fa8b77e13  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-3.c41f71c68ad45f21.vru_cross.event.yaml
+
+    d6886d6e741c86102cec249d54c335f92662f3892b7ec36c160f8038e11bdf3b  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-4.089e3eac4f7e5c5c.cut_in.baseline.yaml
+
+    85ed6ae68c50b5fb51260fece2795a6b0b2a4407f6255b5167124244dd6baef8  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-4.089e3eac4f7e5c5c.cut_in.event.yaml
+
+    5d8b93c538e8c0a681a83578f6244f79f7517dfde8fadffdc8db3a245286e3be  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-4.089e3eac4f7e5c5c.vru_cross.baseline.yaml
+
+    f4b2711338a2a8f6aa2e514cf1f30d063080c1c8753f14c37cd439c05db723b4  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-4.089e3eac4f7e5c5c.vru_cross.event.yaml
+
+    a77097422913b7fd141f50c34ee5b1c8e614fcde1d04da8909c22bd4ca3af813  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-5.07c5114fdb395f8b.cut_in.baseline.yaml
+
+    946256cf6c3c559a09b3efce59fb180b6282d75015f4120523706f6ac1eb6829  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-5.07c5114fdb395f8b.cut_in.event.yaml
+
+    db553935046e38305f7317c7cd73e7412934f1b45e7d00b5764509791b42d629  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-5.07c5114fdb395f8b.lead_brake.baseline.yaml
+
+    79f31e631042070c36e003616e1eac14b26d856b6a3fb71db60d3206ac2cf990  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-5.07c5114fdb395f8b.lead_brake.event.yaml
+
+    2dfe988611a4424b6b9047188ebdc367a52313fe90db1c4135ff5aeeef25be76  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-6.8661a7e9b4a95042.cut_in.baseline.yaml
+
+    27cc4809eb5e315bf0e1f45312db540ecf20d76adad160e480f87c7d4c971b64  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-6.8661a7e9b4a95042.cut_in.event.yaml
+
+    d25aa08eb3ca6f0ec777f1be4116fd253df7fe7a5ebd77c217baa064a85e36ed  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-6.8661a7e9b4a95042.lead_brake.baseline.yaml
+
+    d157761f4348d2a9bde17f6cff2d61894e88c0642cb042dcd5f45d09e9b64032  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-6.8661a7e9b4a95042.lead_brake.event.yaml
+
+    f2ef41ef8a966290936c2dd184849a6cbf0b837cb3544a517542b4e905d8d744  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-7.97dcc120f4695080.cut_in.baseline.yaml
+
+    d62d865d1969ca5fa006f5f3ec6cee44dbb48491c12cf9ffe5c7a7ae5eda131a  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-7.97dcc120f4695080.cut_in.event.yaml
+
+    e4ae9c5342f739546ad858f73672e1aca66842168f2ccdd2e5a3ab3c53fe3a6a  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-7.97dcc120f4695080.lead_brake.baseline.yaml
+
+    2faf2eb218617f8d460d9a7ab95d5aa850056b5cf9e3d1356f61d7024aea23c3  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-7.97dcc120f4695080.lead_brake.event.yaml
+
+    0c0906ba329874b6481220595f8141a2140a9c3a21367ea202ee10c8bdb03913  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-8.14c0a657ac3e5bb7.lead_brake.baseline.yaml
+
+    f347bce39a1693a7f0c3decd635f680d4459e5c4b4ff4f82f2cb14c9ac72c9a5  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-8.14c0a657ac3e5bb7.lead_brake.event.yaml
+
+    ad0f37d65847b24b10873c3e6db655f854e24ad932dd6eb2d9a947cd92afe77e  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-8.14c0a657ac3e5bb7.vru_cross.baseline.yaml
+
+    e697318e267291055afd6ed7f9560e3d16116736a3ee50836829eece8536b199  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-8.14c0a657ac3e5bb7.vru_cross.event.yaml
+
+    0fd99e3125a9988bddab5922614a2106e756aef90b8908989cc4240670a740e1  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-9.3a5278b27c87565f.cut_in.baseline.yaml
+
+    846d66accd44ddb8716a2e1dd82249d2399598fc8e787a9f3995ea76d08ba7c8  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-9.3a5278b27c87565f.cut_in.event.yaml
+
+    04f56006bdae575635b36c4ec1a798b5a3ae8c51e442cc51f0889cc39bab2a31  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-9.3a5278b27c87565f.lead_brake.baseline.yaml
+
+    a2c26cb752ac366f6cf6b8c543dcc90759dc45de205707cb670e13cab124f1ea  navsafe/benchmark/recipes/proxy_set_state_perturbation/V-9.3a5278b27c87565f.lead_brake.event.yaml
+
+    776967ee03dcf5b37cd6fd6d8c02a525dd5d3d325815be7803a95c6c27cbd06f  navsafe/benchmark/recipes/proxy_set_state_perturbation/index.json
+
+    140adb0071b22bebcc8c16ffe05fa3c7ae057af3d1941a55cf8c9827a375dcde  navsafe/benchmark/recipes/proxy_set_state_perturbation/source_manifest.json
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/rubric/__init__.py
+
+    8e9d35b5e0b60422856f041d8cef7ef289da3ff53c694db067e39a9a2b7219a6  navsafe/benchmark/rubric/calibrate_tmax.py
+
+    4c6f9537cdd8e39e21eb34e32e2cfb91aba178a2f492bc82c1a1a4326269c807  navsafe/benchmark/rubric/check_rubrics.py
+
+    65f090398a695f6f7f07c9a84f404dda90d5bc0be629e65d1b90c8f9f54678f8  navsafe/benchmark/rubric/evaluator.py
+
+    ea6176cb717d93da899e0d84d15b2396db770202b8a3ef03de56e17747558c79  navsafe/benchmark/rubric/families/F1_stationary_light_lead.yaml
+
+    66ecc01e9b8032a813933cc2ddb2f6cfae946b015f28f99c469623ea92204f28  navsafe/benchmark/rubric/families/F3_left_turn.yaml
+
+    4709a2fad281ab073750fa5d2b11e9dc542e2a2254f90df312c652186f706d0a  navsafe/benchmark/rubric/families/F3_straight_traversal.yaml
+
+    14cd70da9f55ca62b961555a5644122c47eff41c1bc9f6bfe9df107e17aee10c  navsafe/benchmark/rubric/predicates.py
+
+    633667a526c86c5e498af20a7a57531bf2f013080a84477341fcc454bbec786b  navsafe/benchmark/rubric/schema.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/runner/__init__.py
+
+    384c172ed54ab97762c3299c02c3c2d7a24a72e53d7a0fdb8fbedce47b61c635  navsafe/benchmark/runner/collect.py
+
+    44a365a5b4e600548835086ba7ae023ac77d5ac820896ffed78ded9dd1947214  navsafe/benchmark/runner/pipeline.py
+
+    d5087571fe00dfba9f7606403a7acd3e9aab8683df6e04371357c68eed138b85  navsafe/benchmark/runner/show_verdict.py
+
+    e5974b485dbf7b76e38618da827e05b22af90b84cb4d6d1181be7d4dab10ca9a  navsafe/benchmark/runner/status.py
+
+    b8816c8e2c74adf900a3d3623ff758c22e9c7072a9015416f3537ea40b9d63bc  navsafe/benchmark/scenario_cli.py
+
+    9f60bffb3fced763af19dcc4f9d7f1ecef909cf6d2a9f7580125e3b7b04ebd04  navsafe/benchmark/scenario_rules.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/scoring/__init__.py
+
+    f83310f0dbb8a909a0292d60aca32154f146c35df95aab026c9e40fd9f273f9a  navsafe/benchmark/scoring/controlled.py
+
+    36068ba4ae20c1ca3f7a25daaf168ca597da8c3ce3126d2ecd62b163dcdab3e0  navsafe/benchmark/scoring/episode.py
+
+    2e568870a2ccd10981cab4e2cdff13b718696b2ad0ec525c70578d2348fe73bb  navsafe/benchmark/scoring/from_run.py
+
+    fde292c70250bf538976fbb2a0b2459e37cc3234a804fb6a7755756c88e10fe9  navsafe/benchmark/scoring/metrics.py
+
+    1cd0a2dbca71d508f11a55177154840209a0a0463d0bba162ad3cc494a78a44b  navsafe/benchmark/scoring/route.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/seeds/__init__.py
+
+    a9a17db81c1dc3b100178f6a04a5bb518e63b7af0dc8d76d4c1f3d4cf42946e7  navsafe/benchmark/seeds/build_seeds.py
+
+    dded60cda7dc79e3fd1bc4ffbe3fa0366abaedba94d802722a379f46ef3ed1b2  navsafe/benchmark/seeds/resolve_regions.py
+
+    918b697b2dff48bf3ac06f02b279d7708373cb52cf62ebe628b83b4744d354e2  navsafe/benchmark/seeds/verify_seeds.py
+
+    c3ed69161d5089b882afc54c69b75780b89b101a9ce50a3075d014d581903c41  navsafe/benchmark/signal_override.py
+
+    3d30549eeb6a45b594639973318d067d6969cc83f20b196fa2af84af76ca86fb  navsafe/benchmark/termination.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/trace/__init__.py
+
+    432cd44be0a4460249064bfb73ee01a78406c0b7401ab2be77a4388e0b441928  navsafe/benchmark/trace/from_eval.py
+
+    672229cf2fb7db0c11732949f474d9c1895472e27fedb4323d0af5c1c5281233  navsafe/benchmark/trace/hook.py
+
+    704513d1a31fe08b74ea8ff8042864ced9ae437d5e2005dbb30440339d787223  navsafe/benchmark/trace/regions_from_map.py
+
+    2132a1456dd0eb504935a9fadc2badd5509df3de2b55c5cd643bfcf6513315ca  navsafe/benchmark/trace/replay_log.py
+
+    b2b25bce036f197db05d0c636e1e82d352b26e5b944b6802763101cd60865770  navsafe/benchmark/trace/schema.py
+
+    1c8fc13016e25b4deb99829d2947672608c4f742d4f977ab326acaa7dbb35007  navsafe/benchmark/trace/writer.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/benchmark/world/__init__.py
+
+    4f13ec09a43860e3c38c29de47b983ede70db8adae30ca85f5a674f5faf3059a  navsafe/benchmark/world/deployment.py
+
+    a2dbd8198b7c756110b72e75feda8c7a977be3f8a208b807be4cd52e521429dd  navsafe/benchmark/world/k8s_jobs.py
+
+    c515c6036f2e54895b01b68191807759a12c574bfa8a26b7c3d85b52a696905d  navsafe/benchmark/world/run_arrow.py
+
+    07877a5fbd7dfcf7906154b6a68f0134d881a72cdabe8cb009dc9240e3273597  navsafe/benchmark/world/run_eval.py
+
+    684870000aa1f43d9135154e8c77d447ba809aa7214460554e32ea5fa4757fbf  navsafe/benchmark/world/run_ncore.py
+
+    6813507b38855cd04c07b7405be63a2c05b16c2ff3dd779a62081b78d7d1c455  navsafe/benchmark/world/serve_grpc.py
+
+    261e7f4cbe7bc99ebb7c196a6aa4212d6b73b4511d1b39c162c33d9e94e4d3f1  navsafe/cli/__init__.py
+
+    8f34aed55b544d925f985f8032d75b8387ffa4134bb3ab2f83e302d0631d3488  navsafe/cli/batch_eval.py
+
+    e82cfa332d58dd1ab46401b0f485843f82350942fdbed3a5c37efa6ad3a67674  navsafe/cli/doctor.py
+
+    5451c5206b9c3a15486e484fa0ce4b629f4ed4a5be7a38b83edc5bb03a214cbe  navsafe/cli/eval.py
+
+    1d8784f356d22a3c5f0ad19ce4abe87041b97ee9bff8da4bbd9cdf4d5c4dd679  navsafe/cli/eval_entry.py
+
+    1ddf0d2cc8c173d409d50dd6923928f914fdd00341eb284acb9aac120ae41db2  navsafe/cli/isaac_boot.py
+
+    a2565303f02c1e3db97b0d29a175ba0c2cbdea09c6b34b48daa066d4307f53b3  navsafe/component/__init__.py
+
+    68c91503a87d30ec8e2a96dca7f76f61f12570c10b1e0e145db7fb004b0ff027  navsafe/component/sensors/__init__.py
+
+    c8ace9523532e4d69869698c929ee0731bb1983dfe0ad92d07233c832ed85a74  navsafe/component/sensors/contact_sensor_cfg.py
+
+    d5cc7e76e224690866126060f90118d2d83f672c96384c1dffd97d2b805bf428  navsafe/component/sensors/frame_transformer_cfg.py
+
+    13b518ca6b38add626bc063febce458a4f9498e0ec0699f743c16bb737963f88  navsafe/component/sensors/imu_cfg.py
+
+    f61d65a0f2696d923579da33571c23fdb72a5200c580721c77d9407c4a5c71e5  navsafe/component/sensors/lidar_cfg.py
+
+    4db58110c8d0eee56bbeb0756d52dfcf8b4b968dbf29ea63247e51acd853c997  navsafe/component/traffic_agent/__init__.py
+
+    467ddb1e1efbb6ac210c79c844a2680e8ebe99e2423e6e6dcbc390a808b09be1  navsafe/component/traffic_agent/idm.py
+
+    103409dea15987264c9db4e93b5dca6057bf3542754ee9b548f2f5563b138b82  navsafe/core/__init__.py
+
+    7e5006f021ff5f97c879be159dd98179f76071e5ea073b3e5db0464da3cead97  navsafe/core/agent_forecast.py
+
+    bd26daf7676594a7d4c7e48fe7cc0f9b0338aea29f40b2084fde04ed574f5f11  navsafe/core/collision_actor_types.py
+
+    82c2df62042ff171a14a09e5c6c21f4994a9676c1ce32d57218889217ff74c22  navsafe/core/controllers.py
+
+    175e9d4e75b68afbd3288c77b724e2560919fda9a4558faff95436995e05eba1  navsafe/core/ego_dims.py
+
+    c28ee7d71e02680994a24e161110d719806d5ca894db9dff64ff536358e8ea73  navsafe/core/ego_dynamics.py
+
+    76f13e7d0cac93619bf68749828162878d0365110bf8b7979a05f7b274a138a3  navsafe/core/execution_clock.py
+
+    a3f1f20901d5615b6e366daa097a4425d10456c897462b1ebd05a44883658982  navsafe/core/plan_execution.py
+
+    3818145d7f69eabbf7ae1a8cacde1d31da81d8c495cde9426237e2e1bd7c1d18  navsafe/core/steering.py
+
+    c802117bf082eb0e7ff7e253efd959a017b658006d42285d4d80b8803e563a7f  navsafe/core/stopping.py
+
+    4d9a083a29ae4b9bf0cae740a17855828e6c0d85ee59a2028b1e5d7eab2397d5  navsafe/core/track_dims.py
+
+    5b6f4f981c8f7dc5b4836c0fef65a410e2c21b5a55484bcc8fff5f22091e6aa8  navsafe/core/unified_controller.py
+
+    649c5db5866cd2ec3e9542024c8835ef4106f02112328ff58ee0cd481d5dc6a4  navsafe/data_paths.py
+
+    39ddc756a881924b596a8398a455accfabfb36401a07a12d4865d532d5ef2436  navsafe/engine/__init__.py
+
+    26ad31beb283506b1bb80a8f9f4ecd571da5fd8e166f93549a0fa75b45a6b0e9  navsafe/engine/registry.py
+
+    ec8116aa7b1c4c7874c9a24fa243ba32ab0e5d4a4b8cffeea4cee19c204f8848  navsafe/env/__init__.py
+
+    594a03c99ec8a05220f9adc642e0ddfd0e1a61846da46ec211604be46a85888c  navsafe/env/_bootstrap.py
+
+    58eb5767a924e914c81603b4c7db514831ee59a6a920764b27a94bcb9fc382ca  navsafe/env/camera_manager.py
+
+    dffca402a0f93f02f2933547d39ef7897f288a921cb42127b81f1bab4bdfcb71  navsafe/env/env_cfg.py
+
+    eae24030b896f7f52b1c83297369f695967e1010815579ff9cace622d7f4277a  navsafe/env/loaders/__init__.py
+
+    e20fee158cdbbcd8ccf639445a660b7a4d4d9c533776ef5569089436d91272a7  navsafe/env/loaders/py123d.py
+
+    f6806cb12798af42ce7042d5837d542aacbc251a2ace58bd1266de46dc42392d  navsafe/env/navsafe_edit_env.py
+
+    848db931e84254a4069104a808c9c3366e042b4ad239b167ef4ca66262e1e4d1  navsafe/env/navsafe_env.py
+
+    87dbe68a6ad3fa90c79abb47f465529cfd5d92657747ecdf3e5a29459b38c68f  navsafe/env/presets.py
+
+    cc2b1eb27627537e5bfd78ae473a460ad347a334131a87e28da676d1c45f7864  navsafe/env/scene_builder.py
+
+    5762aa7a9c853f3d151340d1834ddea18271175b005015bd23720ce61015d2a9  navsafe/env/sensor_rig.py
+
+    ed3193b3269be951f490a7e5405fc218bd0bb256ec513fe4766b52eb102d195d  navsafe/errors.py
+
+    3a9210ea44451489fd0e0765c989b9386662e86994913d138c767f083d66bf3c  navsafe/evaluation/__init__.py
+
+    037f3c039c94f4622ab285e2b24df6386101ec4f63dcebd566396e51fd0e19ff  navsafe/evaluation/batch_evaluator.py
+
+    caf15404c06a7298b96698fd46371496b844db3168dfc308cd17603c803f3e85  navsafe/evaluation/eval_artifacts.py
+
+    b33232a2e585554f36899aa9ac6b65b207c9f26b55802b4797f9d4eef87e4dca  navsafe/evaluation/eval_env_config.py
+
+    a0927c01253239e84a1c3f2796f59c398278febc2e9ac9e2b5be3dc129b1b106  navsafe/evaluation/evaluate.py
+
+    23e9a97fd5696b9559e0a2723a795bbfaae0f85b9c4d3050badb16dacf437169  navsafe/evaluation/evaluator.py
+
+    97162139f645a554aa84ac45d402279f2129312542a97aeaaa471c72405c0b4b  navsafe/evaluation/perturbation.py
+
+    8d14963c0f5891ff10fec58de91181823faac192b97f9d267f71901038696f8f  navsafe/evaluation/reactivity_trace.py
+
+    1e7de4887c3c0068c0ce8fe69be870a5f426fdba25e1baf94db23b8f72c0b092  navsafe/evaluation/route_manager.py
+
+    9d4085de5289783266da9280bcd384fe3523ab8d80b3f106e2787b4c6e9d8aef  navsafe/evaluation/scorers/__init__.py
+
+    50bbdc56c255e0f33899148f749ddb97c0eeb1a8bd0689ecdaa275c9c311927d  navsafe/evaluation/scorers/at_fault.py
+
+    35512632352d96ba3ea0e9edce9648421e582cd03e56e2e1c71e3435842c7ce7  navsafe/evaluation/scorers/base_scorer.py
+
+    15ee9bbd8092a64f0ee26a8943c9cf86db63d11a97d895c116628df647e04968  navsafe/evaluation/scorers/cls_scorer.py
+
+    cec68dc0d598e07a55fa17b6bb5f1ec772dc1a8f1bec0efb9c7dc53ef5545802  navsafe/evaluation/scorers/coarse_topk_scorer.py
+
+    e346b4b37387bfb7ea54652414f6f6670581fdeebe4bb6cbe2b8dff339db5d07  navsafe/evaluation/scorers/confidence_scorer.py
+
+    c4f089cab03f88603c11ee806893b0968c4ed98ca03678b6bc1f9a257a530899  navsafe/evaluation/scorers/epdms_trajectory_scorer_fast.py
+
+    9b38de12f4731069714502f4c2db0a94e47d243dfc3b8d4c8eea8f409b0e97d2  navsafe/evaluation/scorers/gt_scorer.py
+
+    5421315eaba2b21a5e3e54fc00f8026ea2709fec0c5d4bf58952e52d3053392d  navsafe/evaluation/scorers/gt_stride.py
+
+    61b378e14f363e64928a6bab590a104b92c32e9523b62be2ebfb4f5dfaa9bbf9  navsafe/evaluation/scorers/learned_scorer.py
+
+    5ef55736afbf4d045560046c5d8e1e05144ed482f8e91f32bde3339122c41501  navsafe/evaluation/scorers/tta_scorer.py
+
+    afeafa8c30453d61e92081b6726d7191dda6e33d2f7a491e57edd3be6fe12dab  navsafe/evaluation/unified_evaluator.py
+
+    51fe700544b58d04545490abf3128e46ed080dc0533f3541326f04fa015bd5cf  navsafe/evaluation/utils/__init__.py
+
+    63d0db11dffa0fe69e0f0217f31e44485e101f4d0228870710ba75620b6f4f39  navsafe/evaluation/utils/constants.py
+
+    b63cb232f562932b18d29d7f8c2fa0605627d00013c97e9a2605dc4b3e2db009  navsafe/evaluation/utils/lane_proxy.py
+
+    9de153c03d406a71a7510196ab681557683d27c5c344a038cf11290aed3f7c9d  navsafe/evaluation/utils/lane_proxy_fast.py
+
+    9da60a70b74dec23271d26bd9b739238db8909797c5948761f6b0fb8d19f9aa7  navsafe/evaluation/vis_utils.py
+
+    dc9c0dd40f88a7590215d3450329297816c58cf4b8d9845ecb3b6f6a5857b421  navsafe/evaluation/visualization/__init__.py
+
+    a1f2568ccf57b33e06c145d9d64f119f523e8d964819e2c8bad93cc7f01d6890  navsafe/evaluation/visualization/bev_scorer_overlay.py
+
+    33ab3a1f1c6bcb169f14993cb02dfd760100bd71264375010642ebb652cca71e  navsafe/evaluation/visualization/scenario_results.py
+
+    70f985e53b21e9b7f69715b25b904a9a8297a46c24e2c52fe8e85b0b070be915  navsafe/gs3d_converter/README.md
+
+    4e8048580824874ca02cb9efdfcee35944f4b8a939654c02b2b16835d6e65630  navsafe/gs3d_converter/__init__.py
+
+    16764086bae8e80beafc6059983141a1b5e5569af2424022dd241d1d1f3cfc71  navsafe/gs3d_converter/_windowed_sync_patch.py
+
+    8d8282d84cf9f6d3f8dca15d55170eca0f59331d7b1d857196d45beeb39f71ef  navsafe/gs3d_converter/configs/3dgut_dynamic_static.yaml
+
+    87e671b094e80245d84eac704493c86548c4b237b1505f4f3e3ad8423010ce12  navsafe/gs3d_converter/configs/car2sim_6cam_static.yaml
+
+    38f6a64e564ad0e2f6bb45bbbc790f2b4971482ec6981dbefd4dc60399b500c9  navsafe/gs3d_converter/log_ingestion.py
+
+    4be7b2fa88e50bd50b69e9582859a094ff4007f67e70178947103c8295f6f439  navsafe/gs3d_converter/navsim_parser.py
+
+    c1d627d38ab51ec7d0a640b492549426d9aab4370148031fe74ab8ee0fb8195b  navsafe/gs3d_converter/ncore_bridge.py
+
+    e46f6471028d5754cc4c0ffbf8ec55c623f11725ce8a3b8b4b2085cc8073a9cf  navsafe/gs3d_converter/nuplan_structured_lidar.py
+
+    0334359615726c5b05c2029c83ef54f27acecda92c1c34fb7a931f199763e365  navsafe/gs3d_converter/nurec_runner.py
+
+    af933aada52d8c22ed5a2bfe5dfa2fc32107765efb845b03d320828a16896bc7  navsafe/gs3d_converter/wod_structured_lidar.py
+
+    e3f7e4cb776cb047f8abb7d01de5ebbe1bac7e206d780b6c5fe8f217f8f66272  navsafe/manager/__init__.py
+
+    1d5ab8b4d7509c02d29168710dd74be8f491e0e73615ed79dbedbefdd446b8a6  navsafe/manager/scenario_replay_manager.py
+
+    01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  navsafe/modelzoo/__init__.py
+
+    2a0fecf7029ca500d65f0e6bdc25714b6f8fdd348a93afe0cc35ce40872d0079  navsafe/modelzoo/common/__init__.py
+
+    e80be134fbe02f91d115fc8b786088d67d00a2317067092dd748c5a534835d98  navsafe/modelzoo/common/enums.py
+
+    40d7a78a5936b6f30b275d72372455d898d44d053a95a3c63cc98f2e1cf6b42c  navsafe/modelzoo/common/trajectory_sampling.py
+
+    e8c29cfc25add59ae8b64769a4554c6518878726178c0bd889fc8518ebe1261d  navsafe/modelzoo/gtrs_dense/16384.npy
+
+    cc44a31e75a53406db59f026f0358de97931e726f10254542f98d2a87a38ad35  navsafe/modelzoo/gtrs_dense/8192.npy
+
+    c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4  navsafe/modelzoo/gtrs_dense/LICENSE
+
+    2cac9eabf99703959f2eeb16543fb87d44dd4a8a01d37e4faf99fa0bd3127e75  navsafe/modelzoo/gtrs_dense/PROVENANCE.md
+
+    7a909f0237118c638b9d51c0874c2829aa345a17e9c11f8c0bdf31c12902c159  navsafe/modelzoo/gtrs_dense/__init__.py
+
+    8f74dbb3f70a62ce517b26c378c3b8b29a6a07be937c50799d0dc2bac1b8ed7d  navsafe/modelzoo/gtrs_dense/attn.py
+
+    f1b731d306c57f83f4d05f762ad933ab6b0da97ee236d9eb6d312eb945684b6e  navsafe/modelzoo/gtrs_dense/heads.py
+
+    afd311046a4407f36b6ba51c84ea28eefa56e942a69e90bb1f8e655750aa62b5  navsafe/modelzoo/gtrs_dense/hydra_backbone.py
+
+    c9fa2ec90daf160fa31defc9522b701b93b45c019aed76ca7758d360c1650ca3  navsafe/modelzoo/gtrs_dense/hydra_config.py
+
+    5ae29dbd69b32f16871c11114bb3720bfb2642e9a17d2e4a5aadd9580adf795f  navsafe/modelzoo/gtrs_dense/hydra_model.py
+
+    62722cea1e166a6f0e284b03c26f5c14260052e6c0caab2fae7611896b2fb1ee  navsafe/modelzoo/gtrs_dense/nerf.py
+
+    7cdbf62edc14f9d0b536d22231cd6a468a02137360dbc190f84b6fb1bd9b97a3  navsafe/modelzoo/gtrs_dense/transfuser_backbone.py
+
+    7b4f7cd39bee4896e40ff8cf77bb3042edafac5ddbba6dc44e6bf994732e3a3d  navsafe/modelzoo/gtrs_dense/vov.py
+
+    686740ce35f1880b2053db82bd325505026a5413083d0416a9bf18958d60ce10  navsafe/modelzoo/navsim/__init__.py
+
+    940e06e0c119713c54065fb3edd0fddd89d7c4a313a8a461f5ffd1085c6220a7  navsafe/modelzoo/navsim/diffusiondrive/__init__.py
+
+    8bf7c44f6ff58c86d835f0424f01fdf7c68b931f142c573d3c0705071280d132  navsafe/modelzoo/navsim/diffusiondrive/modules/__init__.py
+
+    66e62d6fb17bdeb0001d4d6f935e437d859881971f39f15a744db5fae6faccb6  navsafe/modelzoo/navsim/diffusiondrive/modules/blocks.py
+
+    d680bcf371ca921ac76ef5bfc747fa02070229187f4560a4a0f06506e8b02633  navsafe/modelzoo/navsim/diffusiondrive/modules/conditional_unet1d.py
+
+    d6345784334accec7f8a7e0d78afc2ae769df03b5dfcdd494e73048f6c7bb23c  navsafe/modelzoo/navsim/diffusiondrive/modules/multimodal_loss.py
+
+    c91fde6a65f2b170cd3cbaf9995606ff5d352f60aa64abff100f1ec71364a05d  navsafe/modelzoo/navsim/diffusiondrive/transfuser_backbone.py
+
+    61957a0886f048cc316d9157a5181937c7acce9f9d44502c3b1966bc91db5256  navsafe/modelzoo/navsim/diffusiondrive/transfuser_config.py
+
+    638454dcd081f63ea15b63d3dcee744a66698c2f04185724f0d873142c69d7ee  navsafe/modelzoo/navsim/diffusiondrive/transfuser_features.py
+
+    19e42bbefe12cca4c335cc83ede4d012746513aae06e91de01e48e5a918618dd  navsafe/modelzoo/navsim/diffusiondrive/transfuser_model_v2.py
+
+    421ae044982bc687df76d9ad0f259f8af65603c79aadecb83df72b570715bd7a  navsafe/modelzoo/navsim/diffusiondrivev2/__init__.py
+
+    54423a99a49f79556e79f8b7509ab691f97a399edd9fdab36cd2c8e230855418  navsafe/modelzoo/navsim/diffusiondrivev2/diffusiondrivev2_model_sel.py
+
+    e4fa2550db2473577baf6cdf670a4658c90b36652d8dea69f9b5900a821c251d  navsafe/modelzoo/navsim/diffusiondrivev2/diffusiondrivev2_sel_config.py
+
+    817c5459e4fc26f6f1ad556e338685814df1dfd88cc7b8a30547d42cb32cde71  navsafe/modelzoo/navsim/diffusiondrivev2/modules/__init__.py
+
+    d7e9db09d719c061230bb381dc5ebc2833b8bf8587f53cb03e83c236150ca856  navsafe/modelzoo/navsim/diffusiondrivev2/modules/blocks.py
+
+    b0f31a476bc87cf0f73c09aef0e5fce1ecf1550674e79979e716971138b6a4dd  navsafe/modelzoo/navsim/diffusiondrivev2/modules/conditional_unet1d.py
+
+    ade03a4deaef0bec669e51cc35b1eb619ceae327f158f043fc5d368340954154  navsafe/modelzoo/navsim/diffusiondrivev2/modules/multimodal_loss.py
+
+    34021a7efbb2193f1e459a9ab8d93cf42334054506b91cc7fa1573c4e16202d8  navsafe/modelzoo/navsim/diffusiondrivev2/transfuser_backbone.py
+
+    f81769a080d894d8c698bd4589130b2854ffb6585cfe59fdab0ac2b1ebff531f  navsafe/modelzoo/navsim/diffusiondrivev2/transfuser_features.py
+
+    20bd499c0432de40123a8b4f68a5585403ffe86a362ba00fd48e2bb0772baa67  navsafe/modelzoo/navsim/drivor/__init__.py
+
+    e4bfd02a4ccdc62041791d19e61e82a4651c32f869a2ddbc84b6afdee72c02ea  navsafe/modelzoo/navsim/drivor/drivor_model.py
+
+    e43d703a10d5208004a744ac6e03c7b32ea1fccae092b06ec5cbd5c2dde0fcde  navsafe/modelzoo/navsim/drivor/layers/__init__.py
+
+    45bc535138de2afbe8823c55e7fcb4eb7203b32f85cb1f357fb8206ce1000285  navsafe/modelzoo/navsim/drivor/layers/image_encoder/__init__.py
+
+    f912eff9144a8a8a875c32ed9616d3e66efa7688f2a5d0a1887db03f6f72168d  navsafe/modelzoo/navsim/drivor/layers/image_encoder/dinov2_lora.py
+
+    19d925f9edf344ede585577a60567e5120b03ae8aac174d88655cdba63700007  navsafe/modelzoo/navsim/drivor/layers/image_encoder/grid_mask.py
+
+    c43bd240b09383cc906376004b2f703dfc229a9a761931c0a1c6cd30e6085d2d  navsafe/modelzoo/navsim/drivor/layers/utils/__init__.py
+
+    8e951c75637ccad04d774c52bb660bf3a318d8277b59de78328367d9fd4ac1a4  navsafe/modelzoo/navsim/drivor/layers/utils/mlp.py
+
+    b62a97bcbfde465e0a86bb0eb1a2e34b6fea6becf6af1df7caac7816afc968a1  navsafe/modelzoo/navsim/drivor/score_module/__init__.py
+
+    35e351591dd696ab8f346107f1f06f6387749832bd124090b6d388decb0e32e5  navsafe/modelzoo/navsim/drivor/score_module/scorer.py
+
+    457400fb5cd302d7195419ef7a20ae2a1175384b27b3525f449a2c025775ac02  navsafe/modelzoo/navsim/drivor/timm_layers.py
+
+    35cc8b63ec4e256330923c16b28e7e2e6bf559e24baa551d284f3807bdd3e268  navsafe/modelzoo/navsim/drivor/transformer_decoder.py
+
+    271f2198ae82d1281fbc6809025c493282094818af6c37257fd6bb8d16a8a966  navsafe/modelzoo/navsim/drivor/utils/__init__.py
+
+    a22360d9bb83418cd075591d502f9d176f6248a28c800bb33816c47c596445df  navsafe/modelzoo/navsim/drivor/utils/pylogger.py
+
+    b8c04843a4e233ae001d1fc6241d9577d79a70d5b56fe046fff4b615b77ff64a  navsafe/modelzoo/navsim/prioreye/__init__.py
+
+    4ca119941fc218ad1c665682675470bbea055d92fe24779a7524e9da864ea828  navsafe/modelzoo/navsim/prioreye/memory.py
+
+    a5c8c61565e5a5c9a6e1491eaa6592c99029ef0831da113e60441a4a930545d8  navsafe/modelzoo/navsim/rap_dino/__init__.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/modelzoo/navsim/rap_dino/bevformer/__init__.py
+
+    7c5d842df27ab000ab60a943418c7f870f8598382161b0beab07d9e11ce7261d  navsafe/modelzoo/navsim/rap_dino/bevformer/bev_refiner.py
+
+    b5e09805c6688b3d5d45278b6f149c30e034be5b5a49d1a0246980937d42d9c7  navsafe/modelzoo/navsim/rap_dino/bevformer/custom_base_transformer_layer.py
+
+    c688790590d113a15984c52aa8e14a5ba2cc21412bbd5e7bd521a48da061647f  navsafe/modelzoo/navsim/rap_dino/bevformer/decoder.py
+
+    18c05df93696c513aa41d3a0ce49de6bb15e037e5000ad483e7c078560c677d9  navsafe/modelzoo/navsim/rap_dino/bevformer/encoder.py
+
+    97fc13dff268fe40494c29d71fb75e5da8e536f6fe7679220c9c7d8193e1659d  navsafe/modelzoo/navsim/rap_dino/bevformer/grid_mask.py
+
+    ed3158f1374f22037cb84815da83bb04af7b159173fcd1ef9b02f1ba2d3798cb  navsafe/modelzoo/navsim/rap_dino/bevformer/image_encoder.py
+
+    feb94cc516b81bc8f8a52f55d85ade003f24f26a7b7c0b178ccc219e35c63bc4  navsafe/modelzoo/navsim/rap_dino/bevformer/multi_scale_deformable_attn_function.py
+
+    f92e2b4327ba3ca31eedc1098d06e626ffd746100182df5c04a20215492eafb9  navsafe/modelzoo/navsim/rap_dino/bevformer/spatial_cross_attention.py
+
+    26bfaaa25f76ffc49aa940434e958010c0311abca89bbdfcd7fda8b8d1e61db0  navsafe/modelzoo/navsim/rap_dino/bevformer/temporal_self_attention.py
+
+    2ba11bb5936fdcbe9d133929b2e62cb0cac6c0d9abb55cf6e5d9ab30c78e2591  navsafe/modelzoo/navsim/rap_dino/bevformer/transformer_decoder.py
+
+    19165f1d321a67a28f95cb993ada4a39dfc507abe386f054e86aa45d95322793  navsafe/modelzoo/navsim/rap_dino/navsim_config.py
+
+    6293b3696b2209ec3b6e1f8be77ccc1783538b92af26c7227098fa43ac1ceb67  navsafe/modelzoo/navsim/rap_dino/rap_model.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  navsafe/modelzoo/navsim/rap_dino/score_module/__init__.py
+
+    bf4eba2b3c58c4feef16376e6d07611b278f56e9a01460359b0a83c6c9c79eda  navsafe/modelzoo/navsim/rap_dino/score_module/map_head.py
+
+    99d507dbb28d4aea3432ebb7a75590794dc23169605ff81cc4daa52f06c14049  navsafe/modelzoo/navsim/rap_dino/score_module/scorer.py
+
+    a6b960b680ac01bf2ec5b43b472f7bcdb7dfaa16447cbd579ac33d1525bdd170  navsafe/modelzoo/navsim/rap_dino/traj_refiner.py
+
+    3768fad0399c1dcd90d826e2e94d978a25865df9f6f1c929dc472e136f8436aa  navsafe/modelzoo/navsim/sparsedrivev2/__init__.py
+
+    2631fa1fa238a8b8572b37e8603f1f1d4a7a896b75417a7f98c5a61dcda1022d  navsafe/modelzoo/navsim/sparsedrivev2/backbone.py
+
+    3a67af9495d5ac40dc7bdf5fc7594556741a540981cb25861961b23a8d0a7647  navsafe/modelzoo/navsim/sparsedrivev2/blocks.py
+
+    ea9ac5a42ab30cae191a7985af3ca6bfc1cade7455d169f961bfc498da96b667  navsafe/modelzoo/navsim/sparsedrivev2/config.py
+
+    18472a24e41ca48a02bbb58b684b7ff3f34c99265d0b83dc0237c4cd2cb496f2  navsafe/modelzoo/navsim/sparsedrivev2/custom_decoder.py
+
+    9a185c53f9552f53070f72736a7ce98b5e5d5329794f72e2d9c74877653dc002  navsafe/modelzoo/navsim/sparsedrivev2/grid_mask.py
+
+    cc17876433b7632a63632d27e5f65ffefade20f4b0191794e77b6453050dd0fc  navsafe/modelzoo/navsim/sparsedrivev2/model.py
+
+    8d139f51807910fac6bdd5fb5fd3eadc38cb76972ccbec2c0ac5574e7f5ed5c4  navsafe/modelzoo/navsim/sparsedrivev2/ops/__init__.py
+
+    6c5104e3c598ed0f6dcf0d75d4adfdcc2ab6dcf89b99fcbf3d8d3b1ca4f250fb  navsafe/modelzoo/navsim/sparsedrivev2/ops/_build.py
+
+    1bb03114a8f24f7520f8c62c57e719660337bae7108dde3f09e87da68c5b609b  navsafe/modelzoo/navsim/sparsedrivev2/ops/deformable_aggregation.py
+
+    f26a08d2bcc51ae45cae96f5719178d67ef25f806124fb6f36ed8dfdc004a5a0  navsafe/modelzoo/navsim/sparsedrivev2/ops/src/deformable_aggregation.cpp
+
+    7e67e187d98a7c48c3353d048ef766af68f0f863f86aff9191de73637dd78629  navsafe/modelzoo/navsim/sparsedrivev2/ops/src/deformable_aggregation_cuda.cu
+
+    b8117286b86b1d464dc7c52d5c477a954b7a537bafec2ecd76881c72ff1c72f5  navsafe/modelzoo/navsim/sparsedrivev2/ops/src/deformable_aggregation_with_depth.cpp
+
+    9f23dc671a4a0e9a97babf486f620d3fa3eb5386f10d4947484cb7d7b0027d89  navsafe/modelzoo/navsim/sparsedrivev2/ops/src/deformable_aggregation_with_depth_cuda.cu
+
+    01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  navsafe/modelzoo/navsim/transfuser/__init__.py
+
+    5d03243b2b46df99e799d66a3b2f9bb053839f490ac2bc8139ee01545404ccf3  navsafe/modelzoo/navsim/transfuser/transfuser_backbone.py
+
+    ccd406fa18c820c632c6adca38b4c27590f66a61c480b13c8c7ff474fc3836bf  navsafe/modelzoo/navsim/transfuser/transfuser_config.py
+
+    beb8e46ad57117a1712e404dc27fa044018569f27c08974fc648fefefaf82375  navsafe/modelzoo/navsim/transfuser/transfuser_model.py
+
+    18b41f5d9d8363bef68cdb48522a938b9347c233c144aca925814c2c0b93e790  navsafe/policy/__init__.py
+
+    76f50cd3f1334ffea6cfbb19fbbd568fc99653865e77579d2ca3182a705c3579  navsafe/policy/base.py
+
+    1285e79990b8cd2c0c9985d42b300edae1f4f0e9fc4ccc5039a86f277c9c2619  navsafe/policy/factory.py
+
+    d709bc4ba774b45bea252cf126b375bf9f34cc2081405f9f71c918253a8537f7  navsafe/policy/registry.py
+
+    74ce87ff00448dcc763df367d7a746d4b16f4b846730e07da0c9f6927fd8c195  navsafe/policy/sensor/__init__.py
+
+    d7d25ac49ac5e0d12ecc7dcd2255a8d6465e59c8eb00eba19bef1430759f8817  navsafe/policy/sensor/alpamayo_r1.py
+
+    95189c83c628bfbbd9b6703cf930806d429e009bff3d4714809ab602885b46d0  navsafe/policy/sensor/autovla.py
+
+    ad678458c9b6764d94dbec5b3c93ab799e27730f80d2d34259ca83205e66580e  navsafe/policy/sensor/diffusiondrive.py
+
+    84ef49959f7e6a49664a5d3ada35c7c3fb1577024db5999b85d609b5ccc49f40  navsafe/policy/sensor/diffusiondrivev2.py
+
+    ac9ad366baf09c80dc7b451faaeaef5ed2695c8c9b0e8c77c85b632ee4c3091c  navsafe/policy/sensor/drivelaw.py
+
+    247b9293042dad378424a6d8dd143ee9763724a9012d2bd49b37e3fb9bfaa23b  navsafe/policy/sensor/drivevla_w0.py
+
+    51ea9b577be3c45e56e847f1cde4e579fa6cd613d07e4e8e9ac261d624cc77a9  navsafe/policy/sensor/drivor.py
+
+    441296748d832be86a8f8f9edc3a432e65c9dc87197b3beacfecf24c8003fcb8  navsafe/policy/sensor/gtrs_dense.py
+
+    497e3bc6b52f7c11a7d0f55477e6a22a7e533c675c5be5df9cbc16f8d53a0d76  navsafe/policy/sensor/lead_navsim.py
+
+    26ca93164eb2c0b67b1c7d527822e04d5fdc030d64a1dfa285bc97d25abf02c1  navsafe/policy/sensor/ltf.py
+
+    8c945eefdcfeeff59ea9333c88b1b0ec0a0a2c3ca533db42812732c33d170b53  navsafe/policy/sensor/mtdrive.py
+
+    2ac3b3432a6b4dd6b1dc3939a751cb64085acf0189d99d3ccff87c7d80e1ee62  navsafe/policy/sensor/openpilot.py
+
+    94cc6fc92e0329c774b87860cc65b95d1ab0bb2234c47cdd532272c4a62b3825  navsafe/policy/sensor/prioreye.py
+
+    6b078d0146f7defcd81ec9abdf0b96737b139fe6ed75bdd15df72a832255012f  navsafe/policy/sensor/rap.py
+
+    3e3c79f01f6bf212184f23b4936f67ae2671850f11940c8940e75acff47beaa8  navsafe/policy/sensor/recogdrive.py
+
+    a1c2b9ccd4ef21aa32ce55033bedc9181d0a2dd601d15d5c62edb5dabcf768f3  navsafe/policy/sensor/recogdrive_rerank.py
+
+    c42f86cebb18149c41680d13f1191304336aeb67fbd8ae083a97f5a176ea7720  navsafe/policy/sensor/resworld.py
+
+    0e5aa93ae9fd9162f717a5248463e40da9a3a264a87f71e9e85e00d22e1d64d9  navsafe/policy/sensor/simwam.py
+
+    79869a8ab8b6c703ac1d00b1c1289ef15a37ad75ae4296ed937441a41853d9a7  navsafe/policy/sensor/sparsedrivev2.py
+
+    2cc5ba4426ca80a8f3869b033f56e613deb1ccc6e3523021bf8136864938dde6  navsafe/policy/sensor/tcp.py
+
+    069ccdb76afed38180cdb8ec5d67b17e11c6a228a97746313cccf551c02e5f99  navsafe/policy/sensor/transfuser.py
+
+    b0e63f8c6376ba2c2b1df8cef2afc6e656fabb1e82c44926a447d114ba50b703  navsafe/policy/sensor/uniad.py
+
+    5ad8fd4f8e164b9f35cd7eee2091e9f02081810b02be4f368d035d65f987b650  navsafe/policy/sensor/utils/__init__.py
+
+    e1e6d557eb205cc5781a6a7c0d88f3123340c377d19df756aead76f66a018197  navsafe/policy/sensor/utils/detections.py
+
+    baf4908d770df711ff17cbba619d908d83c57b99f00ed61906cf16d174436336  navsafe/policy/sensor/utils/frames.py
+
+    5636bc0075285e7b883040fae04ba7391a806628a0f028adfda23cfdf1cf46e3  navsafe/policy/sensor/utils/geospatial_priors.py
+
+    45aaedd55a2e1f7c74be37b5b52da1d5451fb1e00ef51d812c8e01b361d62d50  navsafe/policy/sensor/utils/state_dict.py
+
+    3c4812988b90edf8c556b5946bfdf91f2865542896e044bdb84f25b050016121  navsafe/policy/sensor/vad.py
+
+    ca8f46c0da656608838da9281f4eb2fde1429a14589d8a700a64857b9c33f33c  navsafe/policy/sensor/vla_client.py
+
+    d419d7013b5a2d584c0cff46532f488bbbb6ff2ae51b34208297f6e5796f96aa  navsafe/policy/sensor_policy.py
+
+    aa1fac32d77b8ab53266f88a04c09665364efce3906b6633cc16477651ab10f9  navsafe/policy/state/__init__.py
+
+    2204cf6f26f9e4bcdffa61a34cf21e633fa345fed1f4772e06c042742de03012  navsafe/policy/state/ego_mlp.py
+
+    c274f5f5595e66951af951af9f92ef8bece577f2a1e7e551c11c63800662a1e5  navsafe/policy/state/idm_centerline.py
+
+    c8e7d9f577de1b02a03917db2fddbc74ef0978a886ab558d364701f7d540e9b3  navsafe/policy/state/pdm_closed.py
+
+    476b8a4d282088cba17e9b685675b0d228faab3b3fda68062b6fd2417e6a3366  navsafe/policy/state/pdm_closed_planner/__init__.py
+
+    eb01c94efe7a8c78b2f9083be4d584f396ebe318c985e50c61d2438947aed4c0  navsafe/policy/state/pdm_closed_planner/config.py
+
+    58c75fc358af3a2760b500be93c0e8e507ecc87bc9d60061774e1117e2f5d451  navsafe/policy/state/pdm_closed_planner/dynamics.py
+
+    ab2ef737229e8a1a3e6c8258aa38f093417acfa4e731b6d49d0d104352448d7d  navsafe/policy/state/pdm_closed_planner/forward_sim.py
+
+    ef198ad4f2969de24e234c5f9535b26ebbff52bd09fb112b633b11c78be4b689  navsafe/policy/state/pdm_closed_planner/idm.py
+
+    54014f6faf05bf109703b56f6ef57f98ae48e14e3c37fa2badd38c7edcc312b5  navsafe/policy/state/pdm_closed_planner/lqr_profiles.py
+
+    644a59ff94dd16a9bf3cc9d4618ad3c1a2b8b1ffdb87b4f4d03e96ba792bc084  navsafe/policy/state/pdm_closed_planner/planner.py
+
+    b03f64d7d5ae3406e75da14a4287e6ea22561fa053147bbba3f750f3b8ce4eec  navsafe/policy/state/pdm_closed_planner/proposals.py
+
+    6ec37f665e8b25ecd3189224441b3c0c41e984aaae9f17edf430ecbd6ed28a9e  navsafe/policy/state/pdm_closed_planner/reference_plant.py
+
+    32f44eebb73f95c4123df63f59bb8ef108e4eed6d00eaa47eb1f1d52fb141918  navsafe/policy/state/pdm_closed_planner/route.py
+
+    5b39a1f1a4a30d1a3288487540130d405f56c074725b5b9cfdaae9ef46bf3c63  navsafe/policy/state/pdm_closed_planner/scoring.py
+
+    f95b179a411a142d3431db3c3146f7e21938bdc40e52ba9e1d96ba4da396aa32  navsafe/policy/state/pdm_closed_planner/traffic_lights.py
+
+    c74d810fe0b84558263c70c3a0ec27336900f671d3b65b27aaed9e55d74b4570  navsafe/policy/state/scripted_path.py
+
+    e4d0dc348e9222685bfc3c72514bde5254a6150a267294b1f5b7d57968e60a01  navsafe/policy/state_policy.py
+
+    7e8fff994902f06b29acce6218bf65a738f7906bf419b45b68092d52fa059e51  navsafe/render/__init__.py
+
+    42fd3b536355b1a43d00bcbb858403b1f1bdff44aea6a49b3aaf73d168167b7b  navsafe/render/base.py
+
+    73ecad156fde05238a48c04f254ecc12c3ca9ad9470bacf488d413a08b9f60b1  navsafe/render/nurec_grpc.py
+
+    1f8af63ec0a15a951c4149968bd2def78a4df99228eda4a6884a9708e7367426  navsafe/render/ply_utils.py
+
+    b3fd4699f9e967f113f06fc243da4d58072eba239a43f149b869b7938d79eeab  navsafe/render/usdz_utils.py
+
+    0c295389fcebd6e440ba76b1ae69de833357eeaa306e7fcd06f72029f32a46a0  navsafe/scenario/__init__.py
+
+    7547d4efd72a6a5d0ebcd8c0d13452eea9ca9f536b1396844a657c784fd4e403  navsafe/scenario/authoring_state.py
+
+    436bd60114cf333220bcacd89c35512013296c8ce79f45bd830edacf3f4bdac6  navsafe/scenario/constants.py
+
+    edabaaf21e60fcd165117a16c77da12ff82ea5583a38f4af111785fc5b93ac63  navsafe/scenario/edits.py
+
+    0a06317d2dcc52bd7ecd60a7bc08a9fe860cd925e43b4c804cbca22393f128c3  navsafe/scenario/py123d_adapter.py
+
+    0024f2051c43ca61b6b989a4604fbf17904f8a5801aead36536d37cb5f7561ce  navsafe/scenario/py123d_dataset.py
+
+    04e492375c3803ea7a2171efab17e3699bb66fd304d4ce562186cbdf5aefb8e5  navsafe/scenario/py123d_map.py
+
+    c64cbd2b6e8a85208aa231f679a0af8a694c35913db3c882185b7d14ce2fb9c8  navsafe/scenario/py123d_scenario_description.py
+
+    1cee9ed95913c07c898ae38839308cc8213f3a3f2a1c416c86409ee2c27ad8ca  navsafe/scenario/py123d_scenes.py
+
+    05e0949f970c623e2e63cdee8b52a82a567fe6c9d52e9c23430011c171438650  navsafe/scenario/py123d_schema.py
+
+    cf623de5d8365eb2e83c7a7a32b51dd7f06ad1ccaadb6186da9a93b4c74b4368  navsafe/scenario/py123d_training_extractor.py
+
+    7e5eb51fcc43311d4a59d8a39999c5b85a138154ed1124a64609bf958d154493  navsafe/scenario/route_lane_chain.py
+
+    bc7657d50cca02a80874b2f966529d6215e1a6f7d7ca45382677be440bc698dd  navsafe/scenario/scenario_description.py
+
+    43ad2e6e44f8b72e58a6e4d3abdd717e627927916cdb5531a86dced559c69c45  navsafe/scenario/speed_target.py
+
+    c4e30214dd6d0c50540fda181ee0924a8e3bc8a84b15f0e10432dd170e350591  navsafe/scenario/to_py123d_arrow.py
+
+    7d59c0d8d58b7ddd5059f8dcb2a97013dca45181dbc9b8530a3884c4118b9bb5  navsafe/scenario/training_schema.py
+
+    9709d5e47c1d07c117ca637c312776d6eb25c7c71d975260ded6ee778f4ccbd6  navsafe/scenario/type.py
+
+    41b0833af6c4a5662f0d09b215115d8da5820bd9890a8a0a004d886f4d4e6d2e  navsafe/scene/scenario_map_builder.py
+
+    f210c9aebb35acdbd6d880f5e1834cfd0b65be1dd8fbdfac359fd0d96e1a3db8  navsafe/scene/usd_mesh.py
+
+    1b94c29a717e400997c6cb25fe919794e4c3ed84cf9527a5e5ab2168c76add86  navsafe/tools/__init__.py
+
+    681a6d398e338caa9aa454190b258a2093aed231752be5286edf7b65ed9a544e  navsafe/tools/convert_mesh_to_3dgs.py
+
+    a18decdbfc75bc4c6c9b1c63386a4375604c6f4156425e947c05c73e6224b9b6  navsafe/tools/output_validation.py
+
+    7b05bff31d3717c50b95f93be649c2f4011bebe97ac7297e36dd5266bd7f9c9d  navsafe/traffic/__init__.py
+
+    da315f35a7a3dd1813b0f39c161056472cae64b999bbe86b0ead7d000767f1dd  navsafe/traffic/authored_path.py
+
+    e3345c7c585fc82063400d1e7e917121d823809d951fa0b4ab8a1fec5f2ef024  navsafe/traffic/base.py
+
+    c9935a382b87e94bdac49bcdb1069ecc5ea411080371cc76048366a756683994  navsafe/traffic/geometry.py
+
+    d89b57b4945d440b715ef8964daf1c4d87e016af1db5c02f7f49337c189be88b  navsafe/traffic/idm_driver.py
+
+    181f79dae97b83f5f1ba4657cbbedd3e4880afc1959b0dde848f91cf48209713  navsafe/traffic/log_replay.py
+
+    40993348580a4a0d1d15ee961937cf758cfc694c7056840209ca461cc5f154ef  navsafe/traffic/navsafe.py
+
+    0712cc5b2fe1312edc55de86252637971e2478bbbc8fc0159b4119338a22ce85  navsafe/traffic/no_traffic.py
+
+    afa4fcf1c09b3922acbe92184b635cc0633f87a8bd7d7afea5015ff892853754  navsafe/traffic/semi_reactive.py
+
+    783bbd22c9ac0192fd754e7d3c4c7d005745b24d77ca9e5af194b9298fa6e8f9  navsafe/traffic/social_force.py
+
+    21c5a2892c7e1470ae26357b13ce147e009aa67cfc0247dc47b1454460828626  navsafe/traffic/stage_free.py
+
+    c6ce6f088dc583b001c0d56a7639299cc768eeeda60cf886b69dc034a2f87b9e  navsafe/traffic/timed_braking.py
+
+    43057a6d4e779d3b34aef031598c0a5826ce8b0afef618130f7e200bbc2fcccc  navsafe/traffic/timed_cut_in.py
+
+    ab704a011c4ee60edd88fa2358f3afd4229e19342bf6c8668e8498d138530d69  navsafe/utils/__init__.py
+
+    25bd548899e0286c3e37f184e13cfc8dcb3b802c0ec05faa0b2f9037d3c37de5  navsafe/utils/camera_utils.py
+
+    36d3a1be0d5d777743b2f13b8812ecdbe3212b3de90ece1b54277b623d4ecab1  navsafe/utils/hashing.py
+
+    10595e6bcc85ac1c4e17e5c88a2054de790c72e76b576b223d8a35fc589eb607  navsafe/utils/provenance.py
+
+    86a78c6579914409f939d6cb65dac7866361469d9b287410c7bf46e9af46dc93  navsafe/utils/wandb_logger.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  nre/__init__.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  nre/grpc/__init__.py
+
+    95eb0ab25d78abbeb5666031adf8de7a2a12148c200c7cce15de8e58ef154c19  nre/grpc/protos/__init__.py
+
+    0890fdb234426a4776f86e9c7e2e14585fd1900fce21d1a18e26f3f575abc744  nre/grpc/protos/common_pb2.py
+
+    cb635e707adda3d9cef513fbd8206f99461091cd4f979f5286c738cd6d8ba2ed  nre/grpc/protos/common_pb2_grpc.py
+
+    c3ee7e44c624c6135c8f47f343f33f4a7451e0710ae3df3cbeeb876caad5bfaf  nre/grpc/protos/sensorsim_pb2.py
+
+    cb95d143162cf2fb1c6d641af389f69e50e554160d2882a2d92eb8dfb7c30e87  nre/grpc/protos/sensorsim_pb2_grpc.py
+
+    892eb4a252d1c50a8b8acb81d10db26bc320a29831808165631caeca7da0bce9  pyproject.toml
+
+    7d37eee91ae5c0ab47e61baee19365944c1578cd4eba3e5af542b2cd17646648  pysocialforce/__init__.py
+
+    05bf01b2937715df47cfa631b12f918c0272ea8863ad38a6a7abd844acd80a16  pysocialforce/fieldofview.py
+
+    bb4ae1a608abc0e57df03543b50f50f0a71cbb8bb0a1591b94897590b0f59b3c  pysocialforce/forces.py
+
+    180e44a784d705b95ecb10e0bb9c8dfb649bc17b436a226fbccaf55f6f241c12  pysocialforce/potentials.py
+
+    b5f26c1b665357025b1efde5f4f1672bf491ddb20a83162fd71ef5c66fb7ce7e  pysocialforce/scene.py
+
+    0fa3caff46217b6bf97de950c5f694153e1e717692640a091cb10ef9fa253ae3  pysocialforce/simulator.py
+
+    a143eb07c02c6fe5301b38953d2a32f140dfe11b2459e78e762cb0b373a1f905  pysocialforce/utils/__init__.py
+
+    34229a47ab7ce98528396f7099726b358e80dfd39a512042c185dd06d81d8293  pysocialforce/utils/config.py
+
+    fe8d44b720fbfc84208ce83ee660963284930877cbaefbf71b128546f8f6a2c2  pysocialforce/utils/logging.py
+
+    3a3a752184f5728da605ef92c3decbfd458f3036b15bf39b6f2ab593d3ae322d  pysocialforce/utils/plot.py
+
+    cb753763d2a6ab613a42e17de8020f83da10b5d25e4425fda0372fb4ec5e8377  pysocialforce/utils/stateutils.py
+
+    fc04e2f8135dbc25339825c5c05462e03f082fbb0658338563c6f18b61400104  scripts/evaluator/validate_eval_output.py
+
+    2e1ce5a93d2bf07671e2b821de554f871a8a40b4481e14f14b45204fe2adc92b  scripts/tools/eval_py123d.py
+
+    762baffe9e1fda6816c196ba2480a380c44493b52f7a8f8bb82cd255fa4bd18e  scripts/tools/navsafe_bake_signal_override.py
+
+    0196e64000b6def80b6d78b81544fa30b45051d769ecb8bd20bcd229ceec74be  scripts/tools/navsafe_from_eval.py
+
+    74af9bb892f36ea75be18bc42cd8449dbebe2cc61c1ebca24a7dbb997f540354  scripts/tools/navsafe_metrics_probe.py
+
+    9afe4bc71e0322c5e617b66b17650aa1da248536793fcbda068900f05c96d0c5  scripts/tools/navsafe_report.py
+
+    95d4ee5f33771bd5faa106f9a857659359c0cf0c1ed885049d5578315a808557  scripts/tools/navsafe_table2_cover.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/__init__.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/core/__init__.py
+
+    3e0b1f0b7dc28e8ac67e1acec991d09281889cf083f513d8e220522c6a60b891  tests/core/test_controllers.py
+
+    f186eb591ae1172df75ba777e8ab4fe7b4d49d46113c5a92631062cbc8e38321  tests/core/test_ego_velocity_command.py
+
+    7670081466fabe166837b1466d7584fb34173af9436a75f5620bf4c4600b12a0  tests/core/test_steering.py
+
+    95c902bf2f17e78d09ca8949bd4cb5d01780c2d8ca191f07e900b9cc66a8f26a  tests/evaluation/test_batch_eval_scene_verdict.py
+
+    3c6bce636771fbbb73349cdef239960dda9696e6229d41793584e9d4c0f72c75  tests/evaluation/test_drivable_area_proxy.py
+
+    a7b576ffe3a4ce56d96ff51213db2baea8e20b31e877f3891e36d8fbb4a5a468  tests/evaluation/test_epdms_live_scorer.py
+
+    6413667928c1f5a7e07f1628762d828d1a38e572b8285fcb6e8407f1fc3a9617  tests/evaluation/test_epdms_metric_regressions.py
+
+    beb114f3898df693126f28c6141af7827637d6dd50bc3b8d614d84ade0813849  tests/evaluation/test_epdms_nc_fault.py
+
+    f9d8c8d2cd6c83d8a38ecd03ebba7351c589023b205181c2122ee426950239c6  tests/evaluation/test_epdms_perf_smoke.py
+
+    bb97fd6cf8a02bb9afdc95ac0908cb999b194dfdc02c8ac13dd36625953cd25e  tests/evaluation/test_epdms_post_log_frames.py
+
+    4043236b8c6fc656a3f658bc0db4fd6d36faca5e6be66fa7ee3b8fd1b1cace76  tests/evaluation/test_eval_output_validation.py
+
+    e602437048f89a8c2e1eebf97493d0751d2386bc7cc2522f7d8bc654767bdb3b  tests/evaluation/test_evaluator_api_surface.py
+
+    8c998684f0288e8f3a3d5897bf1bdbd7761b81ffe329d5112e8f571be6f5f3f5  tests/evaluation/test_execution_fixes.py
+
+    ecc72c977e49511c3db10250375b736b8e39b9ef84881f845338b1d22eaffee1  tests/evaluation/test_gt_stride.py
+
+    be769c46858237cf65a87208da21a61b88b350b7648f2c04791672c48a52d05d  tests/evaluation/test_handoff_perturbation.py
+
+    85f796333431963d1b011ea9d9ef06510138539ef8d5ac23493bce46fba7e774  tests/evaluation/test_harness_parity.py
+
+    44a6664bba1b9a452611c07c35a0dbd588b9bd1500df3ca5678b546f49b46b28  tests/evaluation/test_lane_proxy.py
+
+    a9d34466685d72351fec34dd2f01440bb67053962e0019356d07a9bf5d2313bf  tests/evaluation/test_lane_proxy_vectorized_parity.py
+
+    819e5119e3dcf04df7d099bb6d6baab36c4cd72beac8473cd0eefe2ca6df4587  tests/evaluation/test_navsafe_live_termination.py
+
+    9ef0672b04bac54f26455cfb65d13e147aafa282ab592b8571c15d3a0bc673fe  tests/evaluation/test_no_overlay.py
+
+    dba38946fc0e2b9cb97d1b1e9e2fdc3f98f8eb5bcdfe5a6c98c7613d46cb86de  tests/evaluation/test_noop_flag_refusals.py
+
+    5ab13882ab1883a5d76ea5dba646f7f2da5883e8eda2b88d2264aa2f514b283e  tests/evaluation/test_pdm_timed_execution.py
+
+    982a5e1e87acff1965da4e7c0ca787eee004747e9aebafe87f697325db6c35bb  tests/evaluation/test_reactivity_trace.py
+
+    f66ca79e476b61a5ebcd2d64515e73bf242fb631090244dd312cb7bd61018525  tests/evaluation/test_route_completion_projection.py
+
+    1e9dd4263f1e7e79d110c64770a473497b30e3a5779784f1109a29deb9d1af7c  tests/evaluation/test_scorers.py
+
+    75f354bc97b64d64a9db58cabced2dcac1fddfeaf600ce012cea3e6bdff88956  tests/evaluation/test_stateful_warmup_recording.py
+
+    cc76d0324b231bcb5a770ec3fbc8efe65a4115c549fe76bea70fb216cfe307e2  tests/evaluation/test_step_crash_reporting.py
+
+    d0c827757a9e1f096717e54467c23cffda4197c85b29183eab2ffe99d5ed3a39  tests/evaluation/test_tlc_crossing_rule.py
+
+    50a8bf474634d838cc5ec98b5182825b52de4ec834979f11cf7f6d0ce23c1c25  tests/evaluation/test_traffic_takeover_wiring.py
+
+    e7e911fd8baf547b36a611b9f3b43d3a1146fc4334de11d0a4ed4fbd799d354b  tests/evaluation/test_unscored_episode_reporting.py
+
+    8f5d4950ffa75c1edb23978d071f18b626e4a5774a44ebb5caa5e1fff29b411e  tests/evaluation/test_vis_candidates.py
+
+    55d1fd8ba9b9dc7fa8f4481b4a20ee05afa87b6aaa75522b9f26263697665b8a  tests/evaluation/test_vis_ego_footprint.py
+
+    513307dcf886ea6cb284e0ac5a3e7c3def5987d737a707984f79685d671fe68c  tests/evaluation/test_visualization.py
+
+    24e74c0eb5ad5c91d4e97545db4247e152dbe31261c9f532fd3ccf296165ecee  tests/fixtures/__init__.py
+
+    016e2268bfd444627c1660cc4971757afa7cc105a72746a83cb6468e6dcc27d7  tests/fixtures/gaussian_ply.py
+
+    52f961b9cc57e8516296e672e3e80b332616cd051d7bfe18d85183cd72bb5d58  tests/fixtures/rollout.py
+
+    a5ab66479f578443ee9ecb9296e3f122d9ea7f963c3ae54fd468b71392a56fe4  tests/integration/__init__.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/navsafe/__init__.py
+
+    72165dc9a7060ca90b3fff19f7645d8f7dbe61006e5eff6228b4f95000ab8704  tests/navsafe/editing/test_anchors.py
+
+    9f652d5d6857d9ca683340cc4951c0eff208db00db38645b5fbf1ba90a40c209  tests/navsafe/editing/test_animate.py
+
+    78d9bc61be4bb6cf87b9c4c652aae0f98f82a1b1b2a04c5720336bef9e7d6f69  tests/navsafe/editing/test_assets.py
+
+    311c1688da6f81c8da4c9bc2ff54f7aa2506911eecac34337cfd83eba8389873  tests/navsafe/editing/test_author.py
+
+    e2ae7c7fe67e4c38c087576ea15f8b337f278c946050f8d485e72b2c056b8866  tests/navsafe/editing/test_calibrate.py
+
+    cdc1829f929f43c3a27a21ce501bf940e18745ec8a39cf4a2042d48edc1ec35c  tests/navsafe/editing/test_leaves_and_mining.py
+
+    71dbc03d7ebd450629d3208134c8373cf5702e833b7cde947c4698d14fa93e18  tests/navsafe/editing/test_place_board.py
+
+    398b10f91bdf29b76de9400285b9728aff1689e1cda262e1dc58d123e4decc5e  tests/navsafe/editing/test_quadruped.py
+
+    017e5dfc156b5f92f886b6c11c61bf5ca224ea8a3119097b2184ce5c72e73a56  tests/navsafe/editing/test_qualify.py
+
+    ec953af1045eec46ebac8046f1ef6a1a077311545b7db4e51a6d8ce5ca80cd35  tests/navsafe/editing/test_recipe.py
+
+    bb2bb2ee53aab925eb4022eb17f445a8aeeb71a9de2626fc3956506b695ae3e5  tests/navsafe/editing/test_review.py
+
+    2e0bad54773020da154bc56d13ed45d3e6156b36041404cd4d2070e02ad02d01  tests/navsafe/editing/test_trajectory.py
+
+    092b57aede2a7e451832a241c7c15a0a62c5bbc46dea6ecbbbc8584e5dba42ef  tests/navsafe/test_autoselect_recipe.py
+
+    a9bd7335b162c1d13accbe3f8f24d75684ae3710f7901c09b4793e3eb51cde46  tests/navsafe/test_bake_signal_override.py
+
+    540218ec9c101adf167d8a6439ea8183c8008fd656a7449c28b46cba2d03d106  tests/navsafe/test_bundle_window.py
+
+    e188dd3aa65bbcceac77448a70ef48ed8b58433656d5efc66f9fe8d935d5e8ea  tests/navsafe/test_collect_exclusion.py
+
+    265b56dbde7f609de1f62fb0b335a66d06910a69cfb9f3c928d0d22b89f8e84c  tests/navsafe/test_controlled_outcomes.py
+
+    6cc14bfa651215327d0df480f2a68fdd00a12940acce39c0413bccd5ab58e35f  tests/navsafe/test_corpus_layout.py
+
+    740e3531e921ec99f1a88ff794330e9feb09620c75c4afb338a2c747e643de3b  tests/navsafe/test_efficiency_checkpoints.py
+
+    f519c5581335424ef68a5e5548edfc771d4e60d46c06381bfd34105666b91835  tests/navsafe/test_from_eval.py
+
+    7d2809f18fbff26bfe396aa0c735ccbf8ecfa8aa2cc0e170d931395be1b854e6  tests/navsafe/test_from_eval_lane_columns.py
+
+    31c3fd50d1c15ff84471778aadd1c7ebfb980962afa1b4bd2f4bf32f85979405  tests/navsafe/test_goal_termination.py
+
+    78b62b070135db812a44e4cb1f0cc55947480470be433d45e3495d6d2fb3f08b  tests/navsafe/test_harvest.py
+
+    970a52aa15cca97ade0dd65b31ac03ebd22fcadabee613e6e504db41029ffe24  tests/navsafe/test_navsafe_metrics.py
+
+    f8a74bed323e9e888910a1cdf6122c0eb4d657ef900a517633cf5bec7639c265  tests/navsafe/test_public_layout.py
+
+    40fbb6af9b207956407cfa918512ef99d661750fb58df7be7e3d54db885757db  tests/navsafe/test_red_light_unscored.py
+
+    3113f836e17931680196b9cf980457fa964356276cab68337380e095af216776  tests/navsafe/test_route.py
+
+    775eadc04aa7b2dc6dd307dc7bb0a948fd4511056176ea38c274a2e14b5a354b  tests/navsafe/test_rubric.py
+
+    5b1c252b10a6953bcf17db614d890c337e488fa4f0c9c5a7da97b55726728b66  tests/navsafe/test_run_arrow_token.py
+
+    988798b57a415521216b95c590e525b3f7fb461cd18e2f60355350e42d6ca5cf  tests/navsafe/test_scenario_rules.py
+
+    1821259c2901131f680fd9fec8733a923a7d48e8a12ac6ee53d3a2978992ba85  tests/navsafe/test_scoring.py
+
+    716269457c4dc484d519eed62308e0e02a6df886e9db76e2ca874a431d77840b  tests/navsafe/test_signal_override.py
+
+    779f4809a219d24f92102b7a6972f0268af59ce8ac80cba9321b70ca7c0b9f45  tests/navsafe/test_stopline_arc.py
+
+    d9cdd5228069aba4a253c845670c60fe7c885b47cf635eacc0fb8c96ab300d40  tests/navsafe/test_table2_cover.py
+
+    dc53c83cc1a700b251fcaddaad1045211a41cb4ed6d4e2a7d3b145193d61e70b  tests/navsafe/test_termination.py
+
+    8ade254d91ae35d8bb27b855afd9ba6d624fe1533bdc2332123e1e150f77145e  tests/navsafe/test_v1_hold.py
+
+    d48c0cbb1de256e10f05f174a3552fa5d9a7b0c4140dd28b77243af4c164f2e1  tests/navsafe/trace_fixtures.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/render/__init__.py
+
+    d446255f8fca0557851e65c7f858b3d533ee3aa565b8d4542c8bc2f1faf8e2f0  tests/render/test_eval_source_selection.py
+
+    5c1525f16bc932d1290312f89bd6751be2cc8e838f167108b1b4c9ab6e3ee121  tests/render/test_nurec_camera_dispatch.py
+
+    7f46940a7935b2ac5c490e3e80220cac8875ef908f86b1b778f74dfe90a3ddb8  tests/render/test_nurec_grpc.py
+
+    ff90f26f442284d5cea9ec949e3c2e648496a53bc3a214f1f224ffb38fcd1e3d  tests/render/test_nurec_grpc_anchor_check.py
+
+    7341b8dd6419110ece956973f49e042f8baf09e609e1507122244d9c8024fcf9  tests/render/test_nurec_grpc_discovery.py
+
+    a7ce2fa3a7eb6af62e0704f3edd733ae1f99ded773f9be22459b52133edb907e  tests/render/test_nurec_grpc_insert.py
+
+    909e3f4e4c7726254500ffab9dcb4635a0ac0e3beab213793dde25321285d3ad  tests/render/test_nurec_grpc_replace.py
+
+    9cde05ca6b6cd163e11afe6b3d9a7ae8d41e38bdfa9db8b8e84658aa36634c77  tests/render/test_renderer_selection.py
+
+    e923c169a78c3ec90250c0a79cf503070ebc184bd5249e9a46fe094f090c86cd  tests/scenario/test_logged_drivable_support.py
+
+    023ce67f23679375774c77777575f3fcf7d3143850cb6a1b350647e3b027388f  tests/scenario/test_map_lane_polygons.py
+
+    f15be823ba9e468f4325d87da40c6445be56e25e4d7aba29d9e9c3367326b001  tests/scenario/test_py123d_agent_type_mapping.py
+
+    9e6ee183e47ae1377a4a3073851850a5279520eca96a1265d5ba8a26f9e1e217  tests/scenario/test_py123d_dataset.py
+
+    be37bdd1650e34f66600fd47bfb0bf884c52992883561aceaf263c11f7a371c7  tests/scenario/test_py123d_frame_window.py
+
+    a9f1f3d7df1c1c0d2cb18ee26aee39ed063cf86e070c2a0d7315947151993021  tests/scenario/test_py123d_read_fidelity.py
+
+    015b9c06835947414e8c01468c037dbb445b4862c67a4e13e91be514846a65c9  tests/scenario/test_py123d_scene_selection.py
+
+    d205ebfb78ddecd61e3a4666c4b3e16be5aff758afbf9e523479bec540272d74  tests/scenario/test_py123d_scenes.py
+
+    47579f77c071c28597a86f98fd2ae2e538a0868522d47cb2b1ec66bffcbd479b  tests/scenario/test_py123d_schema_adapter.py
+
+    7c0ed82b7498bc4c5efa47a2612f4d62a9baa0913588db127b23b2c49ab447b3  tests/scenario/test_py123d_training_extractor.py
+
+    e26405b3d9ce0168be837498e42973f9683249355ba3ae303b75af559514c000  tests/scenario/test_py123d_window_wiring.py
+
+    43ffac1a8b97006c9255e552a19e21c8b0e3b2a192d3b70f8eb70628a31ddde9  tests/scenario/test_route_lane_chain.py
+
+    74eea1a2b5ea694aee93d61446d41ef555a2d384466f0e423494c79ad5a474e4  tests/scenario/test_scenario_dt.py
+
+    8761bc4adb77511fcae5209dfd119f66ab04d76a71f362573239bd92ce76a1f4  tests/scenario/test_scenario_edits.py
+
+    a2382ed7b340ae164c520e036b5a692ae3132449b391f6bde2ed1134a8e7eb8b  tests/scenario/test_speed_target.py
+
+    42393205c56b942657c8435c0650813eb0c0d233ca10bce4acb887640f509e2c  tests/scenario/test_to_py123d_arrow.py
+
+    f738a570503ee2d45690e416d0c12795ba47454231bc4123dd573f2927a817df  tests/scenario/test_to_py123d_timestamps.py
+
+    bef342b6863a09bb74c45ddc6162df7453119bf249764ada947ec4b9c9238917  tests/test_gtrs_standalone.py
+
+    b1ff1f78505399fec2f40765c8a36502cdaadd01318d612f7056c98f467701e7  tests/test_standalone.py
+
+    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/traffic/__init__.py
+
+    45471891b8957e133af48c463fdce2966a5852cb2c6cab2c42c15fbf25ee7012  tests/traffic/test_authored_path.py
+
+    be70539b0dffba313b6eab8297bc510a6d98f83d18f70538445420b8346c727b  tests/traffic/test_controlled_perturbations.py
+
+    b7694a40365d039a64ab8b34b3b9c6ff180a380219dbce15aaadea2fb6aa9dcf  tests/traffic/test_geometry.py
+
+    a8a4d50854ff2f2791e6bf7181a1486f98e59d219a6f93ece4037547f8d447f9  tests/traffic/test_idm.py
+
+    e704c61f215dbe8fde80c47d1f2ebeae7e3ad04046ec646415c9329028e1b6f3  tests/traffic/test_idm_driver.py
+
+    e64bdba4992bdb96b17408da3222dea0cd29f033417e21befc6f80fe6d10123d  tests/traffic/test_navsafe_background.py
+
+    b339cdf2b8e4dba6427e58f77d3e50ff66a052cd76e008079c74a5f26f63a459  tests/traffic/test_reactive_chain.py
+
+    a5dd2f4ad2665a58777107b8e444f728782bd03fc5eddb956943be084c58f8d0  tests/traffic/test_stage_free.py
+
+    2f003bf0d7662c4253816236f27098097609ff689235ecaa421b81dd8803cf49  third_party/PySocialForce-LICENSE
+
+    bd213f69bbd9a13221d22888e45e9880e4c2dd78d5936a6314ccda22bc9d7891  uv.lock
+
+    e57163240192ffd94462f4d3b028087c442243745146b4805d5e03ad21bc873c  navsafe/gs3d_converter/nuplan_training_optimizations.py
+
+    '

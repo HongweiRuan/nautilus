@@ -1,0 +1,122 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-fidabl-lane-6-1012d
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-fidelity-ablation
+    stage: train
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 518400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: train
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=09d33cf8b87c5ae3 LOG=2021.09.09.18.29.25_veh-39_00969_01184 RECIPE=step1_one20s bash /pipeline/train.sh || FAILED="$FAILED 09d33cf8/step1_one20s"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=09d33cf8b87c5ae3 LOG=2021.09.09.18.29.25_veh-39_00969_01184 RECIPE=step2_8cam3m bash /pipeline/train.sh || FAILED="$FAILED 09d33cf8/step2_8cam3m"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=09d33cf8b87c5ae3 LOG=2021.09.09.18.29.25_veh-39_00969_01184 RECIPE=step3_grounddisks bash /pipeline/train.sh || FAILED="$FAILED 09d33cf8/step3_grounddisks"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=1c064ec24fa15900 LOG=2021.10.06.08.16.17_veh-52_01949_02501 RECIPE=step1_one20s bash /pipeline/train.sh || FAILED="$FAILED 1c064ec2/step1_one20s"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=1c064ec24fa15900 LOG=2021.10.06.08.16.17_veh-52_01949_02501 RECIPE=step2_8cam3m bash /pipeline/train.sh || FAILED="$FAILED 1c064ec2/step2_8cam3m"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=1c064ec24fa15900 LOG=2021.10.06.08.16.17_veh-52_01949_02501 RECIPE=step3_grounddisks bash /pipeline/train.sh || FAILED="$FAILED 1c064ec2/step3_grounddisks"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=667f53ef57a95dbe LOG=2021.09.16.13.53.10_veh-42_00077_00153 RECIPE=step1_one20s bash /pipeline/train.sh || FAILED="$FAILED 667f53ef/step1_one20s"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=667f53ef57a95dbe LOG=2021.09.16.13.53.10_veh-42_00077_00153 RECIPE=step2_8cam3m bash /pipeline/train.sh || FAILED="$FAILED 667f53ef/step2_8cam3m"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=667f53ef57a95dbe LOG=2021.09.16.13.53.10_veh-42_00077_00153 RECIPE=step3_grounddisks bash /pipeline/train.sh || FAILED="$FAILED 667f53ef/step3_grounddisks"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=e046e8110045541f LOG=2021.09.16.15.47.30_veh-45_01199_01391 RECIPE=step1_one20s bash /pipeline/train.sh || FAILED="$FAILED e046e811/step1_one20s"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=e046e8110045541f LOG=2021.09.16.15.47.30_veh-45_01199_01391 RECIPE=step2_8cam3m bash /pipeline/train.sh || FAILED="$FAILED e046e811/step2_8cam3m"
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=e046e8110045541f LOG=2021.09.16.15.47.30_veh-45_01199_01391 RECIPE=step3_grounddisks bash /pipeline/train.sh || FAILED="$FAILED e046e811/step3_grounddisks"
+
+          echo LANE_DONE failed: "$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 80Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 80Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe-fidabl-pipeline-r3
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

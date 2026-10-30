@@ -1,0 +1,1603 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur3-e08a9f05-half-160k
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning-v3
+    batch: nureasoning-recipe-v3-20261002
+    variant: half-160k
+    clip-hash: e08a9f05
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-v3
+        batch: nureasoning-recipe-v3-20261002
+        variant: half-160k
+        clip-hash: e08a9f05
+        job-id: navsafe-nur3-e08a9f05-half-160k
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: &id001
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env: &id002
+        - name: CLIP_ID
+          value: 2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd
+        - name: SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.14.13.30_PFDKB4AE7RF000100_e08a9f058fa75e1488639830e32389dd/metadata.json
+        - name: DEST
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/e08a9f05-half-160k
+        - name: EXPERIMENT_ID
+          value: e08a9f05-half-160k
+        - name: TRAIN_STEPS
+          value: '160000'
+        - name: GAUSSIAN_LIMIT
+          value: '3000000'
+        - name: VARIANT
+          value: half-160k
+        - name: CAMERA_SUBSAMPLE
+          value: '2'
+        - name: RECIPE_SHA256
+          value: 2ae273c444d57f342bf8a878a3523e19fe3d0e37b1e61036a7dbf3accf0e167c
+        - name: WRAPPER_SHA256
+          value: 539504b02e0d814a2bf9fd0cbb034e915fb0249e30ee941dedbeea58888e32ea
+        - name: NUR_V3_ACTOR_RELOCATE_LAYERS
+          value: dynamic_rigids,dynamic_deformables,static_rigids,static_deformables
+        - name: NUR_V3_CAMERA_RADIAL
+          value: ''
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: OMP_NUM_THREADS
+          value: '2'
+        - name: MKL_NUM_THREADS
+          value: '2'
+        - name: OPENBLAS_NUM_THREADS
+          value: '2'
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        volumeMounts: &id003
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+        name: stage-inputs
+        args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG" /scratch/ncore
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          test -s "$NCORE_DIR/pai_$CLIP_ID.json"
+          test -s "$SOURCE_METADATA"
+          cp -a "$NCORE_DIR/pai_$CLIP_ID.json" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          # Native aux loader truncates the filename at its first dot.
+          MANIFEST="pai_$CLIP_ID.json"
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_$CLIP_ID.aux.$kind.zarr.itar"
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          echo "STAGING_COMPLETE $EXPERIMENT_ID"
+        resources:
+          requests:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+      containers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: *id001
+        env: *id002
+        volumeMounts: *id003
+        name: train
+        args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG"
+          exec > >(tee -a "$DIAG/train.log") 2>&1
+          finish() {
+            rc=$?
+            trap - EXIT
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+            exit "$rc"
+          }
+          trap finish EXIT
+          RUN="$DEST/native/$CLIP_ID"
+          test ! -e "$RUN"
+          mkdir -p "$DEST/checkpoints" "$RUN" /scratch/native-artifacts
+          ln -s "$DEST/checkpoints" "$RUN/checkpoints"
+          ln -s /scratch/native-artifacts "$RUN/artifacts"
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/recipe.yaml <<'NRE_RECIPE'
+          # @package _global_
+          defaults:
+          - /apps/AV/_base_3dgut_dynamic_road_semantic
+          - /apps/prod/options/artifact: default
+          - /apps/prod/options/nrend: disabled
+          - /apps/prod/options/difix/3dgut: disabled
+          - /apps/prod/options/mesh: disabled
+          - /apps/prod/options/ground: disabled
+          - /apps/prod/options/subsampling/3dgut: batch_sampler_2
+          - /apps/prod/options/calib: enabled
+          - /apps/AV/module_mixins/_mcmc_mixin.yaml
+          - /model/gaussians/models@model.layers.static_rigids: rigid_gaussians
+          - /model/gaussians/initialization@model.layers.static_rigids.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_rigids.tracks_calib: static
+          - /model/gaussians/models@model.layers.static_deformables: deformable_gaussians
+          - /model/gaussians/initialization@model.layers.static_deformables.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_deformables.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_deformables.tracks_calib: direct
+          - override /model/calib: free_pose
+          - override /model/gaussians/strategy@model.strategy: mcmc
+          - override /model/post_processing@model.post_processing.b: ppisp
+          - override /model/post_processing@model.post_processing.c: null
+          - override /logger: tensorboard
+          - _self_
+          model:
+            layers:
+              static_rigids:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  symmetric_axis: Y
+                  camera_ids: []
+                  step_frame: 1
+                  fill_with_random_points: true
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 270000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  num_point_cloud_points_per_track: 10000
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id001
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id001
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_rigids:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 390000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 40000
+                  fill_with_random_points: true
+                fourier_features_dim: 5
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id002
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id002
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_deformables:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 90000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 20000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id003
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id003
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              background:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 800000
+                  num_near_points: 100000
+                  num_far_points: 100000
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                fourier_features_dim: 1
+              road:
+                class_labels:
+                - road
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                initialization:
+                  name: lidar-rig-trajectory-road
+                  num_point_cloud_points: 120000
+                  num_random_points: 0
+                  default_density: 0.5
+                  default_scale:
+                  - 0.1
+                  - 0.1
+                  - 0.001
+                  project_to_z_offset: false
+                  init_with_normals: true
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.00016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    densities:
+                      args:
+                        lr: 0.01
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.001
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              static_deformables:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                fourier_features_dim: 1
+                initialization:
+                  name: lidar-dynamic-tracks
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_in_layer: 30000
+                  num_point_cloud_points_per_track: 10000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                is_static: false
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id004
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id004
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+            strategy:
+              add:
+                max_n_gaussians: 2100000
+                end_iteration: 140000
+                start_iteration: 20000
+                frequency: 100
+              relocate:
+                end_iteration: 140000
+                frequency: 100
+              perturb:
+                end_iteration: 160000
+              exclude_layer_ids:
+              - road
+              - dynamic_rigids
+              - dynamic_deformables
+              - static_rigids
+              - static_deformables
+            calib:
+              name: free-pose-calib
+              camera:
+                enabled: true
+              lidar:
+                enabled: false
+            renderer:
+              outputs:
+                camera:
+                  enable_ray_gradients: true
+                lidar:
+                  enable_ray_gradients: false
+            post_processing:
+              b:
+                per_frame_ppisp_enabled: false
+          dataset:
+            n_samples_per_epoch: 160000
+            camera_ids: &id005
+            - camera_pcam_f0
+            - camera_pcam_b0
+            - camera_pcam_l0
+            - camera_pcam_l1
+            - camera_pcam_l2
+            - camera_pcam_r0
+            - camera_pcam_r1
+            - camera_pcam_r2
+            train_camera_ids: *id005
+            val_camera_ids: *id005
+            lidar_ids:
+            - lidar_top_360fov
+            train_lidar_ids:
+            - lidar_top_360fov
+            val_lidar_ids: []
+            n_train_sample_lidar_rays: 0
+            val_lidar: false
+            train_sequential_lidar: false
+            use_real_lidar_rays: false
+            n_train_sequential_image_subsample: 2
+            n_val_image_subsample: 2
+            aux_data: true
+            cuboid_tracks_params:
+              track_label_sources:
+              - GT_ANNOTATION
+            samplers:
+              batch_sampler:
+                ratio_camera_samples: 1.0
+                ratio_lidar_samples: 0.0
+                camera_pixel_sampler:
+                  subsample: 2
+                  crop_type: full_image
+            val_camera_frame_step: 10
+            val_camera: true
+            interp_with_rig: true
+          loss:
+            lidar:
+              lambda_: 0.0
+            background_lidar:
+              lambda_: 0.0
+            intensity:
+              lambda_: 0.0
+            raydrop:
+              lambda_: 0.0
+            normal:
+              lambda_: 0.0
+            rgb:
+              fn: l1
+              lambda_: 0.8
+            ssim:
+              lambda_: 0.2
+            gaussian_density:
+              layer_lambdas:
+                road: 1
+                dynamic_rigids: 0.1
+                dynamic_deformables: 0.1
+                static_rigids: 0.1
+                static_deformables: 0.1
+            background_in_track_gaussian:
+              fn: bce_with_logits
+              reduce:
+                name: mean
+              lambda_: 0.1
+              layer_names:
+              - background
+              layer_labels_to_use:
+                background:
+                - person
+                - rider
+                - car
+                - truck
+                - bus
+                - train
+                - motorcycle
+                - bicycle
+            node_semantic_gaussians:
+              layer_labels_to_exclude:
+                background:
+                - road
+                dynamic_rigids:
+                - road
+                dynamic_deformables:
+                - road
+                static_rigids:
+                - road
+                static_deformables:
+                - road
+          trainer:
+            max_epochs: 1
+            precision: 32
+            world_size: 1
+            num_nodes: 1
+            num_sanity_val_steps: 0
+            val_check_interval: 40000
+            log_every_n_steps: 50
+          datamodule:
+            train_num_workers: 8
+            val_num_workers: 4
+            test_num_workers: 4
+          checkpoint:
+            every_n_train_steps: 40000
+            save_top_k: 1
+            save_on_train_epoch_end: true
+            artifact:
+              enabled: true
+              mesh:
+                ground:
+                  enabled: false
+            save_last: true
+          seed: 42
+          mode: trainval
+          out_dir: /avl-west/navsafe_nureasoning/recipe-v3-20261002/e08a9f05-half-160k/native
+          logger:
+            enabled: true
+            run_id: <generate>
+          system:
+            warmup_steps: 1000
+            record_quality_metrics:
+              psnr_interval: 100
+            test:
+              save_results: true
+              save_inputs: true
+              save_videos: true
+              save_stats: true
+              separate_val_dir_per_step: true
+              use_camera_name_dirs: true
+              video_fps: 1
+              metrics:
+                ssim:
+                  enabled: true
+                lpips:
+                  enabled: false
+              val_render_selected_nodes: {}
+          NRE_RECIPE
+          printf '%s  %s\n' "$RECIPE_SHA256" /scratch/recipe.yaml | sha256sum -c -
+          cat > /scratch/nur_v3_train.py <<'NUR_V3_PY'
+          """nuReasoning recipe v3 training entry: NRE main + two input-hygiene patches.
+
+          Run inside the NRE image: /app/run run-script nur_v3_train.py
+          Environment:
+            NUR_V3_ARGS_FILE         NRE main args, one per line (same as `/app/run <args>`); or NUR_V3_ARGS as JSON
+            NUR_V3_REPORT_DIR        where patch reports are written
+            NUR_V3_SOURCE_METADATA   raw nuReasoning metadata.json (camera filename clocks)
+            NUR_V3_TRACK_CLEAN       1/0  (P1)
+            NUR_V3_CAMERA_CLOCK      1/0  (P2)
+            NUR_V3_ACTOR_RELOCATE_LAYERS  comma list of actor layers for P3 (empty = off)
+            NUR_V3_CAMERA_RADIAL     JSON {camera_id: [k1, k2]} for P4 (empty = off)
+            NUR_V3_LIDAR_LABEL_FILL  1/0  (P6, default 0)
+
+          P1 track hygiene: nuReasoning boxes are per-frame detections. Consecutive boxes jump 0.1-0.8 m,
+          some headings flip by pi on parked objects (left as annotated), and NRE takes each track's box size
+          from its first observation. Rigid actors live in the box frame, so the jitter turns into blur. Each track is
+          re-estimated: robust LOESS on xyz, near-stationary tracks snapped to one position, box size =
+          per-track percentile of all observations. Headings are never re-oriented: tracks with a single-frame heading
+          jump > 30 deg (dataset flips / glitches) keep every annotated rotation; only the other tracks get their
+          small yaw jitter smoothed.
+
+          P2 camera clock: the py123d NCore bridge stamps every camera image with the LiDAR/ego frame time,
+          while the cameras are triggered during the LiDAR sweep (-18..+24 ms, some frames +-40 ms). Rig
+          trajectories handed to the model now carry each image's filename capture time, so camera poses
+          and actor-track interpolation use the real exposure time. Image / aux lookups keep the original
+          sensor timestamps, which are untouched.
+
+          P3 actor relocation: actor layers stay out of the global MCMC (so the background cannot drain
+          them) but get MCMC relocation inside their own layer; see install_actor_relocation_patch.
+
+          P4 lens distortion: the images are not rectified (nuPlan-like barrel, k1 ~ -0.35); the NCore camera
+          model gets the fitted radial coefficients; see install_camera_distortion_patch.
+
+          P6 LiDAR label fill: the lidar-sseg aux data labels only part of each sweep (mostly behind the vehicle)
+          and NRE drops unlabelled points, so nothing ahead of the ego is initialised from LiDAR; unlabelled points
+          get the class of the camera pixel they project to; see install_lidar_label_fill_patch.
+          """
+
+          import hashlib
+          import json
+          import math
+          import os
+          import pickle
+          import sys
+          import time
+
+          import numpy as np
+
+          REPORT_DIR = os.environ.get("NUR_V3_REPORT_DIR", "/tmp/nur_v3")
+          TRACK_CLEAN = os.environ.get("NUR_V3_TRACK_CLEAN", "1") == "1"
+          CAMERA_CLOCK = os.environ.get("NUR_V3_CAMERA_CLOCK", "1") == "1"
+          HALF_WINDOW_S = float(os.environ.get("NUR_V3_SMOOTH_HALF_WINDOW_S", "0.8"))
+          DIM_PERCENTILE = float(os.environ.get("NUR_V3_DIM_PERCENTILE", "75"))
+          STATIC_SNAP_M = float(os.environ.get("NUR_V3_STATIC_SNAP_M", "0.5"))
+          MAX_YAW_STEP_DEG = float(os.environ.get("NUR_V3_MAX_YAW_STEP_DEG", "30"))
+          ACTOR_RELOCATE_LAYERS = [x for x in os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS", "").split(",") if x]
+          # Last step at which deformable layers are relocated; 0 = same schedule as the rigid layers.
+          DEFORMABLE_RELOCATE_END_STEP = int(os.environ.get("NUR_V3_DEFORMABLE_RELOCATE_END_STEP", "0"))
+          # {layer: n}: relocation never leaves a track of that layer with fewer than n Gaussians; {} = no floor.
+          RELOCATE_TRACK_FLOOR = {k: int(v) for k, v in json.loads(os.environ.get("NUR_V3_RELOCATE_TRACK_FLOOR", "{}")).items()}
+          # Largest allowed Gaussian scale in an actor layer, as a fraction of the longest side of the object's box; 0 = no cap.
+          ACTOR_SCALE_CAP = float(os.environ.get("NUR_V3_ACTOR_SCALE_CAP", "0"))
+          # "track_id:n;track_id:n;...": Gaussians each track starts with; empty = NRE's even split per layer.
+          TRACK_TARGETS = {k: int(v) for k, v in (item.split(":") for item in os.environ.get("NUR_V3_TRACK_TARGETS", "").split(";") if item)}
+          CAMERA_RADIAL = json.loads(os.environ.get("NUR_V3_CAMERA_RADIAL", "{}"))
+          LIDAR_LABEL_FILL = os.environ.get("NUR_V3_LIDAR_LABEL_FILL", "0") == "1"
+          # A camera frame further than this from the LiDAR frame time is not used to label that sweep.
+          LABEL_FILL_MAX_CAMERA_DT_US = 50_000
+          MOVING_SPEED_MS = 1.0
+          CAMERA_FOLDER_TO_NCORE = {
+              "CAM_M_F": "camera_pcam_f0",
+              "CAM_M_B": "camera_pcam_b0",
+              "CAM_M_L0": "camera_pcam_l0",
+              "CAM_M_L1": "camera_pcam_l1",
+              "CAM_M_L2": "camera_pcam_l2",
+              "CAM_M_R0": "camera_pcam_r0",
+              "CAM_M_R1": "camera_pcam_r1",
+              "CAM_M_R2": "camera_pcam_r2",
+          }
+
+
+          def _say(*parts):
+              print("[nur_v3]", *parts, flush=True)
+
+
+          def _write_report(name, obj):
+              os.makedirs(REPORT_DIR, exist_ok=True)
+              with open(os.path.join(REPORT_DIR, name), "w") as f:
+                  json.dump(obj, f, indent=1, default=float)
+
+
+          # ---------------------------------------------------------------- P1: track hygiene
+
+
+          def _wrap(a):
+              return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+
+
+          def _rotz(a):
+              c, s = math.cos(a), math.sin(a)
+              return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+          def loess(t, y, half_window, degree=2, robust_iters=2, scale_floor=0.05):
+              """Robust local polynomial regression (tricube kernel, bisquare reweighting).
+
+              The local degree drops when the window is thin or one-sided (track ends, gaps), and every
+              fit is clamped to the range of the samples it used, so sparse tracks cannot extrapolate.
+              """
+              t = np.asarray(t, dtype=np.float64)
+              y = np.asarray(y, dtype=np.float64)
+              squeeze = y.ndim == 1
+              y = y.reshape(len(t), -1)
+              n = len(t)
+              out = y.copy()
+              robust = np.ones(n)
+              for it in range(robust_iters + 1):
+                  for i in range(n):
+                      d = np.abs(t - t[i])
+                      k = min(n - 1, degree + 2)
+                      h = max(half_window, np.partition(d, k)[k] * 1.0001)
+                      w = np.clip(1.0 - (d / h) ** 3, 0.0, None) ** 3 * robust
+                      m = w > 1e-12
+                      count = int(m.sum())
+                      if count == 0:
+                          continue
+                      dt = t[m] - t[i]
+                      deg = degree
+                      if not (np.any(dt < -1e-9) and np.any(dt > 1e-9)):
+                          deg = min(deg, 1)
+                      deg = max(0, min(deg, count - 3))
+                      ym, wm = y[m], w[m][:, None]
+                      X = np.vander(dt, deg + 1, increasing=True)
+                      A = X.T @ (wm * X) + 1e-9 * np.eye(deg + 1)
+                      fit = np.linalg.solve(A, X.T @ (wm * ym))[0]
+                      lo, hi = ym.min(axis=0), ym.max(axis=0)
+                      pad = 0.25 * (hi - lo) + scale_floor
+                      out[i] = np.clip(fit, lo - pad, hi + pad)
+                  if it < robust_iters:
+                      r = np.linalg.norm(y - out, axis=1)
+                      s = max(6.0 * np.median(r), scale_floor)
+                      robust = np.clip(1.0 - (r / s) ** 2, 0.0, None) ** 2
+              return out[:, 0] if squeeze else out
+
+
+          def clean_track(timestamps_us, poses, dims):
+              """Return (clean poses list, clean dims, info) for one track.
+
+              poses: list of 4x4 world poses (z-up), dims: (M, 3) array of all observed box sizes.
+              """
+              P = np.stack(poses).astype(np.float64)
+              n = len(P)
+              info = {"n": n}
+              new_dims = np.percentile(np.asarray(dims, dtype=np.float64), DIM_PERCENTILE, axis=0) if len(dims) else None
+              if n < 4:
+                  info["skipped"] = "few_poses"
+                  return poses, new_dims, info
+              t = (np.asarray(timestamps_us, dtype=np.int64) - int(timestamps_us[0])) / 1e6
+              if np.any(np.diff(t) <= 0):
+                  info["skipped"] = "non_increasing_time"
+                  return poses, new_dims, info
+              xyz = P[:, :3, 3]
+              yaw = np.arctan2(P[:, 1, 0], P[:, 0, 0])
+              tilt = np.einsum("nij,njk->nik", np.stack([_rotz(-a) for a in yaw]), P[:, :3, :3])
+              tilt_deg = float(np.degrees(np.arccos(np.clip((np.trace(tilt, axis1=1, axis2=2) - 1) / 2, -1, 1))).max())
+              info["max_tilt_deg"] = tilt_deg
+
+              xyz_s = loess(t, xyz, HALF_WINDOW_S)
+              vel = np.gradient(xyz_s[:, :2], t, axis=0)
+              speed = np.linalg.norm(vel, axis=1)
+              moving = speed > MOVING_SPEED_MS
+              center = np.median(xyz_s[:, :2], axis=0)
+              spread = float(np.max(np.linalg.norm(xyz_s[:, :2] - center, axis=1)))
+              info["jitter_rms_m"] = float(np.sqrt(np.mean(np.sum((xyz - xyz_s) ** 2, axis=1))))
+              info["spread_m"] = spread
+              info["moving_frac"] = float(moving.mean())
+
+              # Headings are never re-oriented: a track whose yaw jumps by more than 30 deg between consecutive
+              # observations (dataset heading flips / glitches; real objects turn < ~17 deg per 0.1 s) keeps every
+              # frame's rotation exactly as annotated. Only the remaining tracks get their small yaw jitter smoothed.
+              yaw_u = np.unwrap(yaw)
+              has_flip = bool(np.any(np.abs(_wrap(np.diff(yaw))) > np.radians(MAX_YAW_STEP_DEG)))
+              info["heading_flip_left_untouched"] = has_flip
+              if not has_flip:
+                  yaw_s = loess(t, yaw_u, HALF_WINDOW_S, scale_floor=0.02)
+                  info["yaw_jitter_rms_rad"] = float(np.sqrt(np.mean((yaw_u - yaw_s) ** 2)))
+
+              snapped = spread < STATIC_SNAP_M and not moving.any()
+              info["static_snapped"] = bool(snapped)
+              if snapped:
+                  xyz_s = np.repeat(np.median(xyz_s, axis=0, keepdims=True), n, axis=0)
+                  if not has_flip:
+                      mean_yaw = math.atan2(np.mean(np.sin(yaw_s)), np.mean(np.cos(yaw_s)))
+                      yaw_s = np.full(n, mean_yaw)
+              keep_tilt = tilt_deg > 3.0
+              out = []
+              for i in range(n):
+                  T = np.eye(4)
+                  if has_flip:
+                      T[:3, :3] = P[i, :3, :3]
+                  else:
+                      T[:3, :3] = _rotz(yaw_s[i]) @ (tilt[i] if keep_tilt else np.eye(3))
+                  T[:3, 3] = xyz_s[i]
+                  out.append(T)
+              return out, new_dims, info
+
+
+          def _bbox_dims(b):
+              if isinstance(b, dict):
+                  return tuple(float(x) for x in b["dim"])
+              return tuple(float(x) for x in b.dim)
+
+
+          def install_track_patch():
+              import nre.datasets.utils as du
+
+              original = du.consolidate_cuboid_tracks
+
+              def consolidate_and_clean(*args, **kwargs):
+                  all_tracks = original(*args, **kwargs)
+                  cuboids_df = kwargs["cuboids_df"] if "cuboids_df" in kwargs else args[0]
+                  key_src = repr(sorted((k, len(v["timestamps_us"]), v["timestamps_us"][0]) for k, v in all_tracks.items() if v["timestamps_us"]))
+                  cache = os.path.join("/tmp", "nur_v3_tracks_" + hashlib.sha1(key_src.encode()).hexdigest()[:16] + ".pkl")
+                  if os.path.exists(cache):
+                      with open(cache, "rb") as f:
+                          cleaned = pickle.load(f)
+                      for track_id, (poses, dims) in cleaned.items():
+                          all_tracks[track_id]["poses"] = poses
+                          if dims is not None:
+                              all_tracks[track_id]["dimension"] = dims
+                      _say("track hygiene: reused cache", cache, "tracks", len(cleaned))
+                      return all_tracks
+                  start = time.time()
+                  dims_by_track = {}
+                  for track_id, bbox3 in zip(cuboids_df["track_id"].tolist(), cuboids_df["bbox3"].tolist()):
+                      dims_by_track.setdefault(track_id, []).append(_bbox_dims(bbox3))
+                  cleaned, report = {}, {}
+                  for track_id, track in all_tracks.items():
+                      if not track["timestamps_us"]:
+                          continue
+                      first_dims = np.asarray(track["dimension"], dtype=np.float64)
+                      poses, dims, info = clean_track(track["timestamps_us"], track["poses"], dims_by_track.get(track_id, []))
+                      if dims is not None:
+                          dims = dims.astype(np.asarray(track["dimension"]).dtype)
+                          track["dimension"] = dims
+                          info["dims_first"] = first_dims.tolist()
+                          info["dims_new"] = dims.tolist()
+                      track["poses"] = poses
+                      info["label_class"] = str(track["label_class"])
+                      cleaned[track_id] = (poses, dims)
+                      report[track_id] = info
+                  tmp = f"{cache}.{os.getpid()}.tmp"
+                  with open(tmp, "wb") as f:
+                      pickle.dump(cleaned, f)
+                  os.replace(tmp, cache)
+                  jit = np.array([r.get("jitter_rms_m", 0.0) for r in report.values()])
+                  summary = {
+                      "tracks": len(report),
+                      "seconds": time.time() - start,
+                      "half_window_s": HALF_WINDOW_S,
+                      "dim_percentile": DIM_PERCENTILE,
+                      "static_snapped": int(sum(r.get("static_snapped", False) for r in report.values())),
+                      "tracks_with_heading_flips_left_untouched": int(sum(r.get("heading_flip_left_untouched", False) for r in report.values())),
+                      "tracks_yaw_jitter_smoothed": int(sum("yaw_jitter_rms_rad" in r for r in report.values())),
+                      "removed_jitter_rms_m_p50_p90_max": [float(np.percentile(jit, 50)), float(np.percentile(jit, 90)), float(jit.max())] if len(jit) else [],
+                      "max_tilt_deg": float(max([r.get("max_tilt_deg", 0.0) for r in report.values()] or [0.0])),
+                  }
+                  _write_report("track_hygiene.json", {"summary": summary, "tracks": report})
+                  _say("track hygiene:", json.dumps(summary))
+                  return all_tracks
+
+              du.consolidate_cuboid_tracks = consolidate_and_clean
+              _say("installed track hygiene patch")
+
+
+          # ---------------------------------------------------------------- P2: camera capture clock
+
+
+          def load_capture_clock(metadata_path):
+              meta = json.load(open(metadata_path))
+              clock = {}
+              for frame in meta["frames"]:
+                  ego_ts = int(frame["timestamp_us"])
+                  for rel in frame["sensors"]["cameras"].values():
+                      folder = rel.split("/")[1]
+                      capture_ts = int(os.path.splitext(rel)[0].rsplit("_", 1)[1])
+                      clock.setdefault(CAMERA_FOLDER_TO_NCORE[folder], {})[ego_ts] = capture_ts
+              return clock
+
+
+          def install_camera_clock_patch(metadata_path):
+              import torch
+              import nre.datasets.ncore as nc
+              from ncore.impl.common.transformations import PoseInterpolator
+
+              clock = load_capture_clock(metadata_path)
+              original = nc.NCOREDataSource.get_rig_trajectories
+              reported = {"done": False}
+
+              def get_rig_trajectories_capture_clock(self):
+                  rts = original(self)
+                  stats = {}
+                  for rt in rts.rig_trajectories:
+                      pose_ts = rt.T_rig_world_timestamps_us.cpu().numpy()
+                      lo, hi = int(pose_ts.min()), int(pose_ts.max())
+                      for unique_id, ts in list(rt.cameras_frame_timestamps_us.items()):
+                          logical = rts.camera_calibrations[unique_id].logical_sensor_name
+                          table = clock.get(logical)
+                          if table is None:
+                              raise RuntimeError(f"nur_v3: no capture clock for camera {logical}")
+                          stamped = ts.cpu().numpy().astype(np.int64)
+                          found = np.array([int(e) in table for e in stamped[:, 1]])
+                          if found.mean() < 0.95:
+                              raise RuntimeError(f"nur_v3: capture clock covers only {found.mean():.1%} of {logical} frames")
+                          capture = np.array([table.get(int(e), int(e)) for e in stamped[:, 1]], dtype=np.int64)
+                          capture = np.clip(capture, lo, hi)
+                          for i in range(1, len(capture)):  # keep strictly increasing frame times
+                              if capture[i] <= capture[i - 1]:
+                                  capture[i] = stamped[i, 1] if stamped[i, 1] > capture[i - 1] else capture[i - 1] + 1
+                          new = np.stack([capture, capture], axis=1)
+                          rt.cameras_frame_timestamps_us[unique_id] = torch.from_numpy(new).to(ts.dtype)
+                          if rt.cameras_frame_T_rig_worlds is not None and unique_id in rt.cameras_frame_T_rig_worlds:
+                              interp = PoseInterpolator(rt.T_rig_worlds.cpu().numpy(), pose_ts)
+                              T = interp.interpolate_to_timestamps(capture, dtype=np.float64)
+                              rt.cameras_frame_T_rig_worlds[unique_id] = torch.from_numpy(np.stack([T, T], axis=1))
+                          off = (capture - stamped[:, 1]) / 1e3
+                          stats[logical] = {
+                              "frames": len(capture),
+                              "coverage": float(found.mean()),
+                              "offset_ms_median": float(np.median(off)),
+                              "offset_ms_min": float(off.min()),
+                              "offset_ms_max": float(off.max()),
+                              "frames_abs_offset_gt_30ms": int(np.sum(np.abs(off) > 30)),
+                          }
+                  if not reported["done"]:
+                      reported["done"] = True
+                      _write_report("camera_clock.json", {"metadata": metadata_path, "cameras": stats})
+                      _say("camera clock:", json.dumps({k: round(v["offset_ms_median"], 1) for k, v in stats.items()}))
+                  return rts
+
+              nc.NCOREDataSource.get_rig_trajectories = get_rig_trajectories_capture_clock
+              _say("installed camera capture-clock patch", metadata_path)
+
+
+          # ---------------------------------------------------------------- P4: camera lens distortion
+
+
+          def install_camera_distortion_patch(radial):
+              """Give each NCore camera its radial distortion; the bridge stored a distortion-free pinhole.
+
+              nuReasoning ships only K, but the images are not rectified: cross-camera reprojection on
+              stationary frames gives k1 ~ -0.33..-0.38, k2 ~ +0.05..+0.10 (nuPlan-like barrel). A pinhole
+              model misplaces the left/right image borders by ~115 px and the corners by ~190-200 px.
+              radial: {camera_id: [k1, k2, ...]} in OpenCV order (numerator k1, k2, k3, denominator k4, k5, k6).
+              """
+              import dataclasses
+              from ncore.impl.data.v4.compat import SequenceLoaderV4
+
+              original = SequenceLoaderV4.get_camera_sensor
+              applied = {}
+
+              def get_camera_sensor_with_distortion(self, sensor_id):
+                  sensor = original(self, sensor_id)
+                  coeffs = radial.get(sensor_id)
+                  if coeffs is None:
+                      raise RuntimeError(f"nur_v3: no distortion coefficients for camera {sensor_id}")
+                  params = sensor._model_parameters
+                  rc = np.zeros(6, dtype=np.float32)
+                  rc[: len(coeffs)] = coeffs
+                  if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):
+                      raise RuntimeError(f"nur_v3: {sensor_id} already has radial coeffs {params.radial_coeffs}")
+                  sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)
+                  if sensor_id not in applied:
+                      applied[sensor_id] = rc[:2].tolist()
+                      _say("camera distortion", sensor_id, applied[sensor_id])
+                  return sensor
+
+              SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion
+              _say("installed camera distortion patch", json.dumps(radial))
+
+
+          # ---------------------------------------------------------------- P5: per-track initialisation counts
+
+
+          def targeted_subsample(original, targets):
+              """Replacement for NRE's subsample_points that gives every track its own number of points.
+
+              NRE fills each track of a layer to the same per-track count and then thins the whole layer by one
+              ratio, so a telehandler and a cone start with the same number of Gaussians. Relocation does not
+              repair that: Gaussians of small objects stay faintly visible instead of dying, so in the first
+              scene-budget run the telehandler ended at 8k of its 27k target. Here the layer-wide thinning is
+              replaced by one pass per track down to targets[track index]; measured (LiDAR) points are kept
+              before random filler. Calls that cover a single track are NRE's own per-track step and pass through.
+              """
+
+              def subsample(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts):
+                  owner = [int(g.reshape(-1)[0]) if g.numel() else None for g in gaussian_cuboid_ids]
+                  tracks = sorted({t for t in owner if t is not None})
+                  if len(tracks) <= 1 or any(t not in targets for t in tracks):
+                      return original(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts)
+                  out = ([], [], [], [])
+                  for track in tracks:
+                      pieces = [i for i, o in enumerate(owner) if o == track]
+                      measured = [i for i in pieces if observed_counts[i] > 0]
+                      filler = [i for i in pieces if observed_counts[i] == 0]
+                      n_measured = sum(point_clouds[i].n_points for i in measured)
+                      want = targets[track]
+                      parts = []
+                      if n_measured > 0:
+                          parts.append((min(want, n_measured), measured))
+                      if filler and want > n_measured:
+                          parts.append((want - n_measured, filler))
+                      for n, selection in parts:
+                          kept = original(n, [point_clouds[i] for i in selection], [gaussian_cuboid_ids[i] for i in selection],
+                                          [gaussian_scales[i] for i in selection], [observed_counts[i] for i in selection])
+                          for collected, part in zip(out, kept):
+                              collected.extend(part)
+                  return out
+
+              return subsample
+
+
+          def install_track_target_patch(targets):
+              import torch
+
+              import nre.models.gaussians.initializations as initializations
+
+              original = initializations.DynamicTracksInitialization.initialize_from_datasource
+
+              def initialize_with_track_targets(self, datasource, **kwargs):
+                  tracks = kwargs.get("cuboid_tracks")
+                  tokens = [str(t) for t in tracks.tracks_id] if tracks is not None else []
+                  if not tokens:  # a layer without objects in this scene (834aa758 has no moving people)
+                      return original(self, datasource, **kwargs)
+                  by_index = {i: targets[t] for i, t in enumerate(tokens) if t in targets}
+                  if len(by_index) != len(tokens):
+                      _say("track targets:", len(tokens) - len(by_index), "of", len(tokens), "tracks have no target; NRE's even split kept for this layer")
+                      return original(self, datasource, **kwargs)
+                  saved = initializations.subsample_points
+                  initializations.subsample_points = targeted_subsample(saved, by_index)
+                  try:
+                      result = original(self, datasource, **kwargs)
+                  finally:
+                      initializations.subsample_points = saved
+                  ids = self.gaussian_cuboid_ids
+                  ids = torch.cat([g.reshape(-1) for g in ids]) if isinstance(ids, (list, tuple)) else ids.reshape(-1)
+                  counts = torch.bincount(ids.long(), minlength=len(tokens))
+                  _say("track targets: tracks", len(tokens), "wanted", sum(by_index.values()), "placed", int(counts.sum()),
+                       "per track min/median/max", int(counts.min()), int(counts.float().median()), int(counts.max()))
+                  return result
+
+              initializations.DynamicTracksInitialization.initialize_from_datasource = initialize_with_track_targets
+              _say("installed per-track initialisation targets for", len(targets), "tracks")
+
+
+          # ---------------------------------------------------------------- P3: actor-layer MCMC relocation
+
+
+          def protect_track_floor(model, floor, opacity_threshold):
+              """Keep at least `floor` Gaussians in every track of this layer during the next relocation pass.
+
+              Relocation takes dead Gaussians (opacity <= threshold) from anywhere in the layer and re-creates them on
+              alive ones sampled by opacity, so a small or rarely seen object can be emptied by its neighbours (e08a9f05:
+              one of two dynamic_deformables tracks ended with 0 of 60000). For every track with fewer than `floor`
+              alive Gaussians, enough of its dead ones are lifted just above the threshold to stay where they are.
+              Returns the number of Gaussians held back.
+              """
+              import torch
+
+              ids = model.gaussian_cuboid_ids.long().view(-1)
+              opacity = model.get_densities().detach().view(-1)
+              dead = opacity <= opacity_threshold
+              if not bool(dead.any()):
+                  return 0
+              n_tracks = int(ids.max()) + 1
+              need = (floor - torch.bincount(ids[~dead], minlength=n_tracks)).clamp(min=0)
+              dead_idx = torch.where(dead)[0]
+              order = torch.argsort(ids[dead_idx], stable=True)
+              sorted_idx, sorted_ids = dead_idx[order], ids[dead_idx][order]
+              rank = torch.arange(len(sorted_ids), device=ids.device) - torch.searchsorted(sorted_ids, sorted_ids)
+              keep = sorted_idx[rank < need[sorted_ids]]
+              if len(keep):
+                  lifted = torch.full((len(keep),), opacity_threshold * 1.05, dtype=model.densities.dtype, device=ids.device)
+                  with torch.no_grad():
+                      model.densities.data.view(-1)[keep] = model.density_activation_inv(lifted)
+              return int(len(keep))
+
+
+          def cap_actor_scales(model, factor):
+              """Keep every Gaussian of an actor layer no larger than `factor` x the longest side of its object's box.
+
+              Nothing bounds the scale of actor Gaussians (the layers are outside the MCMC strategy), and over long runs a few
+              grow to metres inside sub-metre objects: 660c2f7a sbt had 13 opaque dynamic-rigid Gaussians above 1 m at 40k
+              steps and 62 at 80k, one of them 19 m long in a 0.3 x 0.6 x 1.7 m object, which shows as a dark band on the road.
+              Returns the number of Gaussians that were clamped.
+              """
+              import torch
+
+              tracks = getattr(model, "cuboid_tracks", None)
+              if tracks is None:
+                  return 0
+              ids = model.gaussian_cuboid_ids.long().view(-1)
+              limit = (tracks.cuboids_dims.max(dim=1).values * factor)[ids].unsqueeze(-1)
+              raw_limit = model.scale_activation_inv(limit).to(model.scales.dtype).expand_as(model.scales.data)
+              with torch.no_grad():
+                  over = int((model.scales.data > raw_limit).any(dim=1).sum())
+                  if over:
+                      model.scales.data.copy_(torch.minimum(model.scales.data, raw_limit))
+              return over
+
+
+          def install_actor_relocation_patch(layers):
+              """Relocate dead Gaussians inside each actor layer on the MCMC relocation schedule.
+
+              v2 keeps actor layers out of the global MCMC so the background cannot drain them, but then
+              nothing recycles their dead Gaussians: in the v2 3M/40k checkpoint 96-98% of every actor
+              layer ended with opacity < 0.05. Here each listed layer gets its own relocation pass: dead
+              Gaussians (opacity <= threshold) move onto alive ones of the same layer (cuboid ids follow
+              the target), counts stay fixed, nothing crosses layers. Death is opacity-only; the
+              invisible-steps rule would recycle actors that are simply off-screen for a while.
+
+              Deformable layers degrade when this keeps running: 660c2f7a checkpoints after relocation
+              to 35k / 70k / 140k steps had 0 / 3 / 6 of 9 dynamic_deformables tracks collapsed into
+              needles (median anisotropy > 100, scales of metres) and the cyclist lost 2/3 of its
+              Gaussians to other tracks; without relocation (v2, 160k) none collapse. Rigid layers stay
+              healthy at every length. NUR_V3_DEFORMABLE_RELOCATE_END_STEP stops it for deformables only.
+              """
+              from nre.models.gaussians.strategies.mcmc import MCMCStrategy
+
+              original = MCMCStrategy.update_step_train_batch_end
+              logged = {"n": 0}
+
+              def update_step_with_actor_relocation(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):
+                  original(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs)
+                  relocate = self.config.relocate
+                  if ACTOR_SCALE_CAP > 0 and global_step % relocate.frequency == 0:
+                      capped = {layer: cap_actor_scales(gaussians_nodes[layer], ACTOR_SCALE_CAP) for layer in layers
+                                if layer in gaussians_nodes and gaussians_nodes[layer].get_num_gaussians() > 0}
+                      if global_step % (50 * relocate.frequency) == 0:
+                          _say("actor scale cap at step", global_step, "clamped", capped)
+                  if not self._check_step_condition(
+                      step=global_step, start=relocate.start_iteration, end=relocate.end_iteration, freq=relocate.frequency
+                  ):
+                      return
+                  saved_exclude, saved_invisible = list(self.config.exclude_layer_ids), relocate.max_invisible_steps
+                  held = {}
+                  try:
+                      relocate.max_invisible_steps = None
+                      for layer in layers:
+                          if layer not in gaussians_nodes or gaussians_nodes[layer].get_num_gaussians() == 0:
+                              continue
+                          if "deformables" in layer and 0 < DEFORMABLE_RELOCATE_END_STEP < global_step:
+                              continue
+                          if RELOCATE_TRACK_FLOOR.get(layer, 0) > 0:
+                              held[layer] = protect_track_floor(gaussians_nodes[layer], RELOCATE_TRACK_FLOOR[layer], self.config.opacity_threshold)
+                          self.config.exclude_layer_ids = [name for name in gaussians_nodes.keys() if name != layer]
+                          self.relocate_gaussians(gaussians_nodes)
+                  finally:
+                      self.config.exclude_layer_ids = saved_exclude
+                      relocate.max_invisible_steps = saved_invisible
+                  if logged["n"] < 3:
+                      logged["n"] += 1
+                      _say("actor relocation pass at step", global_step, "layers", layers, "held back by track floor", held)
+
+              MCMCStrategy.update_step_train_batch_end = update_step_with_actor_relocation
+              _say("installed actor-layer relocation patch", layers, "deformable end step", DEFORMABLE_RELOCATE_END_STEP or "same as rigid",
+                   "track floor", RELOCATE_TRACK_FLOOR or "none", "scale cap", ACTOR_SCALE_CAP or "none")
+
+
+          # ---------------------------------------------------------------- P6: LiDAR labels from camera segmentation
+
+
+          def label_points_from_cameras(xyz_world, views, ignore_label):
+              """Class per world point from camera segmentation images; ignore_label where no camera gives one.
+
+              views: per camera (camera model, T_world_sensor at frame start and end (2, 4, 4), class image (H, W),
+              table camera class id -> LiDAR class id, bool per point: the camera sees it). A point seen by several
+              cameras takes the class from the camera in which it lies closest to the image centre.
+              Returns (labels, number of the view that gave each label or -1).
+              """
+              labels = np.full(len(xyz_world), ignore_label, dtype=np.uint8)
+              origin = np.full(len(xyz_world), -1, dtype=np.int8)
+              offcentre = np.full(len(xyz_world), np.inf, dtype=np.float32)
+              for number, (model, T_world_sensor, classes, to_lidar, visible) in enumerate(views):
+                  index = np.flatnonzero(visible)
+                  if not len(index):
+                      continue
+                  projection = model.world_points_to_image_points_shutter_pose(
+                      xyz_world[index], T_world_sensor[0], T_world_sensor[1], return_valid_indices=True)
+                  uv = projection.image_points.cpu().numpy()
+                  index = index[projection.valid_indices.cpu().numpy()]
+                  width, height = (float(v) for v in model.resolution)
+                  rows, cols = classes.shape
+                  found = to_lidar[classes[np.clip((uv[:, 1] * rows / height).astype(np.int64), 0, rows - 1),
+                                           np.clip((uv[:, 0] * cols / width).astype(np.int64), 0, cols - 1)]]
+                  distance = np.hypot(uv[:, 0] / width - 0.5, uv[:, 1] / height - 0.5).astype(np.float32)
+                  take = (found != ignore_label) & (distance < offcentre[index])
+                  labels[index[take]], origin[index[take]], offcentre[index[take]] = found[take], number, distance[take]
+              return labels, origin
+
+
+          def lidar_label_tables(source, lidar_id):
+              """Per LiDAR: frame index by frame time, ignore label, class names, per camera a table camera class id -> LiDAR class id.
+
+              The id spaces are matched by class name (in the nuReasoning aux data both lists start with the same 20 names
+              and the LiDAR list has one more, "ignore"). egocar pixels give no label: the camera sees the ego body there.
+              """
+              aux = source.aux_loader
+              if not aux.has_lidar_camera_visibility(lidar_id):
+                  raise RuntimeError(f"nur_v3: no lidar-camvis aux data for {lidar_id}")
+              meta = aux.get_lidar_semantic_segmentation_meta(lidar_id)
+              names, ignore_label = list(meta["stuff_classes"]), int(meta["ignore_label"])
+              to_lidar = {}
+              for camera_id in source.camera_sensors:
+                  lut = np.full(256, ignore_label, dtype=np.uint8)
+                  for class_id, name in enumerate(aux.get_semantic_segmentation_meta(camera_id)["stuff_classes"]):
+                      if name in names and name not in ("egocar", "ignore"):
+                          lut[class_id] = names.index(name)
+                  to_lidar[camera_id] = lut
+              frame_times = source.lidar_sensors[lidar_id].frames_timestamps_us[:, 1]
+              return {int(t): i for i, t in enumerate(frame_times)}, ignore_label, names, to_lidar
+
+
+          def camera_labels_for_sweep(source, lidar_id, frame, ignore_label, to_lidar):
+              """Camera-derived class for every point of one LiDAR frame of an NCOREDataSource: (labels, camera number or -1).
+
+              Points and poses are read the way NRE's get_lidar_point_clouds / _color_pc_rgb read them: closest returns,
+              each camera's frame nearest to the LiDAR frame time, the datasource's own camera models.
+              """
+              aux, lidar = source.aux_loader, source.lidar_sensors[lidar_id]
+              timestamp_us = int(lidar.get_frame_timestamp_us(frame))
+              xyz = lidar.get_frame_point_cloud(frame, motion_compensation=True, with_start_points=True, return_index=0).xyz_m_end
+              T_sensor_world = lidar.get_frames_T_sensor_target("world", frame)
+              xyz_world = (xyz.astype(np.float64) @ T_sensor_world[:3, :3].T + T_sensor_world[:3, 3]).astype(np.float32)
+              cameras = list(source.camera_sensors)
+              visible = aux.get_lidar_camera_visibility(lidar_id, timestamp_us, cameras)
+              views = []
+              for camera_id in cameras:
+                  sensor = source.camera_sensors[camera_id]
+                  index = sensor.get_closest_frame_index(timestamp_us)
+                  camera_time = int(sensor.get_frame_timestamp_us(index))
+                  if abs(camera_time - timestamp_us) > LABEL_FILL_MAX_CAMERA_DT_US:
+                      views.append((None, None, None, None, np.zeros(len(xyz), dtype=bool)))
+                      continue
+                  classes = np.asarray(aux.get_semantic_segmentation(camera_id, camera_time))
+                  if classes.ndim != 2:
+                      raise RuntimeError(f"nur_v3: camera segmentation of {camera_id} is not a class-id image: {classes.shape}")
+                  views.append((source.camera_models[camera_id], sensor.get_frames_T_source_sensor("world", index, frame_timepoint=None),
+                                classes, to_lidar[camera_id], np.asarray(visible[camera_id]).reshape(-1) > 0))
+              return label_points_from_cameras(xyz_world, views, ignore_label)
+
+
+          def install_lidar_label_fill_patch():
+              """Give LiDAR points without a semantic label the class of the camera pixel they project to.
+
+              NRE keeps a LiDAR point for initialisation only if the lidar-sseg aux data has a class for it
+              (get_lidar_point_clouds, valid_points_only). The nuReasoning lidar-sseg labels 8-9% of the points
+              (c7534532: 7k-33k of ~236k per sweep) although the eight cameras together see 54-56%, two thirds of the
+              labelled points lie behind the vehicle, and of the ~33k ground returns ahead of the vehicle none is
+              labelled road in c7534532 frames 100, 150 and 200. So the road layer (120k Gaussians, outside the MCMC
+              strategy, never grows) had no point ahead of the last ego pose and the road there was painted by floating
+              background Gaussians.
+
+              Here every read of the LiDAR labels (AuxShardDataLoader.get_lidar_semantic_segmentation) returns the stored
+              labels with the ignore entries filled in: the sweep is projected into each camera's nearest frame with the
+              camera model of the datasource (so with the P4 distortion when that is on) and takes the class of the camera
+              segmentation aux at that pixel, for the cameras that lidar-camvis lists for the point. Stored labels are
+              never changed. One result per sweep is cached; the first full pass over the sweeps prints the summary.
+
+              Checked on CPU through NRE's own point-cloud path (maintenance/lidar-label-fill-20261006). With the stored
+              pinhole model the camera class equals the stored label on 99.96-100% of the labelled points that one camera
+              sees, so projection and class ids are those of the tool that wrote the aux data. With the P4 distortion it
+              is 94-96% there and 89% over all labelled points, and two cameras that see the same point give it the same
+              class for 70-88% of such points instead of 65-78%. Points read by the road / background initialisation:
+              c7534532 450,049 -> 3,167,854 / 3,906,446 -> 21,579,592, 660c2f7a 223,817 -> 3,686,965 / 3,467,594 -> 20,093,069.
+
+              What else changes, all through NRE's own rules: the scene extent is the bounding box of the labelled points
+              (c7534532 407 -> 571 m, 660c2f7a 521 -> 534 m) and scales the background position learning rate and the
+              spread of the random initial points; initial Gaussian sizes grow with sqrt(points read / points kept); the
+              120k road Gaussians now cover 2.4-5.4x the ground area. lidar-camvis has no occlusion test (it equals
+              "projects into the pinhole image"), so ground that the LiDAR sees behind an object gets the object's class.
+              """
+              import threading
+
+              import nre.datasets.ncore as nc
+              from nre.utils import ncore_utils
+
+              read_stored = ncore_utils.AuxShardDataLoader.get_lidar_semantic_segmentation
+              load_data = nc.NCOREDataSource._load_data
+              sources, tables, filled, rows, reported, lock = [], {}, {}, {}, set(), threading.Lock()
+
+              def fill(source, lidar_id, timestamp_us, stored):
+                  started = time.time()
+                  with lock:
+                      if (id(source), lidar_id) not in tables:
+                          tables[(id(source), lidar_id)] = lidar_label_tables(source, lidar_id)
+                      frame_of, ignore_label, names, to_lidar = tables[(id(source), lidar_id)]
+                  frame = frame_of.get(timestamp_us)
+                  if frame is None:
+                      return stored, None
+                  seen, origin = camera_labels_for_sweep(source, lidar_id, frame, ignore_label, to_lidar)
+                  if len(seen) != len(stored):
+                      raise RuntimeError(f"nur_v3: {lidar_id} frame {frame} has {len(seen)} points but {len(stored)} labels")
+                  missing = stored == ignore_label
+                  labels = np.where(missing, seen, stored).astype(stored.dtype)
+                  both = ~missing & (seen != ignore_label)
+                  road = names.index("road")
+                  row = {"frame": frame, "points": len(stored), "labelled_before": int((~missing).sum()), "labelled_after": int((labels != ignore_label).sum()),
+                         "road_before": int((stored == road).sum()), "road_after": int((labels == road).sum()),
+                         "checked": int(both.sum()), "agree": int((seen[both] == stored[both]).sum()),
+                         "filled_by_camera": [int((missing & (origin == i)).sum()) for i in range(len(source.camera_sensors))], "seconds": time.time() - started}
+                  return labels, row
+
+              def report(source, source_rows):
+                  cameras = list(source.camera_sensors)
+                  total = {k: int(sum(r[k] for r in source_rows)) for k in ("points", "labelled_before", "labelled_after", "road_before", "road_after", "checked", "agree")}
+                  summary = {"frames": len(source_rows), **total,
+                             "labelled_share_before_after": [round(total["labelled_before"] / total["points"], 4), round(total["labelled_after"] / total["points"], 4)],
+                             "agreement_on_stored_labels": round(total["agree"] / max(total["checked"], 1), 4),
+                             "filled_by_camera": {c: int(sum(r["filled_by_camera"][i] for r in source_rows)) for i, c in enumerate(cameras)},
+                             "fill_seconds_sum": round(sum(r["seconds"] for r in source_rows), 1)}
+                  radial = {c: [float(v) for v in getattr(source.camera_model_parameters[c], "radial_coeffs", [])[:2]] for c in cameras}
+                  classes = {key[1]: {"names": names, "ignore_label": ignore_label, "camera_class_to_lidar_class": {c: lut[:32].tolist() for c, lut in to_lidar.items()}}
+                             for key, (_, ignore_label, names, to_lidar) in tables.items() if key[0] == id(source)}
+                  _write_report("lidar_label_fill.json", {"summary": summary, "camera_radial_coeffs_used": radial, "classes": classes,
+                                                          "frames": sorted(source_rows, key=lambda r: r["frame"])})
+                  _say("lidar label fill:", json.dumps(summary))
+
+              def read_filled(self, lidar_id, frame_timestamps_us):
+                  source = next((s for s in sources if getattr(s, "aux_loader", None) is self), None)
+                  if source is None:
+                      return read_stored(self, lidar_id, frame_timestamps_us)
+                  key = (id(source), lidar_id, int(frame_timestamps_us))
+                  labels = filled.get(key)
+                  if labels is None:
+                      labels, row = fill(source, lidar_id, key[2], read_stored(self, lidar_id, frame_timestamps_us))
+                      if row is None:  # not a frame of this LiDAR: nothing to project
+                          return labels
+                      with lock:
+                          filled[key], rows[key] = labels, row
+                          source_rows = [r for k, r in rows.items() if k[0] == id(source)]
+                          expected = sum(len(r) for r in getattr(source, "lidar_frame_ranges", {}).values())
+                          complete = 0 < expected <= len(source_rows) and id(source) not in reported
+                          if complete:
+                              reported.add(id(source))
+                      if complete:
+                          report(source, source_rows)
+                  return labels.copy()
+
+              def load_data_and_register(self):
+                  # Registered before loading: the scene extent at the end of _load_data already reads the labels.
+                  if not any(s is self for s in sources):
+                      sources.append(self)
+                  load_data(self)
+
+              ncore_utils.AuxShardDataLoader.get_lidar_semantic_segmentation = read_filled
+              nc.NCOREDataSource._load_data = load_data_and_register
+              _say("installed lidar label fill patch")
+
+
+          def main():
+              if "NUR_V3_ARGS_FILE" in os.environ:
+                  args = [a for a in open(os.environ["NUR_V3_ARGS_FILE"]).read().split("\n") if a]
+              else:
+                  args = json.loads(os.environ["NUR_V3_ARGS"])
+              if TRACK_CLEAN:
+                  install_track_patch()
+              if CAMERA_CLOCK:
+                  install_camera_clock_patch(os.environ["NUR_V3_SOURCE_METADATA"])
+              if ACTOR_RELOCATE_LAYERS:
+                  install_actor_relocation_patch(ACTOR_RELOCATE_LAYERS)
+              if TRACK_TARGETS:
+                  install_track_target_patch(TRACK_TARGETS)
+              if CAMERA_RADIAL:
+                  install_camera_distortion_patch(CAMERA_RADIAL)
+              if LIDAR_LABEL_FILL:
+                  install_lidar_label_fill_patch()
+              from nre.run.main import main as nre_main
+
+              _say("NRE main args:", args)
+              nre_main.main(args=args, standalone_mode=False)
+
+
+          if __name__ == "__main__":
+              main()
+          NUR_V3_PY
+          printf '%s  %s\n' "$WRAPPER_SHA256" /scratch/nur_v3_train.py | sha256sum -c -
+          ARGS=(--config-name=/scratch/recipe.yaml mode=trainval "logger.run_id='$CLIP_ID'" "dataset.path=/scratch/ncore/pai_$CLIP_ID.json" "out_dir=$DEST/native")
+          /app/run export-parsed-config --config-name=/scratch/recipe.yaml --output "$DEST/parsed-preflight.yaml" -- "${ARGS[@]:1}"
+          printf '%s\n' "${ARGS[@]}" > /scratch/nre_args.txt
+          NUR_V3_ARGS_FILE=/scratch/nre_args.txt NUR_V3_REPORT_DIR="$DEST/nur_v3" NUR_V3_SOURCE_METADATA="$SOURCE_METADATA" \
+            /app/run run-script /scratch/nur_v3_train.py
+          test -s /scratch/native-artifacts/last.usdz
+          mkdir -p "$DEST/artifacts"
+          cp -a /scratch/native-artifacts/last.usdz "$DEST/artifacts/last.usdz"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/artifacts/"
+          cp -a "$RUN/config" "$DEST/"
+          test -s "$DEST/nur_v3/track_hygiene.json"
+          test -s "$DEST/nur_v3/camera_clock.json"
+          # Use the image's native Python runtime to check checkpoint state and artifact.
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'CHECK_OUTPUT'
+          import os,json,zipfile,pathlib,torch
+          p=pathlib.Path(os.environ["DEST"])
+          z=p/"artifacts/last.usdz"
+          with zipfile.ZipFile(z) as archive:
+              assert archive.testzip() is None
+              assert "checkpoint.ckpt" in archive.namelist()
+              assert "parsed_config.yaml" in archive.namelist()
+          ckpt=torch.load(p/"checkpoints/last.ckpt",map_location="cpu",weights_only=False)
+          assert ckpt["global_step"]==int(os.environ["TRAIN_STEPS"])
+          record=dict(experiment_id=os.environ["EXPERIMENT_ID"],clip_id=os.environ["CLIP_ID"],recipe="nureasoning-v3",
+              variant=os.environ["VARIANT"],train_steps=ckpt["global_step"],scene_gaussian_budget_max=int(os.environ["GAUSSIAN_LIMIT"]),
+              camera_train_subsample=int(os.environ["CAMERA_SUBSAMPLE"]),track_hygiene=True,camera_capture_clock=True,
+              actor_relocation_layers=os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS",""),camera_radial=os.environ.get("NUR_V3_CAMERA_RADIAL",""),
+              seed=42,lidar_initialization=True,lidar_supervision=False,temporal_splitting=False,
+              recipe_sha256=os.environ["RECIPE_SHA256"],wrapper_sha256=os.environ["WRAPPER_SHA256"],usdz_bytes=z.stat().st_size)
+          (p/"SUCCESS.json").write_text(json.dumps(record,indent=2)+"\n")
+          print("TRAIN_DONE",json.dumps(record))
+          CHECK_OUTPUT
+        resources:
+          requests:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '2'
+            memory: 32Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 80Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-01.sdsc.optiputer.net
+                - ry-gpu-02.sdsc.optiputer.net
+                - ry-gpu-03.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-05.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+          - weight: 40
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-08.sdsc.optiputer.net
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule
+      - key: nautilus.io/cogrob
+        operator: Exists
+        effect: NoSchedule

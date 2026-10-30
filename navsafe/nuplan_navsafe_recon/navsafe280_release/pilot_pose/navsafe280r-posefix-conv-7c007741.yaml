@@ -1,0 +1,115 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-posefix-conv-7c007741
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-pilot
+    stage: convert
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: convert
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - 'set -euo pipefail
+
+          mkdir -p /avl-west/navsafe280_release_20261021/posefix_attz/lidar_calib /avl-west/navsafe280_release_20261021/posefix_attz/audit8 /avl-west/navsafe280_release_20261021/posefix_attz/aux/7c00774138ae5805
+
+          [ -s /avl-west/navsafe280_release_20261021/posefix_attz/lidar_calib/2021.10.06.08.16.17_veh-52_00922_01296.json ] || cp /avl-west/navsafe280_release_20261021/lidar_calib/2021.10.06.08.16.17_veh-52_00922_01296.json /avl-west/navsafe280_release_20261021/posefix_attz/lidar_calib/2021.10.06.08.16.17_veh-52_00922_01296.json
+
+          bash /pipeline/convert.sh
+
+          grep -q "NCORE_POSE_Z=attitude" /avl-west/navsafe280_release_20261021/posefix_attz/prep/7c00774138ae5805/*/convert.log
+
+          cp /avl-west/navsafe280_release_20261021/inputs/7c00774138ae5805/clips/7c00774138ae5805/7c00774138ae5805.aux.*.zarr.itar /avl-west/navsafe280_release_20261021/posefix_attz/inputs/7c00774138ae5805/clips/7c00774138ae5805/
+
+          cp /avl-west/navsafe280_release_20261021/aux/7c00774138ae5805/aux.sha256 /avl-west/navsafe280_release_20261021/posefix_attz/aux/7c00774138ae5805/aux.sha256
+
+          (cd /avl-west/navsafe280_release_20261021/posefix_attz/inputs/7c00774138ae5805/clips/7c00774138ae5805 && sha256sum -c --quiet /avl-west/navsafe280_release_20261021/posefix_attz/aux/7c00774138ae5805/aux.sha256)
+
+          [ -s /avl-west/navsafe280_release_20261021/posefix_attz/audit8/7c00774138ae5805.json ] || cp /avl-west/navsafe280_release_20261021/audit8/7c00774138ae5805.json /avl-west/navsafe280_release_20261021/posefix_attz/audit8/7c00774138ae5805.json
+
+          date -u +%FT%TZ > /avl-west/navsafe280_release_20261021/posefix_attz/aux/7c00774138ae5805/ready
+
+          echo POSEFIX_CLIP_READY 7c00774138ae5805
+
+          '
+        env:
+        - name: ROOT
+          value: /avl-west/navsafe280_release_20261021/posefix_attz
+        - name: C
+          value: 7c00774138ae5805
+        - name: LOG
+          value: 2021.10.06.08.16.17_veh-52_00922_01296
+        - name: T0
+          value: '1633509271949871'
+        - name: T1
+          value: '1633509292000039'
+        - name: NCORE_POSE_Z
+          value: attitude
+        resources:
+          requests:
+            cpu: '3'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '3'
+            memory: 33Gi
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-pilot-pose
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

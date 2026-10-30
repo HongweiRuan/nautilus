@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nureasoning-hf-download-20261012
+  namespace: cogrob
+  labels:
+    app: nureasoning-hf-download
+spec:
+  backoffLimit: 50
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: nureasoning-hf-download
+    spec:
+      restartPolicy: OnFailure
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+      containers:
+      - name: download
+        image: docker.io/library/python:3.11-slim
+        command:
+        - bash
+        - -c
+        args:
+        - "#!/bin/bash\n# Download nureasoning/nuReasoning (Hugging Face dataset, 26.9 TB, 11893 tar files) to the PVC, one part after the other.\n# Resumable: `hf download` skips files that are complete, so the Job can restart at any time.\n# PARTS (space separated) selects what to fetch and in which order; the default is everything, smallest split first.\nset -uo pipefail\nDST=${DST:-/avl-west/nuReasoning}\nREV=${REV:-26bb09b29fc9ebc3889ed8d0a9e42850e271442e}\nPARTS=${PARTS:-\"data/test data/validation/part_1 data/train/part_1 data/train/part_2 data/train/part_3 data/train/part_4 data/train/part_5 data/train/part_6 data/train/part_7 data/train/part_8 data/train/part_9 data/train/part_10\"}\nLOG=$DST/_download_logs\nmkdir -p \"$LOG\"\nexport HF_HOME=/tmp/hf HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DOWNLOAD_TIMEOUT=120\npip install -q \"huggingface_hub[hf_xet]==0.35.3\" 2>&1 | tail -1\nstamp() { date -u +%FT%TZ; }\necho \"$(stamp) start rev=$REV dst=$DST parts=[$PARTS] host=$(hostname)\" | tee -a \"$LOG/progress.log\"\nhf download nureasoning/nuReasoning --repo-type dataset --revision \"$REV\" --local-dir \"$DST\" \\\n  --include \"README.md\" \"LICENSE-*.md\" \"overview.png\" >/dev/null 2>>\"$LOG/errors.log\"\nfor P in $PARTS; do\n  if [ -f \"$LOG/DONE_$(echo \"$P\" | tr / _)\" ]; then echo \"$(stamp) skip $P (done)\" | tee -a \"$LOG/progress.log\"; continue; fi\n  for TRY in $(seq 1 200); do\n    echo \"$(stamp) $P attempt $TRY: $(find \"$DST/$P\" -name '*.tar' 2>/dev/null | wc -l) tar files present, $(du -sb \"$DST/$P\" 2>/dev/null | cut -f1) bytes\" | tee -a \"$LOG/progress.log\"\n    if hf download nureasoning/nuReasoning --repo-type dataset --revision \"$REV\" --local-dir \"$DST\" \\\n         --include \"$P/*\" --max-workers \"${WORKERS:-4}\" >/dev/null 2>>\"$LOG/errors.log\"; then\n      echo \"$(stamp) $P complete: $(find \"$DST/$P\" -name '*.tar' | wc -l) tar files, $(du -sb \"$DST/$P\" | cut -f1) bytes\" | tee -a \"$LOG/progress.log\"\n      touch \"$LOG/DONE_$(echo \"$P\" | tr / _)\"\n      break\n    fi\n    echo \"$(stamp) $P attempt $TRY failed; retry in 60 s\" | tee -a \"$LOG/progress.log\"\n    sleep 60\n  done\ndone\necho \"$(stamp) ALL REQUESTED PARTS PROCESSED\" | tee -a \"$LOG/progress.log\"\n"
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-connor02
+              key: HF_TOKEN
+        - name: DST
+          value: /avl-west/nuReasoning
+        - name: WORKERS
+          value: '4'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 10Gi
+          limits:
+            cpu: '1'
+            memory: 4800Mi
+            ephemeral-storage: 12Gi
+        volumeMounts:
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol

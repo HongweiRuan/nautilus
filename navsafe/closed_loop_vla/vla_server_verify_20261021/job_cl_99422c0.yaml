@@ -1,0 +1,72 @@
+# VLA-server verification of NavSafe-infty main 99422c0 (rerun) (issue #1), 2026-10-21.
+# Job A: closed loop on ry-gpu-12 (3 GPUs: renderer, simulator, model server).
+# Job B: open loop on ry-gpu-11 (1 GPU: model server).
+# Scripts and the git bundle come from ConfigMap hw-vla-verify-20261021.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hw-vla-verify-cl-99422c0
+  namespace: cogrob
+  labels: {app: hw-vla-verify}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 28800
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: {app: hw-vla-verify}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-12.sdsc.optiputer.net]}
+      initContainers:
+        - name: renderer
+          restartPolicy: Always
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              exec /app/run serve-grpc --host 0.0.0.0 --port 8080 --enable-editing-actors --renderer default \
+                --cache-size 4 --enable-harmonizer \
+                --harmonizer-cache /avl-west/navsafe_eval/readme_verify_20261007/harmonizer-cache \
+                --artifact-glob "/avl-west/navsafe_eval/full_test/00185dab0ba153b9/*.usdz"
+          env:
+            - name: NGC_API_KEY
+              valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+            - {name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True"}
+          resources:
+            requests: {cpu: "1", memory: 12Gi, ephemeral-storage: 40Gi, nvidia.com/gpu: "1"}
+            limits: {cpu: 1200m, memory: 14Gi, ephemeral-storage: 40Gi, nvidia.com/gpu: "1"}
+          volumeMounts:
+            - {name: avl-west, mountPath: /avl-west}
+            - {name: dshm, mountPath: /dev/shm}
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["bash", "-c"]
+          args: ["bash /cfg/run_closed_loop.sh; rc=$?; echo \"[cl] exit $rc\"; exit $rc"]
+          env:
+            - {name: NVIDIA_DRIVER_CAPABILITIES, value: all}
+            - {name: EXPECT_SHA, value: 99422c0f5c26a2014fdee09ab690cd930962ab28}
+            - {name: TOKEN, value: 00185dab0ba153b9}
+            - {name: OUT, value: /avl-west/navsafe_eval/vla_verify_20261021/closed_loop_99422c0}
+            - {name: SETUP_SCRIPT, value: setup_env_v2.sh}
+          resources:
+            requests: {cpu: "4", memory: 48Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "2"}
+            limits: {cpu: 4800m, memory: 57Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "2"}
+          volumeMounts:
+            - {name: avl-west, mountPath: /avl-west}
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: cfg, mountPath: /cfg}
+      volumes:
+        - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+        - {name: cfg, configMap: {name: hw-vla-verify-99422c0}}

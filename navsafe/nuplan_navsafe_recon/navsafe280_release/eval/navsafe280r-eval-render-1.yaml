@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-eval-render-1
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-eval
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 21600
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/legacy_vs_best/0b12ac5676875ade/RENDER_COMPLETE ] || TOKEN=0b12ac5676875ade NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0b12ac5676875ade/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/0b12ac5676875ade NCORE=/avl-west/navsafe280_release_20261021/inputs/0b12ac5676875ade/clips/0b12ac5676875ade/pai_0b12ac5676875ade.json OUT=/avl-west/navsafe280_release_20261021/eval/legacy_vs_best/0b12ac5676875ade /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b12ac5676875ade"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/legacy_vs_best/36517f1223735d6a/RENDER_COMPLETE ] || TOKEN=36517f1223735d6a NEW_ART=/avl-west/navsafe280_release_20261021/train/best/36517f1223735d6a/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/36517f1223735d6a NCORE=/avl-west/navsafe280_release_20261021/inputs/36517f1223735d6a/clips/36517f1223735d6a/pai_36517f1223735d6a.json OUT=/avl-west/navsafe280_release_20261021/eval/legacy_vs_best/36517f1223735d6a /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 36517f1223735d6a"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/legacy_vs_best/0371700bf65b51e0/RENDER_COMPLETE ] || TOKEN=0371700bf65b51e0 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0371700bf65b51e0/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/0371700bf65b51e0 NCORE=/avl-west/navsafe280_release_20261021/inputs/0371700bf65b51e0/clips/0371700bf65b51e0/pai_0371700bf65b51e0.json OUT=/avl-west/navsafe280_release_20261021/eval/legacy_vs_best/0371700bf65b51e0 /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0371700bf65b51e0"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/legacy_vs_best/398326681cd7500a/RENDER_COMPLETE ] || TOKEN=398326681cd7500a NEW_ART=/avl-west/navsafe280_release_20261021/train/best/398326681cd7500a/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/398326681cd7500a NCORE=/avl-west/navsafe280_release_20261021/inputs/398326681cd7500a/clips/398326681cd7500a/pai_398326681cd7500a.json OUT=/avl-west/navsafe280_release_20261021/eval/legacy_vs_best/398326681cd7500a /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 398326681cd7500a"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/legacy_vs_best/63c145828c3b5fd8/RENDER_COMPLETE ] || TOKEN=63c145828c3b5fd8 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/63c145828c3b5fd8/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/63c145828c3b5fd8 NCORE=/avl-west/navsafe280_release_20261021/inputs/63c145828c3b5fd8/clips/63c145828c3b5fd8/pai_63c145828c3b5fd8.json OUT=/avl-west/navsafe280_release_20261021/eval/legacy_vs_best/63c145828c3b5fd8 /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 63c145828c3b5fd8"
+
+          echo RENDER_JOB_DONE failed: "$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-eval-r1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

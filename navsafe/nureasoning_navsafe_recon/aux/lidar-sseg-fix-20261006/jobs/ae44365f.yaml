@@ -1,0 +1,615 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-auxfix-ae44365f
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning
+    stage: aux
+    batch: lidar-sseg-fix-20261006
+    clip-hash: ae44365f
+  annotations:
+    navsafe/settings-from: train/recipe-v3-20261002/metadata/submitted-20261004T2330Z/ae44365f-sbtc-full-80k-lens.yaml
+    navsafe/patch-sha256: f50f99d6158f3db8b9dcba3e63c79a55234b12fa567dfd8900d536e8352bd163
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          OUT="$DEST/pai_${CLIP_ID}.aux.lidar-sseg.zarr.itar"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          # New outputs only: never write over an existing store.
+          if [[ -e "$OUT" ]]; then echo "AUXFIX_REFUSED $OUT already exists"; exit 1; fi
+          mkdir -p "$DIAG" /scratch/ncore /scratch/out /scratch/patch
+          main() {
+          set -euo pipefail
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/patch/lidar_sseg_patch.py <<'AUXFIX_PATCH_PY'
+          """Run the nre-tools aux generator with the inputs its LiDAR labelling step needs for nuReasoning clips.
+
+          Why: the tool labels a LiDAR return from a camera only if the ray camera -> return is not blocked by a mesh built from
+          the sweep (LidarSpinMesh in apps/aux_gen/utils.py: a Delaunay triangulation of all returns in azimuth/elevation *as seen
+          from the ray start points*). The py123d NCore bridge stores every ray of a sweep with the same start point, the rig
+          origin (rear axle, 0.34 m above the road), but a nuReasoning sweep is five LiDARs merged: one on the roof and four low
+          on the body. Seen from under the car that mesh is folded, and the five front cameras lie outside it, so every one of
+          their returns counts as occluded; only the three rear cameras, which sit almost straight above the rig origin, label
+          anything. See README.md next to this file.
+
+          What this changes at run time (the image and the NCore files stay as they are):
+            1. ray start points: taken from the raw sweep (data/train/<part>/<clip>/lidar/<timestamp>.pcd, same point order as
+               NCore). Roof LiDAR: fitted per sweep to its `range` field, origin = o0 + o1 * azimuth/36000 (the sweep is
+               de-skewed, so the origin moves with the ego). Body LiDARs carry no range; a third to a half of their returns
+               sit on the sensor itself, and that blob marks where the sensor was (see SweepGeometry).
+            2. the occluder mesh is triangulated from the roof LiDAR only (the tool's algorithm, unchanged, on the one sensor
+               whose ray origins are known). The body LiDARs see mostly the ego body; their meshes block every camera.
+               Returns of all five LiDARs are tested against that mesh and can be labelled.
+            3. returns closer than AUXFIX_MIN_RAY_LENGTH to their sensor (the blobs) stay unlabelled; the tool's own
+               min_ray_length test does that once the start points are real. Returns on the ego vehicle itself (inside the
+               box of metadata.json `ego_dimensions` + AUXFIX_EGO_MARGIN, e.g. the roof LiDAR hitting the rear camera pod)
+               are handed to the same test with a zero-length ray: unlabelled, and not part of the occluder mesh.
+            4. cameras get their radial lens distortion (same coefficients and same mechanism as the training wrapper,
+               NUR_V3_CAMERA_RADIAL), because the camera segmentation was computed on the unrectified images.
+            5. optional (AUXFIX_OCCLUSION_TOLERANCE="abs_m,relative"): a return counts as visible if the mesh is hit less than
+               abs_m + relative * distance before it. The tool uses 0.001 m, which only works for a camera at the LiDAR.
+          Everything else (projection, occlusion test, fusion across cameras, store format and metadata) is the tool's own code.
+
+          usage (inside the nre-tools image, with the tool's runtime):
+            python lidar_sseg_patch.py ncore-aux-data --dataset-path=... --output-dir=... --segmentation-backend=none --no-ego-mask --lidar-seg-camvis ...
+          env: AUXFIX_SOURCE_METADATA (required: the clip's raw metadata.json; the sweeps are in lidar/ next to it),
+               AUXFIX_CAMERA_RADIAL (JSON {camera_id: [k1, k2]}; empty = pinhole as stored),
+               AUXFIX_MIN_RAY_LENGTH (default 0.5), AUXFIX_EGO_MARGIN (default 0.2),
+               AUXFIX_OCCLUSION_TOLERANCE (default "0.001,0" = the tool's),
+               AUXFIX_REPORT (path of a JSON summary), AUXFIX_SAMPLE_SWEEPS (default 11)
+          """
+          import dataclasses
+          import glob
+          import json
+          import os
+          import struct
+          import sys
+          import types
+
+          import numpy as np
+          from numba import njit
+          from scipy.spatial import Delaunay
+
+          SOURCE_METADATA = os.environ.get("AUXFIX_SOURCE_METADATA", "")
+          RAW_LIDAR_DIR = os.path.join(os.path.dirname(SOURCE_METADATA), "lidar")
+          EGO_MARGIN = float(os.environ.get("AUXFIX_EGO_MARGIN", "0.2"))
+          CAMERA_RADIAL = json.loads(os.environ.get("AUXFIX_CAMERA_RADIAL") or "{}")
+          MIN_RAY_LENGTH = float(os.environ.get("AUXFIX_MIN_RAY_LENGTH", "0.5"))
+          TOL_ABS, TOL_REL = (float(v) for v in (os.environ.get("AUXFIX_OCCLUSION_TOLERANCE") or "0.001,0").split(","))
+          REPORT = os.environ.get("AUXFIX_REPORT", "")
+          SAMPLE_SWEEPS = int(os.environ.get("AUXFIX_SAMPLE_SWEEPS", "11"))
+          IGNORE = 255
+
+
+          def say(*args):
+              print("[auxfix]", *args, flush=True)
+
+
+          # ---------------------------------------------------------------- raw sweeps
+
+
+          @njit(cache=True)
+          def _lzf_decompress(src, out_len):
+              out = np.empty(out_len, dtype=np.uint8)
+              ip = 0
+              op = 0
+              n = len(src)
+              while ip < n:
+                  ctrl = src[ip]
+                  ip += 1
+                  if ctrl < 32:
+                      for k in range(ctrl + 1):
+                          out[op + k] = src[ip + k]
+                      ip += ctrl + 1
+                      op += ctrl + 1
+                  else:
+                      length = ctrl >> 5
+                      ref = op - ((ctrl & 0x1F) << 8) - 1
+                      if length == 7:
+                          length += src[ip]
+                          ip += 1
+                      ref -= src[ip]
+                      ip += 1
+                      for k in range(length + 2):
+                          out[op + k] = out[ref + k]
+                      op += length + 2
+              return out[:op]
+
+
+          def read_pcd(path):
+              """PCD v0.7, DATA binary or binary_compressed -> structured array"""
+              raw = open(path, "rb").read()
+              line_end = raw.index(b"\n", raw.index(b"DATA "))
+              header = {line.split()[0]: line.split()[1:] for line in raw[:line_end].decode().splitlines() if not line.startswith("#")}
+              fields, sizes = header["FIELDS"], [int(v) for v in header["SIZE"]]
+              assert all(int(v) == 1 for v in header["COUNT"])
+              n = int(header["POINTS"][0])
+              dtype = np.dtype([(f, {"F": "f", "U": "u", "I": "i"}[t] + str(s)) for f, s, t in zip(fields, sizes, header["TYPE"])])
+              body = raw[line_end + 1:]
+              if header["DATA"][0] == "binary":
+                  return np.frombuffer(body[: n * dtype.itemsize], dtype=dtype).copy()
+              assert header["DATA"][0] == "binary_compressed", header["DATA"]
+              compressed, uncompressed = struct.unpack("<II", body[:8])
+              buf = _lzf_decompress(np.frombuffer(body[8: 8 + compressed], dtype=np.uint8), uncompressed)
+              assert len(buf) == uncompressed == n * dtype.itemsize, (len(buf), uncompressed, n * dtype.itemsize)
+              out = np.empty(n, dtype=dtype)
+              offset = 0
+              for f, s in zip(fields, sizes):  # stored field by field
+                  out[f] = np.frombuffer(buf[offset: offset + n * s].tobytes(), dtype=dtype[f])
+                  offset += n * s
+              return out
+
+
+          def fit_spinning_origin(points, ranges, phase):
+              """origin(phase) = o0 + o1 * phase with |point - origin| = range, robust Gauss-Newton"""
+              A = np.c_[2 * points, -np.ones(len(points))]
+              o0 = np.linalg.lstsq(A, (points ** 2).sum(1) - ranges ** 2, rcond=None)[0][:3]
+              o1 = np.zeros(3)
+              for _ in range(15):
+                  d = points - (o0 + phase[:, None] * o1)
+                  dist = np.linalg.norm(d, axis=1)
+                  u = d / dist[:, None]
+                  res = dist - ranges
+                  w = 1.0 / (1.0 + (res / 0.05) ** 2)
+                  step = np.linalg.lstsq(np.c_[-u, -u * phase[:, None]] * w[:, None], -res * w, rcond=None)[0]
+                  o0, o1 = o0 + step[:3], o1 + step[3:]
+                  if np.abs(step).max() < 1e-5:
+                      break
+              res = np.linalg.norm(points - (o0 + phase[:, None] * o1), axis=1) - ranges
+              return o0, o1, float(np.sqrt(np.mean(res ** 2))), float(np.median(np.abs(res)))
+
+
+          def densest_cell(points):
+              """centre of the densest 10 cm cell: the returns that sit on a body LiDAR itself"""
+              cells, counts = np.unique(np.round(points / 0.1).astype(np.int64), axis=0, return_counts=True)
+              return cells[np.argmax(counts)] * 0.1
+
+
+          class SweepGeometry:
+              """Per-return LiDAR id and ray start point of the raw sweeps of one clip.
+
+              The sweeps are de-skewed to the end of the sweep: a return measured earlier has its ray origin where the sensor
+              was then, i.e. behind the mounting position by the distance the ego drove since.
+              - LiDAR with a `range` field (roof): origin = o0 + o1 * azimuth/36000 fitted per sweep; o0 + o1 is the mounting
+                position (the same in every sweep, checked), o1 the ego displacement during the sweep.
+              - LiDAR without (body): a third to a half of its returns sit on the sensor (range ~0). De-skewing smears that blob
+                along the driving direction. The start point of a return is the nearest point of that smeared blob's axis; it
+                is exact for the blob and up to |o1| off for the rest, and is only used to leave the blob unlabelled
+                (min ray length): body LiDARs do not contribute to the occluder mesh.
+              """
+
+              def __init__(self, source_metadata):
+                  lidar_dir = os.path.join(os.path.dirname(source_metadata), "lidar")
+                  self.files = {int(os.path.basename(p)[:-4]): p for p in glob.glob(os.path.join(lidar_dir, "*.pcd"))}
+                  assert self.files, f"no raw sweeps in {lidar_dir}"
+                  ego = json.load(open(source_metadata))["ego_dimensions"]
+                  # rig frame: origin at the rear axle, x ahead, y left, z up; the road is about 0.35 m below the origin
+                  self.ego_box = np.array([[-ego["vehicle_rear_length"] - EGO_MARGIN, ego["length"] - ego["vehicle_rear_length"] + EGO_MARGIN],
+                                           [-ego["width"] / 2 - EGO_MARGIN, ego["width"] / 2 + EGO_MARGIN], [-0.2, 2.0]])
+                  say(f"ego dimensions {ego}; returns inside x {self.ego_box[0].round(2).tolist()}, y {self.ego_box[1].round(2).tolist()}, z {self.ego_box[2].tolist()} m (rig frame) count as the ego vehicle")
+                  stamps = sorted(self.files)
+                  sample = [stamps[i] for i in np.unique(np.linspace(0, len(stamps) - 1, SAMPLE_SWEEPS).round().astype(int))]
+                  blobs, spinning = {}, {}
+                  for ts in sample:
+                      p = read_pcd(self.files[ts])
+                      xyz = np.c_[p["x"], p["y"], p["z"]].astype(np.float64)
+                      for sid in np.unique(p["lidar_info"]):
+                          m = p["lidar_info"] == sid
+                          if np.isfinite(p["range"][m]).mean() > 0.9:
+                              o0, o1, rms, _ = fit_spinning_origin(xyz[m], p["range"][m].astype(np.float64), p["azimuth"][m].astype(np.float64) / 36000.0)
+                              spinning.setdefault(int(sid), []).append(np.r_[o0 + o1, np.linalg.norm(o1), rms])
+                          else:
+                              centre = densest_cell(xyz[m])
+                              near = np.linalg.norm(xyz[m] - centre, axis=1) < 0.3
+                              blobs.setdefault(int(sid), []).append(np.r_[np.median(xyz[m][near], axis=0), near.sum(), m.sum()])
+                  self.mount = {}
+                  for sid, rows in sorted(spinning.items()):
+                      rows = np.array(rows)
+                      self.mount[sid] = np.median(rows[:, :3], axis=0)
+                      spread = np.abs(rows[:, :3] - self.mount[sid]).max()
+                      say(f"LiDAR {sid}: range field present; mounting position (origin at the end of the sweep) {self.mount[sid].round(3).tolist()} m, the same within {spread:.3f} m in {len(rows)} sample sweeps; "
+                          f"origin moves {rows[:, 3].min():.3f}..{rows[:, 3].max():.3f} m during a sweep; fit rms <= {rows[:, 4].max():.4f} m")
+                      assert spread < 0.05 and rows[:, 4].max() < 0.03, f"LiDAR {sid}: origin fit is not stable"
+                  self.blob_centre = {}
+                  for sid, rows in sorted(blobs.items()):
+                      rows = np.array(rows)
+                      self.blob_centre[sid] = np.median(rows[:, :3], axis=0)
+                      spread = np.abs(rows[:, :3] - self.blob_centre[sid]).max(0)
+                      say(f"LiDAR {sid}: no range field; blob of returns on the sensor around {self.blob_centre[sid].round(3).tolist()} m "
+                          f"(spread over {len(rows)} sample sweeps {spread.round(3).tolist()}; {int(rows[:, 3].min())}..{int(rows[:, 3].max())} of {int(rows[:, 4].min())}..{int(rows[:, 4].max())} returns)")
+                      assert rows[:, 3].min() >= 500 and spread[1:].max() < 0.1 and spread[0] < 1.5, f"LiDAR {sid}: no stable blob of near returns, cannot place the sensor"
+                  assert self.mount, "no LiDAR with a range field: nothing to build the occluder mesh from"
+
+              def for_frame(self, timestamp_us, xyz_end):
+                  """-> ray start points (N, 3) float32, LiDAR ids (N,) and a summary for the NCore frame with this timestamp"""
+                  assert timestamp_us in self.files, f"no raw sweep for LiDAR frame {timestamp_us}"
+                  p = read_pcd(self.files[timestamp_us])
+                  xyz = np.c_[p["x"], p["y"], p["z"]]
+                  assert len(xyz) == len(xyz_end), (timestamp_us, len(xyz), len(xyz_end))
+                  mismatch = float(np.abs(xyz - xyz_end).max())
+                  assert mismatch < 1e-3, f"frame {timestamp_us}: raw sweep and NCore points differ by {mismatch} m"
+                  ids = p["lidar_info"].astype(np.int64)
+                  present = [int(s) for s in np.unique(ids)]
+                  unknown = [s for s in present if s not in self.mount and s not in self.blob_centre]
+                  assert not unknown, f"frame {timestamp_us}: LiDAR ids {unknown} were not in the sample sweeps"
+                  starts = np.zeros((len(xyz), 3))
+                  info = {"timestamp_us": int(timestamp_us), "points": int(len(xyz)), "per_lidar": {}}
+                  motion = np.zeros(3)
+                  for sid in [s for s in present if s in self.mount]:
+                      m = ids == sid
+                      phase = p["azimuth"][m].astype(np.float64) / 36000.0
+                      o0, o1, rms, _ = fit_spinning_origin(xyz[m].astype(np.float64), p["range"][m].astype(np.float64), phase)
+                      if not (rms < 0.03 and np.linalg.norm(o0 + o1 - self.mount[sid]) < 0.1):
+                          say(f"WARNING frame {timestamp_us} LiDAR {sid}: origin fit rejected (rms {rms:.3f} m, end-of-sweep origin {(o0 + o1).round(3).tolist()}); using the mounting position for the whole sweep")
+                          o0, o1, rms = self.mount[sid], np.zeros(3), float("nan")
+                      starts[m] = o0 + phase[:, None] * o1
+                      motion = o1
+                      info["per_lidar"][sid] = {"returns": int(m.sum()), "o0": np.round(o0, 4).tolist(), "o1": np.round(o1, 4).tolist(), "fit_rms_m": rms}
+                  length = float(np.linalg.norm(motion))
+                  direction = motion / length if length > 1e-6 else np.array([1.0, 0.0, 0.0])
+                  for sid in [s for s in present if s in self.blob_centre]:
+                      m = ids == sid
+                      pts = xyz[m].astype(np.float64)
+                      around = np.linalg.norm(pts - self.blob_centre[sid], axis=1) < 2.0
+                      centre, lo, hi, count = self.blob_centre[sid], 0.0, 0.0, 0
+                      if around.sum() >= 200:
+                          centre = densest_cell(pts[around])
+                          d = pts - centre
+                          along = d @ direction
+                          blob = (np.linalg.norm(d - along[:, None] * direction, axis=1) < 0.25) & (np.abs(along) <= length + 0.3)
+                          count = int(blob.sum())
+                          if count >= 200:
+                              lo, hi = np.percentile(along[blob], [1, 99])
+                      if count < 200:
+                          say(f"WARNING frame {timestamp_us} LiDAR {sid}: blob of near returns not found ({count}); using the clip's blob centre")
+                          centre = self.blob_centre[sid]
+                      along = (pts - centre) @ direction
+                      starts[m] = centre + np.clip(along, lo, hi)[:, None] * direction
+                      info["per_lidar"][sid] = {"returns": int(m.sum()), "blob_returns": count, "blob_centre": np.round(centre, 3).tolist(), "blob_axis_m": [round(float(lo), 3), round(float(hi), 3)]}
+                  starts = starts.astype(np.float32)
+                  ray_length = np.linalg.norm(xyz_end - starts, axis=-1)
+                  # returns on the ego vehicle. De-skewing moved a return back by the distance the ego drove after it was
+                  # measured: exactly (1 - phase) * o1 for the roof LiDAR, somewhere between 0 and o1 for the body LiDARs.
+                  ego = np.zeros(len(xyz), dtype=bool)
+                  for sid in present:
+                      m = ids == sid
+                      pts = xyz[m].astype(np.float64)
+                      if sid in self.mount:
+                          fractions = [(1.0 - p["azimuth"][m].astype(np.float64) / 36000.0)[:, None]]
+                      else:
+                          fractions = [0.0, 0.25, 0.5, 0.75, 1.0]
+                      inside = np.zeros(len(pts), dtype=bool)
+                      for fraction in fractions:
+                          q = pts + fraction * motion
+                          inside |= ((q >= self.ego_box[:, 0]) & (q <= self.ego_box[:, 1])).all(1)
+                      ego[m] = inside
+                      info["per_lidar"][sid]["closer_than_min_ray_length"] = int((ray_length[m] < MIN_RAY_LENGTH).sum())
+                      info["per_lidar"][sid]["on_ego_vehicle"] = int(inside.sum())
+                      info["per_lidar"][sid]["left_out"] = int((inside | (ray_length[m] < MIN_RAY_LENGTH)).sum())
+                  starts[ego] = xyz_end[ego]  # zero-length ray: fails the tool's min_ray_length test
+                  return starts, ids, info
+
+
+          # ---------------------------------------------------------------- pieces the tool calls
+
+          STATE = types.SimpleNamespace(valid_ids=None, geometry=None, frames=[])
+
+
+          class RoofLidarSpinMesh:
+              """LidarSpinMesh (apps/aux_gen/utils.py), triangulating only the returns of the LiDARs whose ray origins are known
+              from their range field (the roof LiDAR); same vertex array and face indexing as the original."""
+
+              def __init__(self, lidar_ray_starts, lidar_ray_ends):
+                  ids = STATE.valid_ids
+                  assert ids is not None and len(ids) == len(lidar_ray_ends), "LiDAR ids do not match the valid returns"
+                  self.vertices = lidar_ray_ends
+                  faces = []
+                  for sid in sorted(STATE.geometry.mount):
+                      index = np.nonzero(ids == sid)[0]
+                      if len(index) < 4:
+                          continue
+                      d = lidar_ray_ends[index] - lidar_ray_starts[index]
+                      azimuth = np.arctan2(d[:, 1], d[:, 0])
+                      elevation = np.arcsin(d[:, 2] / np.linalg.norm(d, axis=1))
+                      faces.append(index[Delaunay(np.stack([azimuth, elevation], axis=1)).simplices])
+                  assert faces, "no LiDAR with a range field in this sweep"
+                  self.faces = np.ascontiguousarray(np.concatenate(faces).astype(np.int32))
+
+
+          def tolerant_intersector(pcu, tol_abs, tol_rel):
+              """pcu.RayMeshIntersector whose hits closer than tol_abs + tol_rel * |ray| before the ray's end count as no hit"""
+
+              class TolerantRayMeshIntersector:
+                  def __init__(self, vertices, faces):
+                      self._vertices, self._faces = vertices, faces
+                      self._inner = pcu.RayMeshIntersector(vertices, faces)
+
+                  def intersect_rays(self, origins, directions, *args, **kwargs):
+                      face_indices, bary, distances = self._inner.intersect_rays(origins, directions, *args, **kwargs)
+                      if np.ndim(face_indices) == 0:
+                          return face_indices, bary, distances
+                      face_indices = face_indices.copy()
+                      hit = np.nonzero(face_indices >= 0)[0]
+                      points = pcu.interpolate_barycentric_coords(self._faces, face_indices[hit], bary[hit], self._vertices)
+                      to_end = np.linalg.norm(directions[hit], axis=-1)
+                      gap = to_end - np.linalg.norm(points - origins[hit], axis=-1)
+                      face_indices[hit[gap <= tol_abs + tol_rel * to_end]] = -1
+                      return face_indices, bary, distances
+
+              return TolerantRayMeshIntersector
+
+
+          class LidarSensorWithRayStarts:
+              """the NCore LiDAR sensor, except that frames carry the real ray start points"""
+
+              def __init__(self, sensor):
+                  self._sensor = sensor
+
+              def __getattr__(self, name):
+                  return getattr(self._sensor, name)
+
+              def get_frame_point_cloud(self, frame_index, *args, **kwargs):
+                  pc = self._sensor.get_frame_point_cloud(frame_index, *args, **kwargs)
+                  timestamp_us = int(self._sensor.get_frames_timestamps_us()[frame_index])
+                  xyz_end = np.asarray(pc.xyz_m_end)
+                  starts, ids, info = STATE.geometry.for_frame(timestamp_us, xyz_end)
+                  # same test as LidarSegmentationByProjectEstimator.predict applies next
+                  STATE.valid_ids = ids[np.linalg.norm(xyz_end - starts, axis=-1) >= MIN_RAY_LENGTH]
+                  STATE.frames.append(info)
+                  return types.SimpleNamespace(xyz_m_start=starts, xyz_m_end=xyz_end, motion_compensation=getattr(pc, "motion_compensation", None))
+
+
+          def install():
+              assert SOURCE_METADATA, "AUXFIX_SOURCE_METADATA is not set"
+              import apps.aux_gen.estimators as estimators
+              from ncore.impl.data.v4.compat import SequenceLoaderV4
+
+              STATE.geometry = SweepGeometry(SOURCE_METADATA)
+
+              # 4. lens distortion, as tools/nureasoning_recipe_v3/nur_v3_train.py install_camera_distortion_patch
+              if CAMERA_RADIAL:
+                  original_get_camera_sensor = SequenceLoaderV4.get_camera_sensor
+                  applied = {}
+
+                  def get_camera_sensor_with_distortion(self, sensor_id):
+                      sensor = original_get_camera_sensor(self, sensor_id)
+                      coeffs = CAMERA_RADIAL.get(sensor_id)
+                      if coeffs is None:
+                          raise RuntimeError(f"auxfix: no distortion coefficients for camera {sensor_id}")
+                      params = sensor._model_parameters
+                      rc = np.zeros(6, dtype=np.float32)
+                      rc[: len(coeffs)] = coeffs
+                      if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):
+                          raise RuntimeError(f"auxfix: {sensor_id} already has radial coeffs {params.radial_coeffs}")
+                      sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)
+                      if sensor_id not in applied:
+                          applied[sensor_id] = rc[:2].tolist()
+                          say("camera distortion", sensor_id, applied[sensor_id])
+                      return sensor
+
+                  SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion
+              say("camera model:", "pinhole + radial distortion " + json.dumps(CAMERA_RADIAL) if CAMERA_RADIAL else "pinhole as stored in NCore (no distortion)")
+
+              # 2. occluder mesh from the roof LiDAR
+              estimators.LidarSpinMesh = RoofLidarSpinMesh
+
+              # 5. occlusion tolerance (only if asked for)
+              if (TOL_ABS, TOL_REL) != (0.001, 0.0):
+                  real_pcu = estimators.pcu
+
+                  class PcuWithTolerance:
+                      RayMeshIntersector = tolerant_intersector(real_pcu, TOL_ABS, TOL_REL)
+
+                      def __getattr__(self, name):
+                          return getattr(real_pcu, name)
+
+                  estimators.pcu = PcuWithTolerance()
+              say(f"occlusion tolerance: {TOL_ABS} m + {TOL_REL} x distance" + (" (the tool's own)" if (TOL_ABS, TOL_REL) == (0.001, 0.0) else ""))
+
+              # 1. + 3. real ray start points, and the tool's own minimum ray length
+              original_predict = estimators.LidarSegmentationByProjectEstimator.predict
+              counter = {"n": 0}
+
+              def predict(self, lidar_sensor, frame_timestamp_us, vis_path=None):
+                  self.min_ray_length = MIN_RAY_LENGTH
+                  seg, visibility = original_predict(self, LidarSensorWithRayStarts(lidar_sensor), frame_timestamp_us, vis_path)
+                  labels = np.array(seg).reshape(-1)
+                  info = STATE.frames[-1]
+                  info["labelled"] = int((labels != IGNORE).sum())
+                  info["in_image_per_camera"] = {c: int(visibility[:, i].sum()) for c, i in self.lidar_camera_visibility_order.items()}
+                  info["in_any_image"] = int(visibility.any(1).sum())
+                  if counter["n"] % 20 == 0:
+                      say(f"frame {counter['n']} ({frame_timestamp_us}): {info['points']} returns, {info['in_any_image']} inside an image, {info['labelled']} labelled; "
+                          + "; ".join(f"LiDAR {sid} {v['returns']} returns ({v['left_out']} left out: {v['closer_than_min_ray_length']} closer than {MIN_RAY_LENGTH} m to the sensor, {v['on_ego_vehicle']} on the ego vehicle)" for sid, v in info["per_lidar"].items()))
+                  counter["n"] += 1
+                  return seg, visibility
+
+              estimators.LidarSegmentationByProjectEstimator.predict = predict
+              say(f"installed: raw sweeps {RAW_LIDAR_DIR} ({len(STATE.geometry.files)} files), min ray length {MIN_RAY_LENGTH} m")
+
+
+          def write_report():
+              if not REPORT or not STATE.frames:
+                  return
+              frames = STATE.frames
+              labelled = [f.get("labelled", 0) for f in frames]
+              summary = {
+                  "raw_lidar_dir": RAW_LIDAR_DIR, "ego_box_rig_m": STATE.geometry.ego_box.round(3).tolist(), "min_ray_length_m": MIN_RAY_LENGTH, "occlusion_tolerance": [TOL_ABS, TOL_REL], "camera_radial": CAMERA_RADIAL,
+                  "ranged_lidar_mount_m": {str(k): v.round(4).tolist() for k, v in STATE.geometry.mount.items()},
+                  "body_lidar_blob_centre_m": {str(k): v.round(4).tolist() for k, v in STATE.geometry.blob_centre.items()},
+                  "frames": len(frames), "labelled_min_median_max": [int(np.min(labelled)), int(np.median(labelled)), int(np.max(labelled))],
+                  "points_min_max": [min(f["points"] for f in frames), max(f["points"] for f in frames)],
+                  "per_frame": frames,
+              }
+              with open(REPORT, "w") as handle:
+                  json.dump(summary, handle, indent=1)
+              say("report", REPORT, "frames", len(frames), "labelled min/median/max", summary["labelled_min_median_max"])
+
+
+          if __name__ == "__main__":
+              install()
+              from apps.entrypoint import cli
+
+              try:
+                  cli(standalone_mode=False)
+              finally:
+                  write_report()
+          AUXFIX_PATCH_PY
+          printf '%s  %s\n' "$PATCH_SHA256" /scratch/patch/lidar_sseg_patch.py | sha256sum -c -
+          MANIFEST="pai_${CLIP_ID}.json"
+          test -s "$NCORE_DIR/$MANIFEST"
+          test -s "$AUXFIX_SOURCE_METADATA"
+          # Inputs are copied to local scratch and only read: NCore, and the existing camera segmentation under the name
+          # the aux loader looks for (it truncates the manifest file name at its first dot).
+          cp -a "$NCORE_DIR/$MANIFEST" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          AUX_BASE="${MANIFEST%%.*}"
+          cp -aL "$NCORE_DIR/pai_$CLIP_ID.aux.sseg.zarr.itar" "/scratch/ncore/$AUX_BASE.aux.sseg.zarr.itar"
+          echo "input camera sseg and the lidar-sseg store this replaces:"
+          sha256sum "/scratch/ncore/$AUX_BASE.aux.sseg.zarr.itar" "$NCORE_DIR/pai_$CLIP_ID.aux.lidar-sseg.zarr.itar"
+          # The tool's own runtime (what /app/apps/nre_tools sets up), started through the patch instead of entrypoint.py.
+          export RUNFILES_DIR=/app/apps/nre_tools.runfiles
+          source "$RUNFILES_DIR/_main/apps/nre_tools.venv/bin/activate"
+          AUXFIX_REPORT=/scratch/out/auxfix_report.json python -B /scratch/patch/lidar_sseg_patch.py ncore-aux-data \
+            --dataset-path="/scratch/ncore/$MANIFEST" --output-dir=/scratch/out --segmentation-backend=none --no-ego-mask \
+            --lidar-seg-camvis --zarr-store-type=itar --store-meta --num-threads=4 $CAMERA_ARGS
+          files=(/scratch/out/*.aux.lidar-sseg.zarr.itar)
+          test "${#files[@]}" -eq 1
+          test -s "${files[0]}"
+          # Only the lidar-sseg store is kept. The lidar-camvis store the same step writes is discarded.
+          cp "${files[0]}" "$OUT.partial"
+          test "$(sha256sum < "${files[0]}")" == "$(sha256sum < "$OUT.partial")"
+          mv -n "$OUT.partial" "$OUT"
+          test ! -e "$OUT.partial"
+          cp -n /scratch/out/auxfix_report.json "$DEST/auxfix_report.json"
+          cp -n /scratch/out/*.aux-meta.json "$DEST/"
+          (cd "$DEST" && sha256sum "pai_${CLIP_ID}.aux.lidar-sseg.zarr.itar" > SHA256SUMS && cat SHA256SUMS)
+          ls -l "$DEST"
+          echo "AUXFIX_COMPLETE $CLIP_ID"
+          }
+          main 2>&1 | tee -a "$DIAG/aux.log"
+        env:
+        - name: CLIP_ID
+          value: 2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96
+        - name: DEST
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/aux-lidar-sseg-fix-20261006/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96
+        - name: AUXFIX_SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_2/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96/metadata.json
+        - name: AUXFIX_CAMERA_RADIAL
+          value: '{"camera_pcam_b0": [-0.34, 0.05], "camera_pcam_f0": [-0.36, 0.05], "camera_pcam_l0": [-0.35, 0.05], "camera_pcam_l1": [-0.34, 0.05], "camera_pcam_l2": [-0.35, 0.05], "camera_pcam_r0": [-0.35, 0.05], "camera_pcam_r1": [-0.39, 0.05], "camera_pcam_r2": [-0.33, 0.05]}'
+        - name: AUXFIX_MIN_RAY_LENGTH
+          value: '0.5'
+        - name: AUXFIX_EGO_MARGIN
+          value: '0.2'
+        - name: AUXFIX_OCCLUSION_TOLERANCE
+          value: 0.1,0.02
+        - name: CAMERA_ARGS
+          value: --camera-id=camera_pcam_b0 --camera-id=camera_pcam_f0 --camera-id=camera_pcam_l0 --camera-id=camera_pcam_l1 --camera-id=camera_pcam_l2 --camera-id=camera_pcam_r0 --camera-id=camera_pcam_r1 --camera-id=camera_pcam_r2
+        - name: PATCH_SHA256
+          value: f50f99d6158f3db8b9dcba3e63c79a55234b12fa567dfd8900d536e8352bd163
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        resources:
+          requests:
+            cpu: '4'
+            memory: 24Gi
+            ephemeral-storage: 30Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '4'
+            memory: 24Gi
+            ephemeral-storage: 30Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 4Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-01.sdsc.optiputer.net
+                - ry-gpu-02.sdsc.optiputer.net
+                - ry-gpu-03.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+                - ry-gpu-05.sdsc.optiputer.net
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-09.sdsc.optiputer.net
+                - ry-gpu-10.sdsc.optiputer.net
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+          - weight: 40
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-08.sdsc.optiputer.net
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule
+      - key: nautilus.io/cogrob
+        operator: Exists
+        effect: NoSchedule

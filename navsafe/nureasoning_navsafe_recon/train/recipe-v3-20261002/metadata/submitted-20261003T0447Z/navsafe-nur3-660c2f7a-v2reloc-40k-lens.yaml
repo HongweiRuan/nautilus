@@ -1,0 +1,1320 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"batch/v1","kind":"Job","metadata":{"annotations":{},"labels":{"app":"navsafe-nureasoning-v3","batch":"nureasoning-recipe-v3-20261002","clip-hash":"660c2f7a","variant":"v2reloc-40k-lens"},"name":"navsafe-nur3-660c2f7a-v2reloc-40k-lens","namespace":"cogrob"},"spec":{"activeDeadlineSeconds":172800,"backoffLimit":0,"template":{"metadata":{"labels":{"app":"navsafe-nureasoning-v3","batch":"nureasoning-recipe-v3-20261002","clip-hash":"660c2f7a","job-id":"navsafe-nur3-660c2f7a-v2reloc-40k-lens","variant":"v2reloc-40k-lens"}},"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["ry-gpu-06.sdsc.optiputer.net","ry-gpu-07.sdsc.optiputer.net","ry-gpu-08.sdsc.optiputer.net","ry-gpu-12.sdsc.optiputer.net","ry-gpu-13.sdsc.optiputer.net","ry-gpu-14.sdsc.optiputer.net"]},{"key":"nvidia.com/gpu.product","operator":"In","values":["NVIDIA-GeForce-RTX-3090"]}]}]}}},"containers":[{"args":["set -euo pipefail\nDIAG=\"$DEST/diagnostics/$HOSTNAME\"\nmkdir -p \"$DIAG\"\nexec \u003e \u003e(tee -a \"$DIAG/train.log\") 2\u003e\u00261\nfinish() {\n  rc=$?\n  trap - EXIT\n  printf '{\"exit_code\":%s,\"finished_utc\":\"%s\"}\\n' \"$rc\" \"$(date -u +%FT%TZ)\" \u003e \"$DIAG/exit_status.json\"\n  exit \"$rc\"\n}\ntrap finish EXIT\nRUN=\"$DEST/native/$CLIP_ID\"\ntest ! -e \"$RUN\"\nmkdir -p \"$DEST/checkpoints\" \"$RUN\" /scratch/native-artifacts\nln -s \"$DEST/checkpoints\" \"$RUN/checkpoints\"\nln -s /scratch/native-artifacts \"$RUN/artifacts\"\nnvidia-smi --query-gpu=name,memory.total,driver_version --format=csv\ncat \u003e /scratch/recipe.yaml \u003c\u003c'NRE_RECIPE'\n# @package _global_\ndefaults:\n- /apps/AV/_base_3dgut_dynamic_road_semantic\n- /apps/prod/options/artifact: default\n- /apps/prod/options/nrend: disabled\n- /apps/prod/options/difix/3dgut: disabled\n- /apps/prod/options/mesh: disabled\n- /apps/prod/options/ground: disabled\n- /apps/prod/options/subsampling/3dgut: batch_sampler_2\n- /apps/prod/options/calib: enabled\n- /apps/AV/module_mixins/_mcmc_mixin.yaml\n- /model/gaussians/models@model.layers.static_rigids: rigid_gaussians\n- /model/gaussians/initialization@model.layers.static_rigids.initialization: lidar_dynamic_tracks\n- /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:\n  - semantic_logits\n- /model/tracks_calib@model.layers.static_rigids.tracks_calib: static\n- /model/gaussians/models@model.layers.static_deformables: deformable_gaussians\n- /model/gaussians/initialization@model.layers.static_deformables.initialization: lidar_dynamic_tracks\n- /model/gaussians/extra_signal@model.layers.static_deformables.extra_signal:\n  - semantic_logits\n- /model/tracks_calib@model.layers.static_deformables.tracks_calib: direct\n- override /model/calib: free_pose\n- override /model/gaussians/strategy@model.strategy: mcmc\n- override /model/post_processing@model.post_processing.b: ppisp\n- override /model/post_processing@model.post_processing.c: null\n- override /logger: tensorboard\n- _self_\nmodel:\n  layers:\n    static_rigids:\n      tracks:\n        is_dynamic: false\n        label_classes:\n        - NureasoningBoxDetectionLabel.VEHICLE_CAR\n        - NureasoningBoxDetectionLabel.VEHICLE_TRUCK\n        - NureasoningBoxDetectionLabel.VEHICLE_BUS\n        - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE\n        - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE\n        - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE\n        - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE\n        - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN\n        - NureasoningBoxDetectionLabel.OTHER_OTHER\n        - NureasoningBoxDetectionLabel.VEHICLE_DOOR\n        - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE\n      initialization:\n        symmetric_axis: Y\n        camera_ids: []\n        step_frame: 1\n        fill_with_random_points: true\n        name: lidar-dynamic-tracks\n        num_point_cloud_points_in_layer: 240000\n        lidar_ids:\n        - lidar_top_360fov\n        num_point_cloud_points_per_track: 10000\n      fourier_features_dim: 1\n      scale_pos_lr_by_scene_extent: false\n      optimizers:\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: \u0026id001\n          - 0.9\n          - 0.99\n        params:\n          positions:\n            args:\n              lr: 0.0016\n        scheduler:\n          name: ExponentialLR\n          interval: step\n          args:\n            gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: *id001\n        params:\n          densities:\n            args:\n              lr: 0.05\n          features_albedo:\n            args:\n              lr: 0.0025\n          features_specular:\n            args:\n              lr: 0.000125\n          rotations:\n            args:\n              lr: 0.001\n          scales:\n            args:\n              lr: 0.005\n          extra_signal:\n            args:\n              lr: 0.01\n          camera_extra_signal:\n            args:\n              lr: 0.01\n          lidar_extra_signal:\n            args:\n              lr: 0.01\n    dynamic_rigids:\n      tracks:\n        is_dynamic: true\n        label_classes:\n        - NureasoningBoxDetectionLabel.VEHICLE_CAR\n        - NureasoningBoxDetectionLabel.VEHICLE_TRUCK\n        - NureasoningBoxDetectionLabel.VEHICLE_BUS\n        - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE\n        - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN\n        - NureasoningBoxDetectionLabel.OTHER_OTHER\n        - NureasoningBoxDetectionLabel.VEHICLE_DOOR\n        - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE\n      initialization:\n        name: lidar-dynamic-tracks\n        num_point_cloud_points_in_layer: 360000\n        lidar_ids:\n        - lidar_top_360fov\n        camera_ids: []\n        step_frame: 1\n        num_point_cloud_points_per_track: 40000\n        fill_with_random_points: true\n      fourier_features_dim: 20\n      scale_pos_lr_by_scene_extent: false\n      optimizers:\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: \u0026id002\n          - 0.9\n          - 0.99\n        params:\n          positions:\n            args:\n              lr: 0.0016\n        scheduler:\n          name: ExponentialLR\n          interval: step\n          args:\n            gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: *id002\n        params:\n          densities:\n            args:\n              lr: 0.05\n          features_albedo:\n            args:\n              lr: 0.0025\n          features_specular:\n            args:\n              lr: 0.000125\n          rotations:\n            args:\n              lr: 0.001\n          scales:\n            args:\n              lr: 0.005\n          extra_signal:\n            args:\n              lr: 0.01\n          camera_extra_signal:\n            args:\n              lr: 0.01\n          lidar_extra_signal:\n            args:\n              lr: 0.01\n    dynamic_deformables:\n      tracks:\n        is_dynamic: true\n        label_classes:\n        - NureasoningBoxDetectionLabel.HUMAN\n        - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN\n        - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE\n        - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE\n        - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE\n      initialization:\n        name: lidar-dynamic-tracks\n        num_point_cloud_points_in_layer: 90000\n        lidar_ids:\n        - lidar_top_360fov\n        camera_ids: []\n        step_frame: 1\n        num_point_cloud_points_per_track: 20000\n        fill_with_random_points: true\n        symmetric_axis: null\n      fourier_features_dim: 1\n      scale_pos_lr_by_scene_extent: false\n      optimizers:\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: \u0026id003\n          - 0.9\n          - 0.99\n        params:\n          positions:\n            args:\n              lr: 0.0016\n        scheduler:\n          name: ExponentialLR\n          interval: step\n          args:\n            gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: *id003\n        params:\n          densities:\n            args:\n              lr: 0.05\n          features_albedo:\n            args:\n              lr: 0.0025\n          features_specular:\n            args:\n              lr: 0.000125\n          rotations:\n            args:\n              lr: 0.001\n          scales:\n            args:\n              lr: 0.005\n          extra_signal:\n            args:\n              lr: 0.01\n          camera_extra_signal:\n            args:\n              lr: 0.01\n          lidar_extra_signal:\n            args:\n              lr: 0.01\n    background:\n      initialization:\n        name: lidar-rig-trajectory\n        num_point_cloud_points: 800000\n        num_near_points: 100000\n        num_far_points: 100000\n        non_dynamic_points_only: true\n        lidar_ids:\n        - lidar_top_360fov\n        camera_ids: []\n        step_frame: 1\n      fourier_features_dim: 1\n    road:\n      class_labels:\n      - road\n      fourier_features_dim: 1\n      scale_pos_lr_by_scene_extent: false\n      initialization:\n        name: lidar-rig-trajectory-road\n        num_point_cloud_points: 120000\n        num_random_points: 0\n        default_density: 0.5\n        default_scale:\n        - 0.1\n        - 0.1\n        - 0.001\n        project_to_z_offset: false\n        init_with_normals: true\n        non_dynamic_points_only: true\n        lidar_ids:\n        - lidar_top_360fov\n        camera_ids: []\n        step_frame: 1\n      optimizers:\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas:\n          - 0.9\n          - 0.99\n        params:\n          positions:\n            args:\n              lr: 0.00016\n        scheduler:\n          name: ExponentialLR\n          interval: step\n          args:\n            gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas:\n          - 0.9\n          - 0.99\n        params:\n          densities:\n            args:\n              lr: 0.01\n          features_albedo:\n            args:\n              lr: 0.0025\n          features_specular:\n            args:\n              lr: 0.000125\n          rotations:\n            args:\n              lr: 0.001\n          scales:\n            args:\n              lr: 0.001\n          extra_signal:\n            args:\n              lr: 0.01\n          camera_extra_signal:\n            args:\n              lr: 0.01\n          lidar_extra_signal:\n            args:\n              lr: 0.01\n    static_deformables:\n      tracks:\n        is_dynamic: false\n        label_classes:\n        - NureasoningBoxDetectionLabel.HUMAN\n        - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN\n      fourier_features_dim: 1\n      initialization:\n        name: lidar-dynamic-tracks\n        lidar_ids:\n        - lidar_top_360fov\n        camera_ids: []\n        step_frame: 1\n        num_point_cloud_points_in_layer: 30000\n        num_point_cloud_points_per_track: 10000\n        fill_with_random_points: true\n        symmetric_axis: null\n      is_static: false\n      scale_pos_lr_by_scene_extent: false\n      optimizers:\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: \u0026id004\n          - 0.9\n          - 0.99\n        params:\n          positions:\n            args:\n              lr: 0.0016\n        scheduler:\n          name: ExponentialLR\n          interval: step\n          args:\n            gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}\n      - name: fused_adam\n        args:\n          lr: 0.01\n          eps: 1.0e-15\n          betas: *id004\n        params:\n          densities:\n            args:\n              lr: 0.05\n          features_albedo:\n            args:\n              lr: 0.0025\n          features_specular:\n            args:\n              lr: 0.000125\n          rotations:\n            args:\n              lr: 0.001\n          scales:\n            args:\n              lr: 0.005\n          extra_signal:\n            args:\n              lr: 0.01\n          camera_extra_signal:\n            args:\n              lr: 0.01\n          lidar_extra_signal:\n            args:\n              lr: 0.01\n  strategy:\n    add:\n      max_n_gaussians: 2160000\n      end_iteration: 35000\n      start_iteration: 5000\n      frequency: 100\n    relocate:\n      end_iteration: 35000\n      frequency: 100\n    perturb:\n      end_iteration: 40000\n    exclude_layer_ids:\n    - road\n    - dynamic_rigids\n    - dynamic_deformables\n    - static_rigids\n    - static_deformables\n  calib:\n    name: free-pose-calib\n    camera:\n      enabled: true\n    lidar:\n      enabled: false\n  renderer:\n    outputs:\n      camera:\n        enable_ray_gradients: true\n      lidar:\n        enable_ray_gradients: false\n  post_processing:\n    b:\n      per_frame_ppisp_enabled: false\ndataset:\n  n_samples_per_epoch: 40000\n  camera_ids: \u0026id005\n  - camera_pcam_f0\n  - camera_pcam_b0\n  - camera_pcam_l0\n  - camera_pcam_l1\n  - camera_pcam_l2\n  - camera_pcam_r0\n  - camera_pcam_r1\n  - camera_pcam_r2\n  train_camera_ids: *id005\n  val_camera_ids: *id005\n  lidar_ids:\n  - lidar_top_360fov\n  train_lidar_ids:\n  - lidar_top_360fov\n  val_lidar_ids: []\n  n_train_sample_lidar_rays: 0\n  val_lidar: false\n  train_sequential_lidar: false\n  use_real_lidar_rays: false\n  n_train_sequential_image_subsample: 2\n  n_val_image_subsample: 2\n  aux_data: true\n  cuboid_tracks_params:\n    track_label_sources:\n    - GT_ANNOTATION\n  samplers:\n    batch_sampler:\n      ratio_camera_samples: 1.0\n      ratio_lidar_samples: 0.0\n      camera_pixel_sampler:\n        subsample: 2\n        crop_type: full_image\n  val_camera_frame_step: 10\n  val_camera: true\n  interp_with_rig: true\nloss:\n  lidar:\n    lambda_: 0.0\n  background_lidar:\n    lambda_: 0.0\n  intensity:\n    lambda_: 0.0\n  raydrop:\n    lambda_: 0.0\n  normal:\n    lambda_: 0.0\n  rgb:\n    fn: l1\n    lambda_: 0.8\n  ssim:\n    lambda_: 0.2\n  gaussian_density:\n    layer_lambdas:\n      road: 1\n      dynamic_rigids: 0.1\n      dynamic_deformables: 0.1\n      static_rigids: 0.1\n      static_deformables: 0.1\n  background_in_track_gaussian:\n    fn: bce_with_logits\n    reduce:\n      name: mean\n    lambda_: 0.1\n    layer_names:\n    - background\n    layer_labels_to_use:\n      background:\n      - person\n      - rider\n      - car\n      - truck\n      - bus\n      - train\n      - motorcycle\n      - bicycle\n  node_semantic_gaussians:\n    layer_labels_to_exclude:\n      background:\n      - road\n      dynamic_rigids:\n      - road\n      dynamic_deformables:\n      - road\n      static_rigids:\n      - road\n      static_deformables:\n      - road\ntrainer:\n  max_epochs: 1\n  precision: 32\n  world_size: 1\n  num_nodes: 1\n  num_sanity_val_steps: 0\n  val_check_interval: 10000\n  log_every_n_steps: 50\ndatamodule:\n  train_num_workers: 8\n  val_num_workers: 4\n  test_num_workers: 4\ncheckpoint:\n  every_n_train_steps: 10000\n  save_top_k: 1\n  save_on_train_epoch_end: true\n  artifact:\n    enabled: true\n    mesh:\n      ground:\n        enabled: false\n  save_last: true\nseed: 42\nmode: trainval\nout_dir: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens/native\nlogger:\n  enabled: true\n  run_id: \u003cgenerate\u003e\nsystem:\n  warmup_steps: 1000\n  record_quality_metrics:\n    psnr_interval: 100\n  test:\n    save_results: true\n    save_inputs: true\n    save_videos: true\n    save_stats: true\n    separate_val_dir_per_step: true\n    use_camera_name_dirs: true\n    video_fps: 1\n    metrics:\n      ssim:\n        enabled: true\n      lpips:\n        enabled: false\n    val_render_selected_nodes: {}\nNRE_RECIPE\nprintf '%s  %s\\n' \"$RECIPE_SHA256\" /scratch/recipe.yaml | sha256sum -c -\ncat \u003e /scratch/nur_v3_train.py \u003c\u003c'NUR_V3_PY'\n\"\"\"nuReasoning recipe v3 training entry: NRE main + two input-hygiene patches.\n\nRun inside the NRE image: /app/run run-script nur_v3_train.py\nEnvironment:\n  NUR_V3_ARGS_FILE         NRE main args, one per line (same as `/app/run \u003cargs\u003e`); or NUR_V3_ARGS as JSON\n  NUR_V3_REPORT_DIR        where patch reports are written\n  NUR_V3_SOURCE_METADATA   raw nuReasoning metadata.json (camera filename clocks)\n  NUR_V3_TRACK_CLEAN       1/0  (P1)\n  NUR_V3_CAMERA_CLOCK      1/0  (P2)\n  NUR_V3_ACTOR_RELOCATE_LAYERS  comma list of actor layers for P3 (empty = off)\n  NUR_V3_CAMERA_RADIAL     JSON {camera_id: [k1, k2]} for P4 (empty = off)\n\nP1 track hygiene: nuReasoning boxes are per-frame detections. Consecutive boxes jump 0.1-0.8 m,\nheadings flip by pi on parked objects, and NRE takes each track's box size from its first\nobservation. Rigid actors live in the box frame, so the jitter turns into blur. Each track is\nre-estimated: pi flips resolved against motion / axial heading, robust LOESS on xyz and yaw,\nnear-stationary tracks snapped to one pose, box size = per-track percentile of all observations.\n\nP2 camera clock: the py123d NCore bridge stamps every camera image with the LiDAR/ego frame time,\nwhile the cameras are triggered during the LiDAR sweep (-18..+24 ms, some frames +-40 ms). Rig\ntrajectories handed to the model now carry each image's filename capture time, so camera poses\nand actor-track interpolation use the real exposure time. Image / aux lookups keep the original\nsensor timestamps, which are untouched.\n\nP3 actor relocation: actor layers stay out of the global MCMC (so the background cannot drain\nthem) but get MCMC relocation inside their own layer; see install_actor_relocation_patch.\n\nP4 lens distortion: the images are not rectified (nuPlan-like barrel, k1 ~ -0.35); the NCore camera\nmodel gets the fitted radial coefficients; see install_camera_distortion_patch.\n\"\"\"\n\nimport hashlib\nimport json\nimport math\nimport os\nimport pickle\nimport sys\nimport time\n\nimport numpy as np\n\nREPORT_DIR = os.environ.get(\"NUR_V3_REPORT_DIR\", \"/tmp/nur_v3\")\nTRACK_CLEAN = os.environ.get(\"NUR_V3_TRACK_CLEAN\", \"1\") == \"1\"\nCAMERA_CLOCK = os.environ.get(\"NUR_V3_CAMERA_CLOCK\", \"1\") == \"1\"\nHALF_WINDOW_S = float(os.environ.get(\"NUR_V3_SMOOTH_HALF_WINDOW_S\", \"0.8\"))\nDIM_PERCENTILE = float(os.environ.get(\"NUR_V3_DIM_PERCENTILE\", \"75\"))\nSTATIC_SNAP_M = float(os.environ.get(\"NUR_V3_STATIC_SNAP_M\", \"0.5\"))\nACTOR_RELOCATE_LAYERS = [x for x in os.environ.get(\"NUR_V3_ACTOR_RELOCATE_LAYERS\", \"\").split(\",\") if x]\nCAMERA_RADIAL = json.loads(os.environ.get(\"NUR_V3_CAMERA_RADIAL\", \"{}\"))\nMOVING_SPEED_MS = 1.0\nCAMERA_FOLDER_TO_NCORE = {\n    \"CAM_M_F\": \"camera_pcam_f0\",\n    \"CAM_M_B\": \"camera_pcam_b0\",\n    \"CAM_M_L0\": \"camera_pcam_l0\",\n    \"CAM_M_L1\": \"camera_pcam_l1\",\n    \"CAM_M_L2\": \"camera_pcam_l2\",\n    \"CAM_M_R0\": \"camera_pcam_r0\",\n    \"CAM_M_R1\": \"camera_pcam_r1\",\n    \"CAM_M_R2\": \"camera_pcam_r2\",\n}\n\n\ndef _say(*parts):\n    print(\"[nur_v3]\", *parts, flush=True)\n\n\ndef _write_report(name, obj):\n    os.makedirs(REPORT_DIR, exist_ok=True)\n    with open(os.path.join(REPORT_DIR, name), \"w\") as f:\n        json.dump(obj, f, indent=1, default=float)\n\n\n# ---------------------------------------------------------------- P1: track hygiene\n\n\ndef _wrap(a):\n    return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi\n\n\ndef _rotz(a):\n    c, s = math.cos(a), math.sin(a)\n    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])\n\n\ndef loess(t, y, half_window, degree=2, robust_iters=2, scale_floor=0.05):\n    \"\"\"Robust local polynomial regression (tricube kernel, bisquare reweighting).\n\n    The local degree drops when the window is thin or one-sided (track ends, gaps), and every\n    fit is clamped to the range of the samples it used, so sparse tracks cannot extrapolate.\n    \"\"\"\n    t = np.asarray(t, dtype=np.float64)\n    y = np.asarray(y, dtype=np.float64)\n    squeeze = y.ndim == 1\n    y = y.reshape(len(t), -1)\n    n = len(t)\n    out = y.copy()\n    robust = np.ones(n)\n    for it in range(robust_iters + 1):\n        for i in range(n):\n            d = np.abs(t - t[i])\n            k = min(n - 1, degree + 2)\n            h = max(half_window, np.partition(d, k)[k] * 1.0001)\n            w = np.clip(1.0 - (d / h) ** 3, 0.0, None) ** 3 * robust\n            m = w \u003e 1e-12\n            count = int(m.sum())\n            if count == 0:\n                continue\n            dt = t[m] - t[i]\n            deg = degree\n            if not (np.any(dt \u003c -1e-9) and np.any(dt \u003e 1e-9)):\n                deg = min(deg, 1)\n            deg = max(0, min(deg, count - 3))\n            ym, wm = y[m], w[m][:, None]\n            X = np.vander(dt, deg + 1, increasing=True)\n            A = X.T @ (wm * X) + 1e-9 * np.eye(deg + 1)\n            fit = np.linalg.solve(A, X.T @ (wm * ym))[0]\n            lo, hi = ym.min(axis=0), ym.max(axis=0)\n            pad = 0.25 * (hi - lo) + scale_floor\n            out[i] = np.clip(fit, lo - pad, hi + pad)\n        if it \u003c robust_iters:\n            r = np.linalg.norm(y - out, axis=1)\n            s = max(6.0 * np.median(r), scale_floor)\n            robust = np.clip(1.0 - (r / s) ** 2, 0.0, None) ** 2\n    return out[:, 0] if squeeze else out\n\n\ndef clean_track(timestamps_us, poses, dims):\n    \"\"\"Return (clean poses list, clean dims, info) for one track.\n\n    poses: list of 4x4 world poses (z-up), dims: (M, 3) array of all observed box sizes.\n    \"\"\"\n    P = np.stack(poses).astype(np.float64)\n    n = len(P)\n    info = {\"n\": n}\n    new_dims = np.percentile(np.asarray(dims, dtype=np.float64), DIM_PERCENTILE, axis=0) if len(dims) else None\n    if n \u003c 4:\n        info[\"skipped\"] = \"few_poses\"\n        return poses, new_dims, info\n    t = (np.asarray(timestamps_us, dtype=np.int64) - int(timestamps_us[0])) / 1e6\n    if np.any(np.diff(t) \u003c= 0):\n        info[\"skipped\"] = \"non_increasing_time\"\n        return poses, new_dims, info\n    xyz = P[:, :3, 3]\n    yaw = np.arctan2(P[:, 1, 0], P[:, 0, 0])\n    tilt = np.einsum(\"nij,njk-\u003enik\", np.stack([_rotz(-a) for a in yaw]), P[:, :3, :3])\n    tilt_deg = float(np.degrees(np.arccos(np.clip((np.trace(tilt, axis1=1, axis2=2) - 1) / 2, -1, 1))).max())\n    info[\"max_tilt_deg\"] = tilt_deg\n\n    xyz_s = loess(t, xyz, HALF_WINDOW_S)\n    vel = np.gradient(xyz_s[:, :2], t, axis=0)\n    speed = np.linalg.norm(vel, axis=1)\n    moving = speed \u003e MOVING_SPEED_MS\n    center = np.median(xyz_s[:, :2], axis=0)\n    spread = float(np.max(np.linalg.norm(xyz_s[:, :2] - center, axis=1)))\n    info[\"jitter_rms_m\"] = float(np.sqrt(np.mean(np.sum((xyz - xyz_s) ** 2, axis=1))))\n    info[\"spread_m\"] = spread\n    info[\"moving_frac\"] = float(moving.mean())\n\n    # Heading modulo pi is flip-invariant: smooth the doubled angle, then pick one direction.\n    doubled = loess(t, np.stack([np.cos(2 * yaw), np.sin(2 * yaw)], axis=1), HALF_WINDOW_S * 2, scale_floor=0.1)\n    axial = 0.5 * np.unwrap(np.arctan2(doubled[:, 1], doubled[:, 0]))\n    path = float(np.sum(np.linalg.norm(np.diff(xyz_s[:, :2], axis=0), axis=1)))\n    info[\"path_m\"] = path\n    if moving.mean() \u003e= 0.3 and path \u003e= 3.0:\n        heading = np.arctan2(vel[:, 1], vel[:, 0])\n        forward = np.mean(np.abs(_wrap(axial[moving] - heading[moving])) \u003c np.pi / 2) \u003e= 0.5\n        ref = axial if forward else axial + np.pi\n    else:\n        votes = np.mean(np.abs(_wrap(yaw - axial)) \u003c np.pi / 2) \u003e= 0.5\n        ref = axial if votes else axial + np.pi\n    d = _wrap(yaw - ref)\n    flips = np.abs(d) \u003e np.pi / 2\n    d = np.where(flips, _wrap(d - np.pi), d)\n    yaw_aligned = ref + d\n    info[\"yaw_flips_fixed\"] = int(flips.sum())\n    yaw_s = loess(t, yaw_aligned, HALF_WINDOW_S, scale_floor=0.02)\n    info[\"yaw_jitter_rms_rad\"] = float(np.sqrt(np.mean((yaw_aligned - yaw_s) ** 2)))\n\n    snapped = spread \u003c STATIC_SNAP_M and not moving.any()\n    info[\"static_snapped\"] = bool(snapped)\n    if snapped:\n        mean_yaw = math.atan2(np.mean(np.sin(yaw_s)), np.mean(np.cos(yaw_s)))\n        xyz_s = np.repeat(np.median(xyz_s, axis=0, keepdims=True), n, axis=0)\n        yaw_s = np.full(n, mean_yaw)\n    keep_tilt = tilt_deg \u003e 3.0\n    out = []\n    for i in range(n):\n        T = np.eye(4)\n        T[:3, :3] = _rotz(yaw_s[i]) @ (tilt[i] if keep_tilt else np.eye(3))\n        T[:3, 3] = xyz_s[i]\n        out.append(T)\n    return out, new_dims, info\n\n\ndef _bbox_dims(b):\n    if isinstance(b, dict):\n        return tuple(float(x) for x in b[\"dim\"])\n    return tuple(float(x) for x in b.dim)\n\n\ndef install_track_patch():\n    import nre.datasets.utils as du\n\n    original = du.consolidate_cuboid_tracks\n\n    def consolidate_and_clean(*args, **kwargs):\n        all_tracks = original(*args, **kwargs)\n        cuboids_df = kwargs[\"cuboids_df\"] if \"cuboids_df\" in kwargs else args[0]\n        key_src = repr(sorted((k, len(v[\"timestamps_us\"]), v[\"timestamps_us\"][0]) for k, v in all_tracks.items() if v[\"timestamps_us\"]))\n        cache = os.path.join(\"/tmp\", \"nur_v3_tracks_\" + hashlib.sha1(key_src.encode()).hexdigest()[:16] + \".pkl\")\n        if os.path.exists(cache):\n            with open(cache, \"rb\") as f:\n                cleaned = pickle.load(f)\n            for track_id, (poses, dims) in cleaned.items():\n                all_tracks[track_id][\"poses\"] = poses\n                if dims is not None:\n                    all_tracks[track_id][\"dimension\"] = dims\n            _say(\"track hygiene: reused cache\", cache, \"tracks\", len(cleaned))\n            return all_tracks\n        start = time.time()\n        dims_by_track = {}\n        for track_id, bbox3 in zip(cuboids_df[\"track_id\"].tolist(), cuboids_df[\"bbox3\"].tolist()):\n            dims_by_track.setdefault(track_id, []).append(_bbox_dims(bbox3))\n        cleaned, report = {}, {}\n        for track_id, track in all_tracks.items():\n            if not track[\"timestamps_us\"]:\n                continue\n            first_dims = np.asarray(track[\"dimension\"], dtype=np.float64)\n            poses, dims, info = clean_track(track[\"timestamps_us\"], track[\"poses\"], dims_by_track.get(track_id, []))\n            if dims is not None:\n                dims = dims.astype(np.asarray(track[\"dimension\"]).dtype)\n                track[\"dimension\"] = dims\n                info[\"dims_first\"] = first_dims.tolist()\n                info[\"dims_new\"] = dims.tolist()\n            track[\"poses\"] = poses\n            info[\"label_class\"] = str(track[\"label_class\"])\n            cleaned[track_id] = (poses, dims)\n            report[track_id] = info\n        tmp = f\"{cache}.{os.getpid()}.tmp\"\n        with open(tmp, \"wb\") as f:\n            pickle.dump(cleaned, f)\n        os.replace(tmp, cache)\n        jit = np.array([r.get(\"jitter_rms_m\", 0.0) for r in report.values()])\n        summary = {\n            \"tracks\": len(report),\n            \"seconds\": time.time() - start,\n            \"half_window_s\": HALF_WINDOW_S,\n            \"dim_percentile\": DIM_PERCENTILE,\n            \"static_snapped\": int(sum(r.get(\"static_snapped\", False) for r in report.values())),\n            \"tracks_with_yaw_flips\": int(sum(r.get(\"yaw_flips_fixed\", 0) \u003e 0 for r in report.values())),\n            \"yaw_flips_fixed_total\": int(sum(r.get(\"yaw_flips_fixed\", 0) for r in report.values())),\n            \"removed_jitter_rms_m_p50_p90_max\": [float(np.percentile(jit, 50)), float(np.percentile(jit, 90)), float(jit.max())] if len(jit) else [],\n            \"max_tilt_deg\": float(max([r.get(\"max_tilt_deg\", 0.0) for r in report.values()] or [0.0])),\n        }\n        _write_report(\"track_hygiene.json\", {\"summary\": summary, \"tracks\": report})\n        _say(\"track hygiene:\", json.dumps(summary))\n        return all_tracks\n\n    du.consolidate_cuboid_tracks = consolidate_and_clean\n    _say(\"installed track hygiene patch\")\n\n\n# ---------------------------------------------------------------- P2: camera capture clock\n\n\ndef load_capture_clock(metadata_path):\n    meta = json.load(open(metadata_path))\n    clock = {}\n    for frame in meta[\"frames\"]:\n        ego_ts = int(frame[\"timestamp_us\"])\n        for rel in frame[\"sensors\"][\"cameras\"].values():\n            folder = rel.split(\"/\")[1]\n            capture_ts = int(os.path.splitext(rel)[0].rsplit(\"_\", 1)[1])\n            clock.setdefault(CAMERA_FOLDER_TO_NCORE[folder], {})[ego_ts] = capture_ts\n    return clock\n\n\ndef install_camera_clock_patch(metadata_path):\n    import torch\n    import nre.datasets.ncore as nc\n    from ncore.impl.common.transformations import PoseInterpolator\n\n    clock = load_capture_clock(metadata_path)\n    original = nc.NCOREDataSource.get_rig_trajectories\n    reported = {\"done\": False}\n\n    def get_rig_trajectories_capture_clock(self):\n        rts = original(self)\n        stats = {}\n        for rt in rts.rig_trajectories:\n            pose_ts = rt.T_rig_world_timestamps_us.cpu().numpy()\n            lo, hi = int(pose_ts.min()), int(pose_ts.max())\n            for unique_id, ts in list(rt.cameras_frame_timestamps_us.items()):\n                logical = rts.camera_calibrations[unique_id].logical_sensor_name\n                table = clock.get(logical)\n                if table is None:\n                    raise RuntimeError(f\"nur_v3: no capture clock for camera {logical}\")\n                stamped = ts.cpu().numpy().astype(np.int64)\n                found = np.array([int(e) in table for e in stamped[:, 1]])\n                if found.mean() \u003c 0.95:\n                    raise RuntimeError(f\"nur_v3: capture clock covers only {found.mean():.1%} of {logical} frames\")\n                capture = np.array([table.get(int(e), int(e)) for e in stamped[:, 1]], dtype=np.int64)\n                capture = np.clip(capture, lo, hi)\n                for i in range(1, len(capture)):  # keep strictly increasing frame times\n                    if capture[i] \u003c= capture[i - 1]:\n                        capture[i] = stamped[i, 1] if stamped[i, 1] \u003e capture[i - 1] else capture[i - 1] + 1\n                new = np.stack([capture, capture], axis=1)\n                rt.cameras_frame_timestamps_us[unique_id] = torch.from_numpy(new).to(ts.dtype)\n                if rt.cameras_frame_T_rig_worlds is not None and unique_id in rt.cameras_frame_T_rig_worlds:\n                    interp = PoseInterpolator(rt.T_rig_worlds.cpu().numpy(), pose_ts)\n                    T = interp.interpolate_to_timestamps(capture, dtype=np.float64)\n                    rt.cameras_frame_T_rig_worlds[unique_id] = torch.from_numpy(np.stack([T, T], axis=1))\n                off = (capture - stamped[:, 1]) / 1e3\n                stats[logical] = {\n                    \"frames\": len(capture),\n                    \"coverage\": float(found.mean()),\n                    \"offset_ms_median\": float(np.median(off)),\n                    \"offset_ms_min\": float(off.min()),\n                    \"offset_ms_max\": float(off.max()),\n                    \"frames_abs_offset_gt_30ms\": int(np.sum(np.abs(off) \u003e 30)),\n                }\n        if not reported[\"done\"]:\n            reported[\"done\"] = True\n            _write_report(\"camera_clock.json\", {\"metadata\": metadata_path, \"cameras\": stats})\n            _say(\"camera clock:\", json.dumps({k: round(v[\"offset_ms_median\"], 1) for k, v in stats.items()}))\n        return rts\n\n    nc.NCOREDataSource.get_rig_trajectories = get_rig_trajectories_capture_clock\n    _say(\"installed camera capture-clock patch\", metadata_path)\n\n\n# ---------------------------------------------------------------- P4: camera lens distortion\n\n\ndef install_camera_distortion_patch(radial):\n    \"\"\"Give each NCore camera its radial distortion; the bridge stored a distortion-free pinhole.\n\n    nuReasoning ships only K, but the images are not rectified: cross-camera reprojection on\n    stationary frames gives k1 ~ -0.33..-0.38, k2 ~ +0.05..+0.10 (nuPlan-like barrel). A pinhole\n    model misplaces the left/right image borders by ~115 px and the corners by ~190-200 px.\n    radial: {camera_id: [k1, k2, ...]} in OpenCV order (numerator k1, k2, k3, denominator k4, k5, k6).\n    \"\"\"\n    import dataclasses\n    from ncore.impl.data.v4.compat import SequenceLoaderV4\n\n    original = SequenceLoaderV4.get_camera_sensor\n    applied = {}\n\n    def get_camera_sensor_with_distortion(self, sensor_id):\n        sensor = original(self, sensor_id)\n        coeffs = radial.get(sensor_id)\n        if coeffs is None:\n            raise RuntimeError(f\"nur_v3: no distortion coefficients for camera {sensor_id}\")\n        params = sensor._model_parameters\n        rc = np.zeros(6, dtype=np.float32)\n        rc[: len(coeffs)] = coeffs\n        if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):\n            raise RuntimeError(f\"nur_v3: {sensor_id} already has radial coeffs {params.radial_coeffs}\")\n        sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)\n        if sensor_id not in applied:\n            applied[sensor_id] = rc[:2].tolist()\n            _say(\"camera distortion\", sensor_id, applied[sensor_id])\n        return sensor\n\n    SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion\n    _say(\"installed camera distortion patch\", json.dumps(radial))\n\n\n# ---------------------------------------------------------------- P3: actor-layer MCMC relocation\n\n\ndef install_actor_relocation_patch(layers):\n    \"\"\"Relocate dead Gaussians inside each actor layer on the MCMC relocation schedule.\n\n    v2 keeps actor layers out of the global MCMC so the background cannot drain them, but then\n    nothing recycles their dead Gaussians: in the v2 3M/40k checkpoint 96-98% of every actor\n    layer ended with opacity \u003c 0.05. Here each listed layer gets its own relocation pass: dead\n    Gaussians (opacity \u003c= threshold) move onto alive ones of the same layer (cuboid ids follow\n    the target), counts stay fixed, nothing crosses layers. Death is opacity-only; the\n    invisible-steps rule would recycle actors that are simply off-screen for a while.\n    \"\"\"\n    from nre.models.gaussians.strategies.mcmc import MCMCStrategy\n\n    original = MCMCStrategy.update_step_train_batch_end\n    logged = {\"n\": 0}\n\n    def update_step_with_actor_relocation(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):\n        original(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs)\n        relocate = self.config.relocate\n        if not self._check_step_condition(\n            step=global_step, start=relocate.start_iteration, end=relocate.end_iteration, freq=relocate.frequency\n        ):\n            return\n        saved_exclude, saved_invisible = list(self.config.exclude_layer_ids), relocate.max_invisible_steps\n        try:\n            relocate.max_invisible_steps = None\n            for layer in layers:\n                if layer not in gaussians_nodes or gaussians_nodes[layer].get_num_gaussians() == 0:\n                    continue\n                self.config.exclude_layer_ids = [name for name in gaussians_nodes.keys() if name != layer]\n                self.relocate_gaussians(gaussians_nodes)\n        finally:\n            self.config.exclude_layer_ids = saved_exclude\n            relocate.max_invisible_steps = saved_invisible\n        if logged[\"n\"] \u003c 3:\n            logged[\"n\"] += 1\n            _say(\"actor relocation pass at step\", global_step, \"layers\", layers)\n\n    MCMCStrategy.update_step_train_batch_end = update_step_with_actor_relocation\n    _say(\"installed actor-layer relocation patch\", layers)\n\n\ndef main():\n    if \"NUR_V3_ARGS_FILE\" in os.environ:\n        args = [a for a in open(os.environ[\"NUR_V3_ARGS_FILE\"]).read().split(\"\\n\") if a]\n    else:\n        args = json.loads(os.environ[\"NUR_V3_ARGS\"])\n    if TRACK_CLEAN:\n        install_track_patch()\n    if CAMERA_CLOCK:\n        install_camera_clock_patch(os.environ[\"NUR_V3_SOURCE_METADATA\"])\n    if ACTOR_RELOCATE_LAYERS:\n        install_actor_relocation_patch(ACTOR_RELOCATE_LAYERS)\n    if CAMERA_RADIAL:\n        install_camera_distortion_patch(CAMERA_RADIAL)\n    from nre.run.main import main as nre_main\n\n    _say(\"NRE main args:\", args)\n    nre_main.main(args=args, standalone_mode=False)\n\n\nif __name__ == \"__main__\":\n    main()\nNUR_V3_PY\nprintf '%s  %s\\n' \"$WRAPPER_SHA256\" /scratch/nur_v3_train.py | sha256sum -c -\nARGS=(--config-name=/scratch/recipe.yaml mode=trainval \"logger.run_id='$CLIP_ID'\" \"dataset.path=/scratch/ncore/pai_$CLIP_ID.json\" \"out_dir=$DEST/native\")\n/app/run export-parsed-config --config-name=/scratch/recipe.yaml --output \"$DEST/parsed-preflight.yaml\" -- \"${ARGS[@]:1}\"\nprintf '%s\\n' \"${ARGS[@]}\" \u003e /scratch/nre_args.txt\nNUR_V3_ARGS_FILE=/scratch/nre_args.txt NUR_V3_REPORT_DIR=\"$DEST/nur_v3\" NUR_V3_SOURCE_METADATA=\"$SOURCE_METADATA\" \\\n  /app/run run-script /scratch/nur_v3_train.py\ntest -s /scratch/native-artifacts/last.usdz\nmkdir -p \"$DEST/artifacts\"\ncp -a /scratch/native-artifacts/last.usdz \"$DEST/artifacts/last.usdz\"\ncp -a \"$NCORE_DIR/nurec_origin_offset.json\" \"$DEST/\"\ncp -a \"$NCORE_DIR/nurec_origin_offset.json\" \"$DEST/artifacts/\"\ncp -a \"$RUN/config\" \"$DEST/\"\ntest -s \"$DEST/nur_v3/track_hygiene.json\"\ntest -s \"$DEST/nur_v3/camera_clock.json\"\n# Use the image's native Python runtime to check checkpoint state and artifact.\nexport RUNFILES_DIR=/app/run.runfiles\nsource \u003c(head -n -1 /app/run)\npython3 - \u003c\u003c'CHECK_OUTPUT'\nimport os,json,zipfile,pathlib,torch\np=pathlib.Path(os.environ[\"DEST\"])\nz=p/\"artifacts/last.usdz\"\nwith zipfile.ZipFile(z) as archive:\n    assert archive.testzip() is None\n    assert \"checkpoint.ckpt\" in archive.namelist()\n    assert \"parsed_config.yaml\" in archive.namelist()\nckpt=torch.load(p/\"checkpoints/last.ckpt\",map_location=\"cpu\",weights_only=False)\nassert ckpt[\"global_step\"]==int(os.environ[\"TRAIN_STEPS\"])\nrecord=dict(experiment_id=os.environ[\"EXPERIMENT_ID\"],clip_id=os.environ[\"CLIP_ID\"],recipe=\"nureasoning-v3\",\n    variant=os.environ[\"VARIANT\"],train_steps=ckpt[\"global_step\"],scene_gaussian_budget_max=int(os.environ[\"GAUSSIAN_LIMIT\"]),\n    camera_train_subsample=int(os.environ[\"CAMERA_SUBSAMPLE\"]),track_hygiene=True,camera_capture_clock=True,\n    actor_relocation_layers=os.environ.get(\"NUR_V3_ACTOR_RELOCATE_LAYERS\",\"\"),camera_radial=os.environ.get(\"NUR_V3_CAMERA_RADIAL\",\"\"),\n    seed=42,lidar_initialization=True,lidar_supervision=False,temporal_splitting=False,\n    recipe_sha256=os.environ[\"RECIPE_SHA256\"],wrapper_sha256=os.environ[\"WRAPPER_SHA256\"],usdz_bytes=z.stat().st_size)\n(p/\"SUCCESS.json\").write_text(json.dumps(record,indent=2)+\"\\n\")\nprint(\"TRAIN_DONE\",json.dumps(record))\nCHECK_OUTPUT\n"],"command":["/opt/nvidia/nvidia_entrypoint.sh","bash","-c"],"env":[{"name":"CLIP_ID","value":"2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f"},{"name":"NCORE_DIR","value":"/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f"},{"name":"SOURCE_METADATA","value":"/hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/metadata.json"},{"name":"DEST","value":"/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens"},{"name":"EXPERIMENT_ID","value":"660c2f7a-v2reloc-40k-lens"},{"name":"TRAIN_STEPS","value":"40000"},{"name":"GAUSSIAN_LIMIT","value":"3000000"},{"name":"VARIANT","value":"v2reloc-40k-lens"},{"name":"CAMERA_SUBSAMPLE","value":"2"},{"name":"RECIPE_SHA256","value":"ffbcacf01fd497d48107772ce36add9e68e1b19e9d528a4276fbada4a44554fa"},{"name":"WRAPPER_SHA256","value":"86876ea5623710d7660750e9171f003f834ac354ba7b05ed09a73880b7f1a623"},{"name":"NUR_V3_ACTOR_RELOCATE_LAYERS","value":"dynamic_rigids,dynamic_deformables,static_rigids,static_deformables"},{"name":"NUR_V3_CAMERA_RADIAL","value":"{\"camera_pcam_b0\": [-0.34, 0.05], \"camera_pcam_f0\": [-0.37, 0.05], \"camera_pcam_l0\": [-0.34, 0.05], \"camera_pcam_l1\": [-0.36, 0.05], \"camera_pcam_l2\": [-0.33, 0.05], \"camera_pcam_r0\": [-0.36, 0.05], \"camera_pcam_r1\": [-0.35, 0.05], \"camera_pcam_r2\": [-0.33, 0.05]}"},{"name":"PYTHONUNBUFFERED","value":"1"},{"name":"HYDRA_FULL_ERROR","value":"1"},{"name":"PYTORCH_CUDA_ALLOC_CONF","value":"expandable_segments:True"},{"name":"OMP_NUM_THREADS","value":"2"},{"name":"MKL_NUM_THREADS","value":"2"},{"name":"OPENBLAS_NUM_THREADS","value":"2"},{"name":"NGC_API_KEY","valueFrom":{"secretKeyRef":{"key":"NGC_API_KEY","name":"ngc-api-key"}}}],"image":"nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90","imagePullPolicy":"IfNotPresent","name":"train","resources":{"limits":{"cpu":"2","ephemeral-storage":"100Gi","memory":"32Gi","nvidia.com/gpu":"1"},"requests":{"cpu":"2","ephemeral-storage":"100Gi","memory":"32Gi","nvidia.com/gpu":"1"}},"volumeMounts":[{"mountPath":"/hugsim-storage","name":"hugsim"},{"mountPath":"/avl-west","name":"avl-west"},{"mountPath":"/scratch","name":"scratch"},{"mountPath":"/dev/shm","name":"dshm"}]}],"imagePullSecrets":[{"name":"ngc-pull"}],"initContainers":[{"args":["set -euo pipefail\nDIAG=\"$DEST/diagnostics/$HOSTNAME\"\nmkdir -p \"$DIAG\" /scratch/ncore\nexec \u003e \u003e(tee -a \"$DIAG/prepare.log\") 2\u003e\u00261\ntest -s \"$NCORE_DIR/nurec_origin_offset.json\"\ntest -s \"$NCORE_DIR/pai_$CLIP_ID.json\"\ntest -s \"$SOURCE_METADATA\"\ncp -a \"$NCORE_DIR/pai_$CLIP_ID.json\" /scratch/ncore/\nfor src in \"$NCORE_DIR/pai_$CLIP_ID\".ncore4*.zarr.itar; do\n  test -s \"$src\"\n  cp -aL \"$src\" /scratch/ncore/\ndone\ntest \"$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)\" -eq 10\n# Native aux loader truncates the filename at its first dot.\nMANIFEST=\"pai_$CLIP_ID.json\"\nAUX_BASE=\"${MANIFEST%%.*}\"\nfor kind in sseg lidar-sseg lidar-camvis egomask; do\n  src=\"$NCORE_DIR/pai_$CLIP_ID.aux.$kind.zarr.itar\"\n  test -s \"$src\"\n  cp -aL \"$src\" \"/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar\"\ndone\necho \"STAGING_COMPLETE $EXPERIMENT_ID\"\n"],"command":["/opt/nvidia/nvidia_entrypoint.sh","bash","-c"],"env":[{"name":"CLIP_ID","value":"2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f"},{"name":"NCORE_DIR","value":"/hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f"},{"name":"SOURCE_METADATA","value":"/hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/metadata.json"},{"name":"DEST","value":"/avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens"},{"name":"EXPERIMENT_ID","value":"660c2f7a-v2reloc-40k-lens"},{"name":"TRAIN_STEPS","value":"40000"},{"name":"GAUSSIAN_LIMIT","value":"3000000"},{"name":"VARIANT","value":"v2reloc-40k-lens"},{"name":"CAMERA_SUBSAMPLE","value":"2"},{"name":"RECIPE_SHA256","value":"ffbcacf01fd497d48107772ce36add9e68e1b19e9d528a4276fbada4a44554fa"},{"name":"WRAPPER_SHA256","value":"86876ea5623710d7660750e9171f003f834ac354ba7b05ed09a73880b7f1a623"},{"name":"NUR_V3_ACTOR_RELOCATE_LAYERS","value":"dynamic_rigids,dynamic_deformables,static_rigids,static_deformables"},{"name":"NUR_V3_CAMERA_RADIAL","value":"{\"camera_pcam_b0\": [-0.34, 0.05], \"camera_pcam_f0\": [-0.37, 0.05], \"camera_pcam_l0\": [-0.34, 0.05], \"camera_pcam_l1\": [-0.36, 0.05], \"camera_pcam_l2\": [-0.33, 0.05], \"camera_pcam_r0\": [-0.36, 0.05], \"camera_pcam_r1\": [-0.35, 0.05], \"camera_pcam_r2\": [-0.33, 0.05]}"},{"name":"PYTHONUNBUFFERED","value":"1"},{"name":"HYDRA_FULL_ERROR","value":"1"},{"name":"PYTORCH_CUDA_ALLOC_CONF","value":"expandable_segments:True"},{"name":"OMP_NUM_THREADS","value":"2"},{"name":"MKL_NUM_THREADS","value":"2"},{"name":"OPENBLAS_NUM_THREADS","value":"2"},{"name":"NGC_API_KEY","valueFrom":{"secretKeyRef":{"key":"NGC_API_KEY","name":"ngc-api-key"}}}],"image":"nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90","imagePullPolicy":"IfNotPresent","name":"stage-inputs","resources":{"limits":{"cpu":"1","ephemeral-storage":"100Gi","memory":"4Gi"},"requests":{"cpu":"1","ephemeral-storage":"100Gi","memory":"4Gi"}},"volumeMounts":[{"mountPath":"/hugsim-storage","name":"hugsim"},{"mountPath":"/avl-west","name":"avl-west"},{"mountPath":"/scratch","name":"scratch"},{"mountPath":"/dev/shm","name":"dshm"}]}],"restartPolicy":"Never","tolerations":[{"effect":"NoSchedule","key":"nautilus.io/reservation","operator":"Equal","value":"cogrob"}],"volumes":[{"name":"hugsim","persistentVolumeClaim":{"claimName":"horuan-hugsim-vol"}},{"name":"avl-west","persistentVolumeClaim":{"claimName":"avl-west-vol"}},{"emptyDir":{"sizeLimit":"80Gi"},"name":"scratch"},{"emptyDir":{"medium":"Memory","sizeLimit":"16Gi"},"name":"dshm"}]}},"ttlSecondsAfterFinished":604800}}
+    nrp.ai/username: http://cilogon.org/serverE/users/439386
+  creationTimestamp: "2026-10-03T03:43:19Z"
+  generation: 1
+  labels:
+    app: navsafe-nureasoning-v3
+    batch: nureasoning-recipe-v3-20261002
+    clip-hash: 660c2f7a
+    variant: v2reloc-40k-lens
+  name: navsafe-nur3-660c2f7a-v2reloc-40k-lens
+  namespace: cogrob
+  resourceVersion: "15015548281"
+  uid: 75a31fc4-02bc-4b5b-9903-7fd2bcbe9d25
+spec:
+  activeDeadlineSeconds: 172800
+  backoffLimit: 0
+  completionMode: NonIndexed
+  completions: 1
+  manualSelector: false
+  parallelism: 1
+  podReplacementPolicy: TerminatingOrFailed
+  selector:
+    matchLabels:
+      batch.kubernetes.io/controller-uid: 75a31fc4-02bc-4b5b-9903-7fd2bcbe9d25
+  suspend: false
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-v3
+        batch: nureasoning-recipe-v3-20261002
+        batch.kubernetes.io/controller-uid: 75a31fc4-02bc-4b5b-9903-7fd2bcbe9d25
+        batch.kubernetes.io/job-name: navsafe-nur3-660c2f7a-v2reloc-40k-lens
+        clip-hash: 660c2f7a
+        controller-uid: 75a31fc4-02bc-4b5b-9903-7fd2bcbe9d25
+        job-id: navsafe-nur3-660c2f7a-v2reloc-40k-lens
+        job-name: navsafe-nur3-660c2f7a-v2reloc-40k-lens
+        variant: v2reloc-40k-lens
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-06.sdsc.optiputer.net
+                - ry-gpu-07.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      containers:
+      - args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG"
+          exec > >(tee -a "$DIAG/train.log") 2>&1
+          finish() {
+            rc=$?
+            trap - EXIT
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+            exit "$rc"
+          }
+          trap finish EXIT
+          RUN="$DEST/native/$CLIP_ID"
+          test ! -e "$RUN"
+          mkdir -p "$DEST/checkpoints" "$RUN" /scratch/native-artifacts
+          ln -s "$DEST/checkpoints" "$RUN/checkpoints"
+          ln -s /scratch/native-artifacts "$RUN/artifacts"
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/recipe.yaml <<'NRE_RECIPE'
+          # @package _global_
+          defaults:
+          - /apps/AV/_base_3dgut_dynamic_road_semantic
+          - /apps/prod/options/artifact: default
+          - /apps/prod/options/nrend: disabled
+          - /apps/prod/options/difix/3dgut: disabled
+          - /apps/prod/options/mesh: disabled
+          - /apps/prod/options/ground: disabled
+          - /apps/prod/options/subsampling/3dgut: batch_sampler_2
+          - /apps/prod/options/calib: enabled
+          - /apps/AV/module_mixins/_mcmc_mixin.yaml
+          - /model/gaussians/models@model.layers.static_rigids: rigid_gaussians
+          - /model/gaussians/initialization@model.layers.static_rigids.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_rigids.tracks_calib: static
+          - /model/gaussians/models@model.layers.static_deformables: deformable_gaussians
+          - /model/gaussians/initialization@model.layers.static_deformables.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_deformables.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_deformables.tracks_calib: direct
+          - override /model/calib: free_pose
+          - override /model/gaussians/strategy@model.strategy: mcmc
+          - override /model/post_processing@model.post_processing.b: ppisp
+          - override /model/post_processing@model.post_processing.c: null
+          - override /logger: tensorboard
+          - _self_
+          model:
+            layers:
+              static_rigids:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  symmetric_axis: Y
+                  camera_ids: []
+                  step_frame: 1
+                  fill_with_random_points: true
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 240000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  num_point_cloud_points_per_track: 10000
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id001
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id001
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_rigids:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 360000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 40000
+                  fill_with_random_points: true
+                fourier_features_dim: 20
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id002
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id002
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_deformables:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 90000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 20000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id003
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id003
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              background:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 800000
+                  num_near_points: 100000
+                  num_far_points: 100000
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                fourier_features_dim: 1
+              road:
+                class_labels:
+                - road
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                initialization:
+                  name: lidar-rig-trajectory-road
+                  num_point_cloud_points: 120000
+                  num_random_points: 0
+                  default_density: 0.5
+                  default_scale:
+                  - 0.1
+                  - 0.1
+                  - 0.001
+                  project_to_z_offset: false
+                  init_with_normals: true
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.00016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    densities:
+                      args:
+                        lr: 0.01
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.001
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              static_deformables:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                fourier_features_dim: 1
+                initialization:
+                  name: lidar-dynamic-tracks
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_in_layer: 30000
+                  num_point_cloud_points_per_track: 10000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                is_static: false
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id004
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id004
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+            strategy:
+              add:
+                max_n_gaussians: 2160000
+                end_iteration: 35000
+                start_iteration: 5000
+                frequency: 100
+              relocate:
+                end_iteration: 35000
+                frequency: 100
+              perturb:
+                end_iteration: 40000
+              exclude_layer_ids:
+              - road
+              - dynamic_rigids
+              - dynamic_deformables
+              - static_rigids
+              - static_deformables
+            calib:
+              name: free-pose-calib
+              camera:
+                enabled: true
+              lidar:
+                enabled: false
+            renderer:
+              outputs:
+                camera:
+                  enable_ray_gradients: true
+                lidar:
+                  enable_ray_gradients: false
+            post_processing:
+              b:
+                per_frame_ppisp_enabled: false
+          dataset:
+            n_samples_per_epoch: 40000
+            camera_ids: &id005
+            - camera_pcam_f0
+            - camera_pcam_b0
+            - camera_pcam_l0
+            - camera_pcam_l1
+            - camera_pcam_l2
+            - camera_pcam_r0
+            - camera_pcam_r1
+            - camera_pcam_r2
+            train_camera_ids: *id005
+            val_camera_ids: *id005
+            lidar_ids:
+            - lidar_top_360fov
+            train_lidar_ids:
+            - lidar_top_360fov
+            val_lidar_ids: []
+            n_train_sample_lidar_rays: 0
+            val_lidar: false
+            train_sequential_lidar: false
+            use_real_lidar_rays: false
+            n_train_sequential_image_subsample: 2
+            n_val_image_subsample: 2
+            aux_data: true
+            cuboid_tracks_params:
+              track_label_sources:
+              - GT_ANNOTATION
+            samplers:
+              batch_sampler:
+                ratio_camera_samples: 1.0
+                ratio_lidar_samples: 0.0
+                camera_pixel_sampler:
+                  subsample: 2
+                  crop_type: full_image
+            val_camera_frame_step: 10
+            val_camera: true
+            interp_with_rig: true
+          loss:
+            lidar:
+              lambda_: 0.0
+            background_lidar:
+              lambda_: 0.0
+            intensity:
+              lambda_: 0.0
+            raydrop:
+              lambda_: 0.0
+            normal:
+              lambda_: 0.0
+            rgb:
+              fn: l1
+              lambda_: 0.8
+            ssim:
+              lambda_: 0.2
+            gaussian_density:
+              layer_lambdas:
+                road: 1
+                dynamic_rigids: 0.1
+                dynamic_deformables: 0.1
+                static_rigids: 0.1
+                static_deformables: 0.1
+            background_in_track_gaussian:
+              fn: bce_with_logits
+              reduce:
+                name: mean
+              lambda_: 0.1
+              layer_names:
+              - background
+              layer_labels_to_use:
+                background:
+                - person
+                - rider
+                - car
+                - truck
+                - bus
+                - train
+                - motorcycle
+                - bicycle
+            node_semantic_gaussians:
+              layer_labels_to_exclude:
+                background:
+                - road
+                dynamic_rigids:
+                - road
+                dynamic_deformables:
+                - road
+                static_rigids:
+                - road
+                static_deformables:
+                - road
+          trainer:
+            max_epochs: 1
+            precision: 32
+            world_size: 1
+            num_nodes: 1
+            num_sanity_val_steps: 0
+            val_check_interval: 10000
+            log_every_n_steps: 50
+          datamodule:
+            train_num_workers: 8
+            val_num_workers: 4
+            test_num_workers: 4
+          checkpoint:
+            every_n_train_steps: 10000
+            save_top_k: 1
+            save_on_train_epoch_end: true
+            artifact:
+              enabled: true
+              mesh:
+                ground:
+                  enabled: false
+            save_last: true
+          seed: 42
+          mode: trainval
+          out_dir: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens/native
+          logger:
+            enabled: true
+            run_id: <generate>
+          system:
+            warmup_steps: 1000
+            record_quality_metrics:
+              psnr_interval: 100
+            test:
+              save_results: true
+              save_inputs: true
+              save_videos: true
+              save_stats: true
+              separate_val_dir_per_step: true
+              use_camera_name_dirs: true
+              video_fps: 1
+              metrics:
+                ssim:
+                  enabled: true
+                lpips:
+                  enabled: false
+              val_render_selected_nodes: {}
+          NRE_RECIPE
+          printf '%s  %s\n' "$RECIPE_SHA256" /scratch/recipe.yaml | sha256sum -c -
+          cat > /scratch/nur_v3_train.py <<'NUR_V3_PY'
+          """nuReasoning recipe v3 training entry: NRE main + two input-hygiene patches.
+
+          Run inside the NRE image: /app/run run-script nur_v3_train.py
+          Environment:
+            NUR_V3_ARGS_FILE         NRE main args, one per line (same as `/app/run <args>`); or NUR_V3_ARGS as JSON
+            NUR_V3_REPORT_DIR        where patch reports are written
+            NUR_V3_SOURCE_METADATA   raw nuReasoning metadata.json (camera filename clocks)
+            NUR_V3_TRACK_CLEAN       1/0  (P1)
+            NUR_V3_CAMERA_CLOCK      1/0  (P2)
+            NUR_V3_ACTOR_RELOCATE_LAYERS  comma list of actor layers for P3 (empty = off)
+            NUR_V3_CAMERA_RADIAL     JSON {camera_id: [k1, k2]} for P4 (empty = off)
+
+          P1 track hygiene: nuReasoning boxes are per-frame detections. Consecutive boxes jump 0.1-0.8 m,
+          headings flip by pi on parked objects, and NRE takes each track's box size from its first
+          observation. Rigid actors live in the box frame, so the jitter turns into blur. Each track is
+          re-estimated: pi flips resolved against motion / axial heading, robust LOESS on xyz and yaw,
+          near-stationary tracks snapped to one pose, box size = per-track percentile of all observations.
+
+          P2 camera clock: the py123d NCore bridge stamps every camera image with the LiDAR/ego frame time,
+          while the cameras are triggered during the LiDAR sweep (-18..+24 ms, some frames +-40 ms). Rig
+          trajectories handed to the model now carry each image's filename capture time, so camera poses
+          and actor-track interpolation use the real exposure time. Image / aux lookups keep the original
+          sensor timestamps, which are untouched.
+
+          P3 actor relocation: actor layers stay out of the global MCMC (so the background cannot drain
+          them) but get MCMC relocation inside their own layer; see install_actor_relocation_patch.
+
+          P4 lens distortion: the images are not rectified (nuPlan-like barrel, k1 ~ -0.35); the NCore camera
+          model gets the fitted radial coefficients; see install_camera_distortion_patch.
+          """
+
+          import hashlib
+          import json
+          import math
+          import os
+          import pickle
+          import sys
+          import time
+
+          import numpy as np
+
+          REPORT_DIR = os.environ.get("NUR_V3_REPORT_DIR", "/tmp/nur_v3")
+          TRACK_CLEAN = os.environ.get("NUR_V3_TRACK_CLEAN", "1") == "1"
+          CAMERA_CLOCK = os.environ.get("NUR_V3_CAMERA_CLOCK", "1") == "1"
+          HALF_WINDOW_S = float(os.environ.get("NUR_V3_SMOOTH_HALF_WINDOW_S", "0.8"))
+          DIM_PERCENTILE = float(os.environ.get("NUR_V3_DIM_PERCENTILE", "75"))
+          STATIC_SNAP_M = float(os.environ.get("NUR_V3_STATIC_SNAP_M", "0.5"))
+          ACTOR_RELOCATE_LAYERS = [x for x in os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS", "").split(",") if x]
+          CAMERA_RADIAL = json.loads(os.environ.get("NUR_V3_CAMERA_RADIAL", "{}"))
+          MOVING_SPEED_MS = 1.0
+          CAMERA_FOLDER_TO_NCORE = {
+              "CAM_M_F": "camera_pcam_f0",
+              "CAM_M_B": "camera_pcam_b0",
+              "CAM_M_L0": "camera_pcam_l0",
+              "CAM_M_L1": "camera_pcam_l1",
+              "CAM_M_L2": "camera_pcam_l2",
+              "CAM_M_R0": "camera_pcam_r0",
+              "CAM_M_R1": "camera_pcam_r1",
+              "CAM_M_R2": "camera_pcam_r2",
+          }
+
+
+          def _say(*parts):
+              print("[nur_v3]", *parts, flush=True)
+
+
+          def _write_report(name, obj):
+              os.makedirs(REPORT_DIR, exist_ok=True)
+              with open(os.path.join(REPORT_DIR, name), "w") as f:
+                  json.dump(obj, f, indent=1, default=float)
+
+
+          # ---------------------------------------------------------------- P1: track hygiene
+
+
+          def _wrap(a):
+              return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+
+
+          def _rotz(a):
+              c, s = math.cos(a), math.sin(a)
+              return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+          def loess(t, y, half_window, degree=2, robust_iters=2, scale_floor=0.05):
+              """Robust local polynomial regression (tricube kernel, bisquare reweighting).
+
+              The local degree drops when the window is thin or one-sided (track ends, gaps), and every
+              fit is clamped to the range of the samples it used, so sparse tracks cannot extrapolate.
+              """
+              t = np.asarray(t, dtype=np.float64)
+              y = np.asarray(y, dtype=np.float64)
+              squeeze = y.ndim == 1
+              y = y.reshape(len(t), -1)
+              n = len(t)
+              out = y.copy()
+              robust = np.ones(n)
+              for it in range(robust_iters + 1):
+                  for i in range(n):
+                      d = np.abs(t - t[i])
+                      k = min(n - 1, degree + 2)
+                      h = max(half_window, np.partition(d, k)[k] * 1.0001)
+                      w = np.clip(1.0 - (d / h) ** 3, 0.0, None) ** 3 * robust
+                      m = w > 1e-12
+                      count = int(m.sum())
+                      if count == 0:
+                          continue
+                      dt = t[m] - t[i]
+                      deg = degree
+                      if not (np.any(dt < -1e-9) and np.any(dt > 1e-9)):
+                          deg = min(deg, 1)
+                      deg = max(0, min(deg, count - 3))
+                      ym, wm = y[m], w[m][:, None]
+                      X = np.vander(dt, deg + 1, increasing=True)
+                      A = X.T @ (wm * X) + 1e-9 * np.eye(deg + 1)
+                      fit = np.linalg.solve(A, X.T @ (wm * ym))[0]
+                      lo, hi = ym.min(axis=0), ym.max(axis=0)
+                      pad = 0.25 * (hi - lo) + scale_floor
+                      out[i] = np.clip(fit, lo - pad, hi + pad)
+                  if it < robust_iters:
+                      r = np.linalg.norm(y - out, axis=1)
+                      s = max(6.0 * np.median(r), scale_floor)
+                      robust = np.clip(1.0 - (r / s) ** 2, 0.0, None) ** 2
+              return out[:, 0] if squeeze else out
+
+
+          def clean_track(timestamps_us, poses, dims):
+              """Return (clean poses list, clean dims, info) for one track.
+
+              poses: list of 4x4 world poses (z-up), dims: (M, 3) array of all observed box sizes.
+              """
+              P = np.stack(poses).astype(np.float64)
+              n = len(P)
+              info = {"n": n}
+              new_dims = np.percentile(np.asarray(dims, dtype=np.float64), DIM_PERCENTILE, axis=0) if len(dims) else None
+              if n < 4:
+                  info["skipped"] = "few_poses"
+                  return poses, new_dims, info
+              t = (np.asarray(timestamps_us, dtype=np.int64) - int(timestamps_us[0])) / 1e6
+              if np.any(np.diff(t) <= 0):
+                  info["skipped"] = "non_increasing_time"
+                  return poses, new_dims, info
+              xyz = P[:, :3, 3]
+              yaw = np.arctan2(P[:, 1, 0], P[:, 0, 0])
+              tilt = np.einsum("nij,njk->nik", np.stack([_rotz(-a) for a in yaw]), P[:, :3, :3])
+              tilt_deg = float(np.degrees(np.arccos(np.clip((np.trace(tilt, axis1=1, axis2=2) - 1) / 2, -1, 1))).max())
+              info["max_tilt_deg"] = tilt_deg
+
+              xyz_s = loess(t, xyz, HALF_WINDOW_S)
+              vel = np.gradient(xyz_s[:, :2], t, axis=0)
+              speed = np.linalg.norm(vel, axis=1)
+              moving = speed > MOVING_SPEED_MS
+              center = np.median(xyz_s[:, :2], axis=0)
+              spread = float(np.max(np.linalg.norm(xyz_s[:, :2] - center, axis=1)))
+              info["jitter_rms_m"] = float(np.sqrt(np.mean(np.sum((xyz - xyz_s) ** 2, axis=1))))
+              info["spread_m"] = spread
+              info["moving_frac"] = float(moving.mean())
+
+              # Heading modulo pi is flip-invariant: smooth the doubled angle, then pick one direction.
+              doubled = loess(t, np.stack([np.cos(2 * yaw), np.sin(2 * yaw)], axis=1), HALF_WINDOW_S * 2, scale_floor=0.1)
+              axial = 0.5 * np.unwrap(np.arctan2(doubled[:, 1], doubled[:, 0]))
+              path = float(np.sum(np.linalg.norm(np.diff(xyz_s[:, :2], axis=0), axis=1)))
+              info["path_m"] = path
+              if moving.mean() >= 0.3 and path >= 3.0:
+                  heading = np.arctan2(vel[:, 1], vel[:, 0])
+                  forward = np.mean(np.abs(_wrap(axial[moving] - heading[moving])) < np.pi / 2) >= 0.5
+                  ref = axial if forward else axial + np.pi
+              else:
+                  votes = np.mean(np.abs(_wrap(yaw - axial)) < np.pi / 2) >= 0.5
+                  ref = axial if votes else axial + np.pi
+              d = _wrap(yaw - ref)
+              flips = np.abs(d) > np.pi / 2
+              d = np.where(flips, _wrap(d - np.pi), d)
+              yaw_aligned = ref + d
+              info["yaw_flips_fixed"] = int(flips.sum())
+              yaw_s = loess(t, yaw_aligned, HALF_WINDOW_S, scale_floor=0.02)
+              info["yaw_jitter_rms_rad"] = float(np.sqrt(np.mean((yaw_aligned - yaw_s) ** 2)))
+
+              snapped = spread < STATIC_SNAP_M and not moving.any()
+              info["static_snapped"] = bool(snapped)
+              if snapped:
+                  mean_yaw = math.atan2(np.mean(np.sin(yaw_s)), np.mean(np.cos(yaw_s)))
+                  xyz_s = np.repeat(np.median(xyz_s, axis=0, keepdims=True), n, axis=0)
+                  yaw_s = np.full(n, mean_yaw)
+              keep_tilt = tilt_deg > 3.0
+              out = []
+              for i in range(n):
+                  T = np.eye(4)
+                  T[:3, :3] = _rotz(yaw_s[i]) @ (tilt[i] if keep_tilt else np.eye(3))
+                  T[:3, 3] = xyz_s[i]
+                  out.append(T)
+              return out, new_dims, info
+
+
+          def _bbox_dims(b):
+              if isinstance(b, dict):
+                  return tuple(float(x) for x in b["dim"])
+              return tuple(float(x) for x in b.dim)
+
+
+          def install_track_patch():
+              import nre.datasets.utils as du
+
+              original = du.consolidate_cuboid_tracks
+
+              def consolidate_and_clean(*args, **kwargs):
+                  all_tracks = original(*args, **kwargs)
+                  cuboids_df = kwargs["cuboids_df"] if "cuboids_df" in kwargs else args[0]
+                  key_src = repr(sorted((k, len(v["timestamps_us"]), v["timestamps_us"][0]) for k, v in all_tracks.items() if v["timestamps_us"]))
+                  cache = os.path.join("/tmp", "nur_v3_tracks_" + hashlib.sha1(key_src.encode()).hexdigest()[:16] + ".pkl")
+                  if os.path.exists(cache):
+                      with open(cache, "rb") as f:
+                          cleaned = pickle.load(f)
+                      for track_id, (poses, dims) in cleaned.items():
+                          all_tracks[track_id]["poses"] = poses
+                          if dims is not None:
+                              all_tracks[track_id]["dimension"] = dims
+                      _say("track hygiene: reused cache", cache, "tracks", len(cleaned))
+                      return all_tracks
+                  start = time.time()
+                  dims_by_track = {}
+                  for track_id, bbox3 in zip(cuboids_df["track_id"].tolist(), cuboids_df["bbox3"].tolist()):
+                      dims_by_track.setdefault(track_id, []).append(_bbox_dims(bbox3))
+                  cleaned, report = {}, {}
+                  for track_id, track in all_tracks.items():
+                      if not track["timestamps_us"]:
+                          continue
+                      first_dims = np.asarray(track["dimension"], dtype=np.float64)
+                      poses, dims, info = clean_track(track["timestamps_us"], track["poses"], dims_by_track.get(track_id, []))
+                      if dims is not None:
+                          dims = dims.astype(np.asarray(track["dimension"]).dtype)
+                          track["dimension"] = dims
+                          info["dims_first"] = first_dims.tolist()
+                          info["dims_new"] = dims.tolist()
+                      track["poses"] = poses
+                      info["label_class"] = str(track["label_class"])
+                      cleaned[track_id] = (poses, dims)
+                      report[track_id] = info
+                  tmp = f"{cache}.{os.getpid()}.tmp"
+                  with open(tmp, "wb") as f:
+                      pickle.dump(cleaned, f)
+                  os.replace(tmp, cache)
+                  jit = np.array([r.get("jitter_rms_m", 0.0) for r in report.values()])
+                  summary = {
+                      "tracks": len(report),
+                      "seconds": time.time() - start,
+                      "half_window_s": HALF_WINDOW_S,
+                      "dim_percentile": DIM_PERCENTILE,
+                      "static_snapped": int(sum(r.get("static_snapped", False) for r in report.values())),
+                      "tracks_with_yaw_flips": int(sum(r.get("yaw_flips_fixed", 0) > 0 for r in report.values())),
+                      "yaw_flips_fixed_total": int(sum(r.get("yaw_flips_fixed", 0) for r in report.values())),
+                      "removed_jitter_rms_m_p50_p90_max": [float(np.percentile(jit, 50)), float(np.percentile(jit, 90)), float(jit.max())] if len(jit) else [],
+                      "max_tilt_deg": float(max([r.get("max_tilt_deg", 0.0) for r in report.values()] or [0.0])),
+                  }
+                  _write_report("track_hygiene.json", {"summary": summary, "tracks": report})
+                  _say("track hygiene:", json.dumps(summary))
+                  return all_tracks
+
+              du.consolidate_cuboid_tracks = consolidate_and_clean
+              _say("installed track hygiene patch")
+
+
+          # ---------------------------------------------------------------- P2: camera capture clock
+
+
+          def load_capture_clock(metadata_path):
+              meta = json.load(open(metadata_path))
+              clock = {}
+              for frame in meta["frames"]:
+                  ego_ts = int(frame["timestamp_us"])
+                  for rel in frame["sensors"]["cameras"].values():
+                      folder = rel.split("/")[1]
+                      capture_ts = int(os.path.splitext(rel)[0].rsplit("_", 1)[1])
+                      clock.setdefault(CAMERA_FOLDER_TO_NCORE[folder], {})[ego_ts] = capture_ts
+              return clock
+
+
+          def install_camera_clock_patch(metadata_path):
+              import torch
+              import nre.datasets.ncore as nc
+              from ncore.impl.common.transformations import PoseInterpolator
+
+              clock = load_capture_clock(metadata_path)
+              original = nc.NCOREDataSource.get_rig_trajectories
+              reported = {"done": False}
+
+              def get_rig_trajectories_capture_clock(self):
+                  rts = original(self)
+                  stats = {}
+                  for rt in rts.rig_trajectories:
+                      pose_ts = rt.T_rig_world_timestamps_us.cpu().numpy()
+                      lo, hi = int(pose_ts.min()), int(pose_ts.max())
+                      for unique_id, ts in list(rt.cameras_frame_timestamps_us.items()):
+                          logical = rts.camera_calibrations[unique_id].logical_sensor_name
+                          table = clock.get(logical)
+                          if table is None:
+                              raise RuntimeError(f"nur_v3: no capture clock for camera {logical}")
+                          stamped = ts.cpu().numpy().astype(np.int64)
+                          found = np.array([int(e) in table for e in stamped[:, 1]])
+                          if found.mean() < 0.95:
+                              raise RuntimeError(f"nur_v3: capture clock covers only {found.mean():.1%} of {logical} frames")
+                          capture = np.array([table.get(int(e), int(e)) for e in stamped[:, 1]], dtype=np.int64)
+                          capture = np.clip(capture, lo, hi)
+                          for i in range(1, len(capture)):  # keep strictly increasing frame times
+                              if capture[i] <= capture[i - 1]:
+                                  capture[i] = stamped[i, 1] if stamped[i, 1] > capture[i - 1] else capture[i - 1] + 1
+                          new = np.stack([capture, capture], axis=1)
+                          rt.cameras_frame_timestamps_us[unique_id] = torch.from_numpy(new).to(ts.dtype)
+                          if rt.cameras_frame_T_rig_worlds is not None and unique_id in rt.cameras_frame_T_rig_worlds:
+                              interp = PoseInterpolator(rt.T_rig_worlds.cpu().numpy(), pose_ts)
+                              T = interp.interpolate_to_timestamps(capture, dtype=np.float64)
+                              rt.cameras_frame_T_rig_worlds[unique_id] = torch.from_numpy(np.stack([T, T], axis=1))
+                          off = (capture - stamped[:, 1]) / 1e3
+                          stats[logical] = {
+                              "frames": len(capture),
+                              "coverage": float(found.mean()),
+                              "offset_ms_median": float(np.median(off)),
+                              "offset_ms_min": float(off.min()),
+                              "offset_ms_max": float(off.max()),
+                              "frames_abs_offset_gt_30ms": int(np.sum(np.abs(off) > 30)),
+                          }
+                  if not reported["done"]:
+                      reported["done"] = True
+                      _write_report("camera_clock.json", {"metadata": metadata_path, "cameras": stats})
+                      _say("camera clock:", json.dumps({k: round(v["offset_ms_median"], 1) for k, v in stats.items()}))
+                  return rts
+
+              nc.NCOREDataSource.get_rig_trajectories = get_rig_trajectories_capture_clock
+              _say("installed camera capture-clock patch", metadata_path)
+
+
+          # ---------------------------------------------------------------- P4: camera lens distortion
+
+
+          def install_camera_distortion_patch(radial):
+              """Give each NCore camera its radial distortion; the bridge stored a distortion-free pinhole.
+
+              nuReasoning ships only K, but the images are not rectified: cross-camera reprojection on
+              stationary frames gives k1 ~ -0.33..-0.38, k2 ~ +0.05..+0.10 (nuPlan-like barrel). A pinhole
+              model misplaces the left/right image borders by ~115 px and the corners by ~190-200 px.
+              radial: {camera_id: [k1, k2, ...]} in OpenCV order (numerator k1, k2, k3, denominator k4, k5, k6).
+              """
+              import dataclasses
+              from ncore.impl.data.v4.compat import SequenceLoaderV4
+
+              original = SequenceLoaderV4.get_camera_sensor
+              applied = {}
+
+              def get_camera_sensor_with_distortion(self, sensor_id):
+                  sensor = original(self, sensor_id)
+                  coeffs = radial.get(sensor_id)
+                  if coeffs is None:
+                      raise RuntimeError(f"nur_v3: no distortion coefficients for camera {sensor_id}")
+                  params = sensor._model_parameters
+                  rc = np.zeros(6, dtype=np.float32)
+                  rc[: len(coeffs)] = coeffs
+                  if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):
+                      raise RuntimeError(f"nur_v3: {sensor_id} already has radial coeffs {params.radial_coeffs}")
+                  sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)
+                  if sensor_id not in applied:
+                      applied[sensor_id] = rc[:2].tolist()
+                      _say("camera distortion", sensor_id, applied[sensor_id])
+                  return sensor
+
+              SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion
+              _say("installed camera distortion patch", json.dumps(radial))
+
+
+          # ---------------------------------------------------------------- P3: actor-layer MCMC relocation
+
+
+          def install_actor_relocation_patch(layers):
+              """Relocate dead Gaussians inside each actor layer on the MCMC relocation schedule.
+
+              v2 keeps actor layers out of the global MCMC so the background cannot drain them, but then
+              nothing recycles their dead Gaussians: in the v2 3M/40k checkpoint 96-98% of every actor
+              layer ended with opacity < 0.05. Here each listed layer gets its own relocation pass: dead
+              Gaussians (opacity <= threshold) move onto alive ones of the same layer (cuboid ids follow
+              the target), counts stay fixed, nothing crosses layers. Death is opacity-only; the
+              invisible-steps rule would recycle actors that are simply off-screen for a while.
+              """
+              from nre.models.gaussians.strategies.mcmc import MCMCStrategy
+
+              original = MCMCStrategy.update_step_train_batch_end
+              logged = {"n": 0}
+
+              def update_step_with_actor_relocation(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):
+                  original(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs)
+                  relocate = self.config.relocate
+                  if not self._check_step_condition(
+                      step=global_step, start=relocate.start_iteration, end=relocate.end_iteration, freq=relocate.frequency
+                  ):
+                      return
+                  saved_exclude, saved_invisible = list(self.config.exclude_layer_ids), relocate.max_invisible_steps
+                  try:
+                      relocate.max_invisible_steps = None
+                      for layer in layers:
+                          if layer not in gaussians_nodes or gaussians_nodes[layer].get_num_gaussians() == 0:
+                              continue
+                          self.config.exclude_layer_ids = [name for name in gaussians_nodes.keys() if name != layer]
+                          self.relocate_gaussians(gaussians_nodes)
+                  finally:
+                      self.config.exclude_layer_ids = saved_exclude
+                      relocate.max_invisible_steps = saved_invisible
+                  if logged["n"] < 3:
+                      logged["n"] += 1
+                      _say("actor relocation pass at step", global_step, "layers", layers)
+
+              MCMCStrategy.update_step_train_batch_end = update_step_with_actor_relocation
+              _say("installed actor-layer relocation patch", layers)
+
+
+          def main():
+              if "NUR_V3_ARGS_FILE" in os.environ:
+                  args = [a for a in open(os.environ["NUR_V3_ARGS_FILE"]).read().split("\n") if a]
+              else:
+                  args = json.loads(os.environ["NUR_V3_ARGS"])
+              if TRACK_CLEAN:
+                  install_track_patch()
+              if CAMERA_CLOCK:
+                  install_camera_clock_patch(os.environ["NUR_V3_SOURCE_METADATA"])
+              if ACTOR_RELOCATE_LAYERS:
+                  install_actor_relocation_patch(ACTOR_RELOCATE_LAYERS)
+              if CAMERA_RADIAL:
+                  install_camera_distortion_patch(CAMERA_RADIAL)
+              from nre.run.main import main as nre_main
+
+              _say("NRE main args:", args)
+              nre_main.main(args=args, standalone_mode=False)
+
+
+          if __name__ == "__main__":
+              main()
+          NUR_V3_PY
+          printf '%s  %s\n' "$WRAPPER_SHA256" /scratch/nur_v3_train.py | sha256sum -c -
+          ARGS=(--config-name=/scratch/recipe.yaml mode=trainval "logger.run_id='$CLIP_ID'" "dataset.path=/scratch/ncore/pai_$CLIP_ID.json" "out_dir=$DEST/native")
+          /app/run export-parsed-config --config-name=/scratch/recipe.yaml --output "$DEST/parsed-preflight.yaml" -- "${ARGS[@]:1}"
+          printf '%s\n' "${ARGS[@]}" > /scratch/nre_args.txt
+          NUR_V3_ARGS_FILE=/scratch/nre_args.txt NUR_V3_REPORT_DIR="$DEST/nur_v3" NUR_V3_SOURCE_METADATA="$SOURCE_METADATA" \
+            /app/run run-script /scratch/nur_v3_train.py
+          test -s /scratch/native-artifacts/last.usdz
+          mkdir -p "$DEST/artifacts"
+          cp -a /scratch/native-artifacts/last.usdz "$DEST/artifacts/last.usdz"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/artifacts/"
+          cp -a "$RUN/config" "$DEST/"
+          test -s "$DEST/nur_v3/track_hygiene.json"
+          test -s "$DEST/nur_v3/camera_clock.json"
+          # Use the image's native Python runtime to check checkpoint state and artifact.
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'CHECK_OUTPUT'
+          import os,json,zipfile,pathlib,torch
+          p=pathlib.Path(os.environ["DEST"])
+          z=p/"artifacts/last.usdz"
+          with zipfile.ZipFile(z) as archive:
+              assert archive.testzip() is None
+              assert "checkpoint.ckpt" in archive.namelist()
+              assert "parsed_config.yaml" in archive.namelist()
+          ckpt=torch.load(p/"checkpoints/last.ckpt",map_location="cpu",weights_only=False)
+          assert ckpt["global_step"]==int(os.environ["TRAIN_STEPS"])
+          record=dict(experiment_id=os.environ["EXPERIMENT_ID"],clip_id=os.environ["CLIP_ID"],recipe="nureasoning-v3",
+              variant=os.environ["VARIANT"],train_steps=ckpt["global_step"],scene_gaussian_budget_max=int(os.environ["GAUSSIAN_LIMIT"]),
+              camera_train_subsample=int(os.environ["CAMERA_SUBSAMPLE"]),track_hygiene=True,camera_capture_clock=True,
+              actor_relocation_layers=os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS",""),camera_radial=os.environ.get("NUR_V3_CAMERA_RADIAL",""),
+              seed=42,lidar_initialization=True,lidar_supervision=False,temporal_splitting=False,
+              recipe_sha256=os.environ["RECIPE_SHA256"],wrapper_sha256=os.environ["WRAPPER_SHA256"],usdz_bytes=z.stat().st_size)
+          (p/"SUCCESS.json").write_text(json.dumps(record,indent=2)+"\n")
+          print("TRAIN_DONE",json.dumps(record))
+          CHECK_OUTPUT
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/metadata.json
+        - name: DEST
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens
+        - name: EXPERIMENT_ID
+          value: 660c2f7a-v2reloc-40k-lens
+        - name: TRAIN_STEPS
+          value: "40000"
+        - name: GAUSSIAN_LIMIT
+          value: "3000000"
+        - name: VARIANT
+          value: v2reloc-40k-lens
+        - name: CAMERA_SUBSAMPLE
+          value: "2"
+        - name: RECIPE_SHA256
+          value: ffbcacf01fd497d48107772ce36add9e68e1b19e9d528a4276fbada4a44554fa
+        - name: WRAPPER_SHA256
+          value: 86876ea5623710d7660750e9171f003f834ac354ba7b05ed09a73880b7f1a623
+        - name: NUR_V3_ACTOR_RELOCATE_LAYERS
+          value: dynamic_rigids,dynamic_deformables,static_rigids,static_deformables
+        - name: NUR_V3_CAMERA_RADIAL
+          value: '{"camera_pcam_b0": [-0.34, 0.05], "camera_pcam_f0": [-0.37, 0.05],
+            "camera_pcam_l0": [-0.34, 0.05], "camera_pcam_l1": [-0.36, 0.05], "camera_pcam_l2":
+            [-0.33, 0.05], "camera_pcam_r0": [-0.36, 0.05], "camera_pcam_r1": [-0.35,
+            0.05], "camera_pcam_r2": [-0.33, 0.05]}'
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: HYDRA_FULL_ERROR
+          value: "1"
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: OMP_NUM_THREADS
+          value: "2"
+        - name: MKL_NUM_THREADS
+          value: "2"
+        - name: OPENBLAS_NUM_THREADS
+          value: "2"
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: NGC_API_KEY
+              name: ngc-api-key
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        name: train
+        resources:
+          limits:
+            cpu: "2"
+            ephemeral-storage: 100Gi
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "2"
+            ephemeral-storage: 100Gi
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /scratch
+          name: scratch
+        - mountPath: /dev/shm
+          name: dshm
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG" /scratch/ncore
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          test -s "$NCORE_DIR/pai_$CLIP_ID.json"
+          test -s "$SOURCE_METADATA"
+          cp -a "$NCORE_DIR/pai_$CLIP_ID.json" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          # Native aux loader truncates the filename at its first dot.
+          MANIFEST="pai_$CLIP_ID.json"
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_$CLIP_ID.aux.$kind.zarr.itar"
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          echo "STAGING_COMPLETE $EXPERIMENT_ID"
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/metadata.json
+        - name: DEST
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-v2reloc-40k-lens
+        - name: EXPERIMENT_ID
+          value: 660c2f7a-v2reloc-40k-lens
+        - name: TRAIN_STEPS
+          value: "40000"
+        - name: GAUSSIAN_LIMIT
+          value: "3000000"
+        - name: VARIANT
+          value: v2reloc-40k-lens
+        - name: CAMERA_SUBSAMPLE
+          value: "2"
+        - name: RECIPE_SHA256
+          value: ffbcacf01fd497d48107772ce36add9e68e1b19e9d528a4276fbada4a44554fa
+        - name: WRAPPER_SHA256
+          value: 86876ea5623710d7660750e9171f003f834ac354ba7b05ed09a73880b7f1a623
+        - name: NUR_V3_ACTOR_RELOCATE_LAYERS
+          value: dynamic_rigids,dynamic_deformables,static_rigids,static_deformables
+        - name: NUR_V3_CAMERA_RADIAL
+          value: '{"camera_pcam_b0": [-0.34, 0.05], "camera_pcam_f0": [-0.37, 0.05],
+            "camera_pcam_l0": [-0.34, 0.05], "camera_pcam_l1": [-0.36, 0.05], "camera_pcam_l2":
+            [-0.33, 0.05], "camera_pcam_r0": [-0.36, 0.05], "camera_pcam_r1": [-0.35,
+            0.05], "camera_pcam_r2": [-0.33, 0.05]}'
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: HYDRA_FULL_ERROR
+          value: "1"
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: OMP_NUM_THREADS
+          value: "2"
+        - name: MKL_NUM_THREADS
+          value: "2"
+        - name: OPENBLAS_NUM_THREADS
+          value: "2"
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: NGC_API_KEY
+              name: ngc-api-key
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        name: stage-inputs
+        resources:
+          limits:
+            cpu: "1"
+            ephemeral-storage: 100Gi
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            ephemeral-storage: 100Gi
+            memory: 4Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /scratch
+          name: scratch
+        - mountPath: /dev/shm
+          name: dshm
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - emptyDir:
+          sizeLimit: 80Gi
+        name: scratch
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+        name: dshm
+  ttlSecondsAfterFinished: 604800
+status:
+  active: 1
+  ready: 0
+  startTime: "2026-10-03T03:43:19Z"
+  terminating: 0
+  uncountedTerminatedPods: {}

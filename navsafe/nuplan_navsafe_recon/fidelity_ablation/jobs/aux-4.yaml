@@ -1,0 +1,102 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-fidabl-aux-4-1012
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-fidelity-ablation
+    stage: aux
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=0578756b879c55d0 bash /pipeline/aux.sh || echo AUX_FAILED 0578756b879c55d0
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=17a6a4a6137553cd bash /pipeline/aux.sh || echo AUX_FAILED 17a6a4a6137553cd
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=58d40da0cce05d8c bash /pipeline/aux.sh || echo AUX_FAILED 58d40da0cce05d8c
+
+          ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=9a6489254d5f5577 bash /pipeline/aux.sh || echo AUX_FAILED 9a6489254d5f5577
+
+          exit 0
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: 2500m
+            memory: 20Gi
+            ephemeral-storage: 60Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '3'
+            memory: 24Gi
+            ephemeral-storage: 60Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe-fidabl-pipeline-r4
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

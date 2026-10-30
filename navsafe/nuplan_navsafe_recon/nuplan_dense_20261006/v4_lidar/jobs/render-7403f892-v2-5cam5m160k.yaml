@@ -1,0 +1,305 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-7403f892-render-v2-5cam5m160k-20261009
+  namespace: cogrob
+  labels:
+    app: navsafe-nuplan20-induced-v1
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nuplan20-induced-v1
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render-induced
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=7403f892832b51d3
+          M=v2-5cam5m160k
+          OUT="$ROOT/train_v4_20261009/induced"
+          D="$OUT/$C"
+          A="/avl-west/navsafe_nuplan_dense_20261006/train/v2/7403f892832b51d3/artifacts/last.usdz"
+          mkdir -p /scratch "$D"
+          test -s "$A"
+          exec > >(tee -a "/scratch/render_$M.log") 2>&1
+          date -u; hostname
+          nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+          cat > /scratch/render_induced_v1.py <<'RENDER_V1_PY'
+          """Render matched replay and lateral induced views from final NRE artifacts.
+
+          Computation only: all launch, dependency checks and flags are in the Job YAML.
+          """
+          from __future__ import annotations
+
+          import argparse
+          import gc
+          import json
+          import logging
+          import os
+          import time
+          import zipfile
+          from pathlib import Path
+
+          import numpy as np
+          import torch
+          from PIL import Image
+          from scipy.spatial.transform import Rotation, Slerp
+
+          from nre.artifact import Artifact
+          from nre.render import PoseRange, RenderableModel
+          from nre.utils.geometry import se3_matrix_to_tquat
+          from nre.utils.types import RigTrajectories
+
+          STATES = {"log_replay": 0.0, "left_5m": 5.0, "right_5m": -5.0}
+          CAM = "camera_pcam_f0"
+
+
+          def read_rig(path):
+              with zipfile.ZipFile(path) as archive:
+                  return json.loads(archive.read("rig_trajectories.json"))
+
+
+          def origin(path):
+              return np.array(json.loads(path.read_text())["offset_xy_utm"], dtype=np.float64)
+
+
+          def interpolate(poses, times, targets):
+              """Interpolate logged physical poses before subtracting model local origin."""
+              seconds = (times - times[0]).astype(np.float64) * 1e-6
+              target_s = (targets - times[0]).astype(np.float64) * 1e-6
+              output = np.repeat(np.eye(4)[None], len(targets), axis=0)
+              output[:, :3, :3] = Slerp(seconds, Rotation.from_matrix(poses[:, :3, :3]))(target_s).as_matrix()
+              for axis in range(3):
+                  output[:, axis, 3] = np.interp(target_s, seconds, poses[:, axis, 3])
+              return output
+
+
+          def render(args):
+              root = Path(args.root)
+              scene = args.scenario
+              method_name = os.environ["NAVSAFE_RENDER_METHOD"]
+              out = Path(os.environ["NAVSAFE_RENDER_OUT"]) / scene
+              out.mkdir(parents=True, exist_ok=True)
+              canonical_path = root / "train" / "v1" / scene / "artifacts/last.usdz"
+              canonical = read_rig(canonical_path)
+              trajectory = canonical["rig_trajectories"][0]
+              source_times = np.array(trajectory["T_rig_world_timestamps_us"], dtype=np.int64)
+              logical = np.array(trajectory["cameras_frame_timestamps_us"][f"{CAM}@{scene}"], dtype=np.int64)[:, 1]
+              assert len(logical) == 200
+              audit = json.loads((root / "audits_20s" / scene / "input_audit.json").read_text())
+              capture = np.array([audit["clock"][CAM][str(t)] for t in logical], dtype=np.int64)
+              base_origin = origin(root / "inputs" / scene / "clips" / scene / "nurec_origin_offset.json")
+              logged = np.array(trajectory["T_rig_worlds"], dtype=np.float64)
+              full_bounds = (int(source_times[0]), int(source_times[-1]))
+              artifacts = []
+              for segment in range(1, 5):
+                  identifier = f"{scene}s{segment}"
+                  path = Path("/avl-west/navsafe_5s_500") / identifier / "output_5cam" / identifier / "artifacts/last.usdz"
+                  rig = read_rig(path)
+                  track = rig["rig_trajectories"][0]
+                  lower, upper = int(track["T_rig_world_timestamps_us"][0]), int(track["T_rig_world_timestamps_us"][-1])
+                  artifacts.append({"method": "legacy", "segment": segment, "path": path, "rig": rig,
+                                    "origin": origin(Path("/avl-west/navsafe_5s_500") / identifier / "clips" / identifier / "nurec_origin_offset.json"),
+                                    "bounds": (lower, upper), "indices": list(range((segment - 1) * 50, segment * 50))})
+              common_time = capture.copy()
+              for item in artifacts:
+                  indices = item["indices"]
+                  lo = max(full_bounds[0], item["bounds"][0])
+                  hi = min(full_bounds[1], item["bounds"][1])
+                  common_time[indices] = np.clip(capture[indices], lo, hi)
+              common_poses = interpolate(logged, source_times, common_time)
+              v2_path = root / "train" / "v2" / scene / "artifacts/last.usdz"
+              artifacts.insert(0, {"method": "v2", "segment": 0, "path": v2_path, "rig": read_rig(v2_path),
+                                   "origin": base_origin, "bounds": full_bounds, "indices": list(range(200))})
+              v1_path = Path(os.environ["NAVSAFE_RENDER_ARTIFACT"])
+              artifacts = [{"method": method_name, "segment": 0, "path": v1_path, "rig": read_rig(v1_path),
+                            "origin": base_origin, "bounds": full_bounds, "indices": list(range(200))}]
+              manifest = {
+                  "scenario": scene, "camera": CAM, "states": STATES, "height": args.height, "fps": 10,
+                  "training_steps": 160000, "legacy": "four independent 5s models concatenated", "v2": "one continuous20s model",
+                  "renderer": "trained native renderer", "harmonizer": False, "calibration": "same measured intrinsics/extrinsics; no learned pose calibration",
+                  "pose_source": str(canonical_path), "frame_count": 200,
+                  "common_time_boundary_policy": "Clamp measured exposure timestamp to selected legacy segment AND full20 coverage, shared by both methods; then interpolate common full20 rig pose.",
+                  "frames": [{"index": i, "logical_timestamp_us": int(logical[i]), "requested_capture_us": int(capture[i]),
+                              "common_render_timestamp_us": int(common_time[i]), "clamp_us": int(common_time[i] - capture[i]),
+                              "legacy_segment": i // 50 + 1} for i in range(200)],
+                  "clamped_frame_indices": np.flatnonzero(capture != common_time).tolist(),
+                  "artifact_coordinate_frames": [],
+              }
+              (out / f"manifest_{method_name}.json").write_text(json.dumps(manifest, indent=2))
+              canonical_calibration = RigTrajectories.from_dict(canonical).camera_calibrations[f"{CAM}@{scene}"]
+              camera_extrinsic = canonical_calibration.T_sensor_rig.numpy().astype(np.float64)
+              calibration_raw = canonical["camera_calibrations"][f"{CAM}@{scene}"]
+              for item in artifacts:
+                  method, segment = item["method"], item["segment"]
+                  rig = item["rig"]
+                  seq = rig["rig_trajectories"][0]["sequence_id"]
+                  key = f"{CAM}@{seq}"
+                  actual_calib = rig["camera_calibrations"][key]
+                  assert np.allclose(actual_calib["T_sensor_rig"], calibration_raw["T_sensor_rig"], atol=1e-6)
+                  assert actual_calib["camera_model"] == calibration_raw["camera_model"]
+                  conversion = np.array(rig["world_to_nre"]["matrix"], dtype=np.float64)
+                  inverse_conversion = np.linalg.inv(conversion)
+                  max_translation_error = 0.0
+                  max_orientation_error = 0.0
+                  for lateral in STATES.values():
+                      offset_check = np.eye(4)
+                      offset_check[1, 3] = lateral
+                      assert np.array_equal(offset_check[:3, :3], np.eye(3))
+                      for index in item["indices"]:
+                          canonical_camera = common_poses[index] @ offset_check @ camera_extrinsic
+                          expected_utm = canonical_camera.copy()
+                          expected_utm[:2, 3] += base_origin
+                          local = common_poses[index].copy()
+                          local[:2, 3] += base_origin - item["origin"]
+                          actual_world = (local @ offset_check @ camera_extrinsic).astype(np.float32).astype(np.float64)
+                          actual_nre = conversion @ actual_world
+                          recovered_utm = inverse_conversion @ actual_nre
+                          recovered_utm[:2, 3] += item["origin"]
+                          translation_error = np.linalg.norm(recovered_utm[:3, 3] - expected_utm[:3, 3])
+                          orientation_error = (Rotation.from_matrix(expected_utm[:3, :3]).inv() * Rotation.from_matrix(recovered_utm[:3, :3])).magnitude()
+                          max_translation_error = max(max_translation_error, float(translation_error))
+                          max_orientation_error = max(max_orientation_error, float(orientation_error))
+                  assert max_translation_error < 1e-3, max_translation_error
+                  assert max_orientation_error < 1e-4, max_orientation_error
+                  entry = {"method": method, "segment": segment, "artifact": str(item["path"]),
+                           "origin_xy_utm": item["origin"].tolist(), "world_to_nre": rig["world_to_nre"], "sequence": seq,
+                           "coordinate_audit_max_translation_error_m": max_translation_error,
+                           "coordinate_audit_max_orientation_error_rad": max_orientation_error,
+                           "lateral_offset_frame": "body rig Y (left positive)", "yaw_offset_degrees": 0}
+                  manifest["artifact_coordinate_frames"].append(entry)
+                  (out / f"manifest_{method_name}.json").write_text(json.dumps(manifest, indent=2))
+                  print("LOAD_MODEL", method, segment, str(item["path"]), flush=True)
+                  artifact = Artifact(item["path"])
+                  checkpoint = torch.load(artifact.checkpoint, map_location="cpu", weights_only=False)
+                  step = int(checkpoint["global_step"])
+                  assert step == 160000, (method, segment, step)
+                  entry["checkpoint_global_step"] = step
+                  del checkpoint
+                  (out / f"manifest_{method_name}.json").write_text(json.dumps(manifest, indent=2))
+                  model = RenderableModel.load_from_artifact(artifact, enable_nrend=False)
+                  for state, lateral in STATES.items():
+                      output_dir = out / "frames" / state / method / CAM
+                      output_dir.mkdir(parents=True, exist_ok=True)
+                      offset = np.eye(4)
+                      offset[1, 3] = lateral  # Rig axes: x forward, y left, z up.
+                      indices = item["indices"]
+                      if args.probe:
+                          indices = [i for i in indices if i == 25]
+                      started = time.monotonic()
+                      for count, index in enumerate(indices):
+                          frame_path = output_dir / f"{index:06d}.jpg"
+                          if frame_path.is_file():
+                              continue
+                          local_rig = common_poses[index].copy()
+                          local_rig[:2, 3] += base_origin - item["origin"]
+                          camera_world = local_rig @ offset @ camera_extrinsic
+                          timestamp = int(common_time[index])
+                          pose = se3_matrix_to_tquat(camera_world.astype(np.float32))
+                          view = PoseRange(start_pose_tquat_sensor_world=pose, end_pose_tquat_sensor_world=pose,
+                                           start_timestamp_us=timestamp, end_timestamp_us=timestamp)
+                          frame = model.render_camera_frame(camera_intrinsics=canonical_calibration.camera_model_parameters,
+                                                            camera_to_world=view, resolution=(1, args.height),
+                                                            unique_sensor_idx=int(actual_calib["unique_sensor_idx"]), unique_frame_idx=None,
+                                                            actors_snapshot=None, frame_start_us=timestamp, frame_end_us=timestamp)
+                          assert frame.color_image is not None
+                          rgb = (frame.color_image * 255).clamp(0, 255).to(torch.uint8).cpu().numpy()
+                          expected_width = round(args.height * canonical_calibration.camera_model_parameters.resolution[0] / canonical_calibration.camera_model_parameters.resolution[1])
+                          assert rgb.shape == (args.height, expected_width, 3), rgb.shape
+                          assert rgb.std() > 2, ("blank rendered frame", method, state, index)
+                          Image.fromarray(rgb).save(frame_path, quality=95)
+                          if count % 20 == 0:
+                              print("RENDER", method, segment, state, index, "elapsed", round(time.monotonic() - started, 1), flush=True)
+                      print("STATE_COMPLETE", method, segment, state, flush=True)
+                  del model, artifact
+                  gc.collect()
+                  torch.cuda.empty_cache()
+              if args.probe:
+                  (out / "PROBE_COMPLETE").write_text("matched induced-state probe complete\n")
+              else:
+                  for state in STATES:
+                      for method in (method_name,):
+                          files = list((out / "frames" / state / method / CAM).glob("*.jpg"))
+                          assert len(files) == 200, (state, method, len(files))
+                  (out / f"RENDER_{method_name}_COMPLETE").write_text("200 frames,3states\n")
+
+
+          if __name__ == "__main__":
+              logging.basicConfig(level=logging.INFO)
+              parser = argparse.ArgumentParser()
+              parser.add_argument("--root", default=os.environ.get("NAVSAFE_RENDER_ROOT"))
+              parser.add_argument("--scenario", default=os.environ.get("NAVSAFE_RENDER_SCENARIO"))
+              parser.add_argument("--height", type=int, default=int(os.environ.get("NAVSAFE_RENDER_HEIGHT", "720")))
+              parser.add_argument("--probe", action="store_true", default=os.environ.get("NAVSAFE_RENDER_PROBE") == "1")
+              render(parser.parse_args())
+          RENDER_V1_PY
+          NAVSAFE_RENDER_ROOT="$ROOT" NAVSAFE_RENDER_METHOD="$M" NAVSAFE_RENDER_OUT="$OUT" NAVSAFE_RENDER_ARTIFACT="$A" NAVSAFE_RENDER_SCENARIO="$C" NAVSAFE_RENDER_HEIGHT=720 NAVSAFE_RENDER_PROBE=0 /app/run run-script /scratch/render_induced_v1.py
+          test -s "$D/RENDER_${M}_COMPLETE"
+          for s in log_replay left_5m right_5m; do test "$(ls "$D/frames/$s/$M/camera_pcam_f0" | wc -l)" -eq 200; done
+          date -u
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: OMP_NUM_THREADS
+          value: '4'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+          limits:
+            cpu: '2'
+            memory: 19Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 14400

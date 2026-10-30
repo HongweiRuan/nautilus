@@ -1,0 +1,32 @@
+# CPU-only analysis pod (no GPU) with the NRE GA26.04 runtime (ncore/numpy/torch) and both PVCs.
+# Used for the nuReasoning lens-distortion audit; finite sleep so it exits on its own after 6h.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nur-distortion-audit
+  namespace: cogrob
+  labels: {app: navsafe-nureasoning-audit}
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+  - name: audit
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: ["bash", "-c", "sleep 21600"]
+    resources:
+      requests: {cpu: "4", memory: 16Gi, ephemeral-storage: 20Gi}
+      limits: {cpu: "4", memory: 16Gi, ephemeral-storage: 20Gi}
+    volumeMounts:
+    - {name: hugsim, mountPath: /hugsim-storage}
+    - {name: avl-west, mountPath: /avl-west}
+  volumes:
+  - {name: hugsim, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+  - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net]}
+  tolerations:
+  - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}

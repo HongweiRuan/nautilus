@@ -1,0 +1,308 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-prep8-ae44365f
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning
+    stage: convert
+    batch: full8-lidarinit-20261001
+    clip-hash: ae44365f
+  annotations:
+    navsafe/source-job: navsafe-nureasoning-full8-06-ae44365f
+    navsafe/config-origin: Extracted from historical full8 initContainers; not a previously submitted standalone Job
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning
+        stage: convert
+        batch: full8-lidarinit-20261001
+        clip-hash: ae44365f
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: prepare
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -lc
+        args:
+        - |2
+
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DEST="$RECON_ROOT/$CLIP_ID"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          mkdir -p "$DIAG"
+
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          command -v conda >/dev/null && conda info --envs || true
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq git curl libglib2.0-0 libgl1 libgomp1 >/dev/null
+          python3 -m pip install --quiet uv
+          export UV_PROJECT_ENVIRONMENT=/scratch/convert-venv UV_CACHE_DIR=/scratch/uv-cache UV_LINK_MODE=copy
+          uv sync --locked --python 3.12 --group conversion
+          export PATH=/scratch/convert-venv/bin:$PATH PYTHONPATH="$REPO_ROOT"
+          cat > /scratch/prepare_nureasoning_batch.py <<'NAVSAFE_PREPARE_PY'
+          """Pinned mini selection, archive integrity audits and official py123d conversion."""
+          import argparse, hashlib, io, json, os, subprocess, sys, time, zipfile
+          from concurrent.futures import ThreadPoolExecutor
+          from pathlib import Path
+          import requests
+          from huggingface_hub import hf_hub_url, hf_hub_download
+          from navsafe.gs3d_converter.nureasoning_upstream import coalesce_frames
+          REPO="qixuewei/nuReasoning_mini"
+          REVISION="cbd4d9c8007d1d2bdc32432426920f6ef519ce75"
+          EXISTING="2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae"
+
+          def save(path, obj):
+              path.parent.mkdir(parents=True,exist_ok=True)
+              path.write_text(json.dumps(obj,indent=2)+"\n")
+
+          class RemoteZip(io.RawIOBase):
+              def __init__(self, path, size):
+                  self.size=size; self.position=0; self.cache={}
+                  self.url=hf_hub_url(REPO,path,repo_type="dataset",revision=REVISION)
+                  self.session=requests.Session()
+                  token=os.environ.get("HF_TOKEN")
+                  if token:self.session.headers["Authorization"]="Bearer "+token
+              def seek(self, offset, whence=0):
+                  self.position=offset if whence==0 else (self.position if whence==1 else self.size)+offset
+                  return self.position
+              def tell(self): return self.position
+              def read(self,n=-1):
+                  n=self.size-self.position if n<0 else min(n,self.size-self.position)
+                  pieces=[]
+                  while n:
+                      start=self.position//1048576*1048576
+                      if start not in self.cache:
+                          end=min(start+1048576,self.size)-1
+                          r=self.session.get(self.url,headers={"Range":f"bytes={start}-{end}"},timeout=90,stream=True)
+                          if r.status_code!=206:
+                              r.close();raise RuntimeError(f"Range unsupported ({r.status_code})")
+                          chunk=r.content
+                          if len(chunk)!=end-start+1:raise RuntimeError("Range length mismatch")
+                          self.cache[start]=chunk
+                      chunk=self.cache[start];offset=self.position-start;take=min(n,len(chunk)-offset)
+                      pieces.append(chunk[offset:offset+take]);self.position+=take;n-=take
+                  return b"".join(pieces)
+              def readable(self):return True
+              def seekable(self):return True
+
+          def audit_zip(z, clip, verify_local=False):
+              names=set(z.namelist())
+              meta_names=[n for n in names if n.endswith("/metadata.json") or n=="metadata.json"]
+              if len(meta_names)!=1:raise ValueError("Expected exactly one metadata.json")
+              meta_name=meta_names[0];prefix=meta_name[:-len("metadata.json")]
+              m=json.loads(z.read(meta_name))
+              frames=coalesce_frames(m["frames"]);ts=[f["timestamp_us"] for f in frames]
+              duration=(ts[-1]-ts[0])/1e6
+              if len(frames)<201 or not 19.8 <= duration <=20.2:raise ValueError(f"Duration {duration} not 18-22s")
+              camera_sets={tuple(sorted(f["sensors"]["cameras"])) for f in frames}
+              if len(camera_sets)!=1 or len(next(iter(camera_sets)))!=8:raise ValueError("Not consistent eight-camera data")
+              sensor_refs=set();lidar_refs=set()
+              for f in frames:
+                  p=f["sensors"].get("lidar",{}).get("point_cloud_path")
+                  if not p:raise ValueError("Missing LiDAR metadata")
+                  lidar_refs.add(p);sensor_refs.add(prefix+p)
+                  sensor_refs.update(prefix+p for p in f["sensors"]["cameras"].values())
+                  sensor_refs.add(prefix+f["ego_state"]);sensor_refs.add(prefix+f["annotations"])
+              missing=sensor_refs-names
+              if missing:raise ValueError(f"Missing referenced sensor files: {sorted(missing)[:5]}")
+              if not all(p.endswith(".pcd") for p in lidar_refs):raise ValueError("Unexpected LiDAR format")
+              if verify_local:
+                  bad=z.testzip()
+                  if bad:raise ValueError(f"ZIP CRC failed {bad}")
+              return dict(clip_id=clip,raw_frames=len(m["frames"]),unique_frames=len(frames),duration_s=duration,
+                          lidar_frames=len(lidar_refs),camera_names=list(next(iter(camera_sets))),
+                          clip_location=m.get("clip_location"),scenario_type=m.get("scenario_type"),log_name=m.get("log_name"),
+                          archive_prefix=prefix,all_referenced_sensor_files_present=True)
+
+          def select(root, data):
+              files=json.loads((root/"repo_files.json").read_text());existing=next(f for f in files if Path(f["path"]).stem==EXISTING)
+              selected=[dict(existing,clip_id=EXISTING,ncore_path=str(root.parent/"upstream-v060"/"ncore"/"clips"/EXISTING),reused=True)]
+              queues=[[f for f in files if "/"+part+"/" in f["path"] and "/2026." in f["path"] and f["size"]>2300000000] for part in ["part_1","part_2","part_3"]]
+              seen_logs={EXISTING.rsplit("_",1)[0]};i=0
+              while len(selected)<8:
+                  q=queues[i%3];i+=1
+                  if not q:
+                      if not any(queues):raise RuntimeError("No more 2026 candidates with full LiDAR available")
+                      continue
+                  f=q.pop(0);clip=Path(f["path"]).stem;log=clip.rsplit("_",1)[0]
+                  if log in seen_logs:continue
+                  try:
+                      with zipfile.ZipFile(RemoteZip(f["path"],f["size"])) as z:a=audit_zip(z,clip)
+                  except Exception as e:
+                      print("REJECT",clip,type(e).__name__,str(e)[:180],flush=True);continue
+                  save(root/"source_audits"/(clip+".remote.json"),a)
+                  selected.append(dict(f,clip_id=clip,ncore_path=str(root/"ncore"/"clips"/clip),reused=False,audit=a))
+                  seen_logs.add(log);print("SELECT",clip,a["unique_frames"],a["duration_s"],a["scenario_type"],flush=True)
+                  save(root/"selection.json",dict(repo_id=REPO,revision=REVISION,scenarios=selected,selection_complete=len(selected)==8))
+              print("SELECTION_DONE",flush=True)
+
+          def prepare_one(item,root,data,archives):
+              clip=item["clip_id"]
+              if item["reused"]:
+                  return clip
+              target=archives/item["path"]
+              hf_hub_download(REPO,item["path"],repo_type="dataset",revision=REVISION,local_dir=str(archives))
+              if target.stat().st_size!=item["size"]:raise ValueError("Archive size mismatch")
+              h=hashlib.sha256()
+              with target.open("rb") as f:
+                  for block in iter(lambda:f.read(8*1024*1024),b""):h.update(block)
+              digest=h.hexdigest()
+              if item["lfs_sha256"] and digest!=item["lfs_sha256"]:raise ValueError("Archive SHA256 mismatch")
+              with zipfile.ZipFile(target) as z:
+                  a=audit_zip(z,clip,verify_local=True)
+                  # Dataset ZIP has its full clip directory; extraction lands under data/train/part_N.
+                  destination=data/Path(item["path"]).parent.relative_to("data")
+                  destination.mkdir(parents=True,exist_ok=True)
+                  for info in z.infolist():
+                      candidate=(destination/info.filename).resolve()
+                      if not candidate.is_relative_to(destination.resolve()):raise ValueError("Unsafe archive path")
+                  z.extractall(destination)
+              expected=data/Path(item["path"]).parent.relative_to("data")/clip
+              if not (expected/"metadata.json").exists():raise ValueError(f"Unexpected extraction layout {expected}")
+              a.update(archive_sha256=digest,archive_bytes=target.stat().st_size,zip_crc_valid=True,extracted_path=str(expected))
+              save(root/"source_audits"/(clip+".json"),a);print("DOWNLOAD_AUDIT_DONE",clip,flush=True)
+              return clip
+
+          def run(root,data,archives):
+              selection=json.loads((root/"selection.json").read_text())
+              if not selection["selection_complete"]:raise ValueError("Selection incomplete")
+              # Parallel downloads only; conversion remains sequential to bound RAM and Ceph traffic.
+              pool=ThreadPoolExecutor(max_workers=2)
+              future={item["clip_id"]:pool.submit(prepare_one,item,root,data,archives) for item in selection["scenarios"]}
+              statuses={}
+              for item in selection["scenarios"]:
+                  clip=item["clip_id"];future[clip].result()
+                  if item["reused"]:
+                      # Fresh Arrow selection includes original scenario; reuse its validated NCore.
+                      args=[sys.executable,"-m","navsafe.gs3d_converter.convert_nureasoning","--data-root",str(data),"--output",str(root),"--clip-ids",clip]
+                  else:
+                      args=[sys.executable,"-m","navsafe.gs3d_converter.convert_nureasoning","--data-root",str(data),"--output",str(root),"--clip-ids",clip,"--ncore"]
+                  subprocess.run(args,check=True)
+                  statuses[clip]=dict(ncore_path=item["ncore_path"],arrow_root=str(root/"arrow"),finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()))
+                  save(root/"conversion_progress.json",statuses)
+                  print("CLIP_READY",clip,item["ncore_path"],flush=True)
+              pool.shutdown();save(root/"PREPARATION_SUCCESS.json",dict(scenarios=statuses,revision=REVISION,temporal_splitting=False,lidar_initialization=True,lidar_training_supervision=False))
+              print("ALL_EIGHT_READY",flush=True)
+
+          def one(root, data, archives, repo_path):
+              selection=json.loads((root/"selection-2026-verified.json").read_text())
+              items=[item for item in selection["scenarios"] if item["path"]==repo_path]
+              if len(items)!=1:raise ValueError("Archive must match immutable audited selection")
+              item=items[0];clip=item["clip_id"]
+              marker=root/"prepared"/(clip+".json")
+              if marker.exists():
+                  report=json.loads(marker.read_text())
+                  if not Path(report["ncore_path"]).is_dir():raise ValueError("Preparation marker without NCore")
+                  print("CLIP_ALREADY_READY",clip,report["ncore_path"],flush=True);return
+              prepare_one(item,root,data,archives)
+              args=[sys.executable,"-m","navsafe.gs3d_converter.convert_nureasoning","--data-root",str(data),"--output",str(root),"--clip-ids",clip]
+              if not item["reused"]:args.append("--ncore")
+              subprocess.run(args,check=True)
+              ncore_path=Path(item["ncore_path"])
+              if not ncore_path.is_dir():raise ValueError("Conversion did not create NCore clip")
+              report=dict(clip_id=clip,repo_path=repo_path,repo_id=REPO,revision=REVISION,ncore_path=str(ncore_path),
+                          arrow_root=str(root/"arrow"),reused_ncore=item["reused"],temporal_splitting=False,
+                          lidar_initialization=True,lidar_training_supervision=False,
+                          finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()))
+              save(marker,report);print("CLIP_READY",clip,ncore_path,flush=True)
+
+          def main():
+              p=argparse.ArgumentParser();p.add_argument("mode",choices=["select","run","one"]);p.add_argument("--root",type=Path,required=True)
+              p.add_argument("--data-root",type=Path,default=Path("/hugsim-storage/nuReasoning_mini/data"))
+              p.add_argument("--archives-root",type=Path,default=Path("/hugsim-storage/nuReasoning_mini/downloads"))
+              p.add_argument("--repo-path",help="Exactly one archive path from selection-2026-verified.json")
+              args=p.parse_args()
+              if args.mode=="select":select(args.root,args.data_root)
+              elif args.mode=="run":run(args.root,args.data_root,args.archives_root)
+              else:
+                  if not args.repo_path:p.error("--repo-path is required for one")
+                  one(args.root,args.data_root,args.archives_root,args.repo_path)
+          if __name__=="__main__":main()
+
+          NAVSAFE_PREPARE_PY
+          python -u /scratch/prepare_nureasoning_batch.py one --root "$BATCH_ROOT" --repo-path "$REPO_PATH"
+          test -s "$BATCH_ROOT/prepared/$CLIP_ID.json"
+          mkdir -p /scratch/ncore
+          cp -a "$NCORE_DIR/." /scratch/ncore/
+          echo "PREPARED $CLIP_ID"
+        env:
+        - name: CLIP_ID
+          value: 2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: REPO_PATH
+          value: data/train/part_2/2026.01.14.20.08.14_PFDKB4AE0SF000140_ae44365f117e5e9a889473049eb77b96.zip
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        resources:
+          requests:
+            cpu: '8'
+            memory: 32Gi
+            ephemeral-storage: 200Gi
+          limits:
+            cpu: '8'
+            memory: 32Gi
+            ephemeral-storage: 200Gi
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 185Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  ttlSecondsAfterFinished: 7200

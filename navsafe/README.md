@@ -1,5 +1,10 @@
 # NexusSim on Nautilus (cogrob) — NuRec gRPC pipeline manifests
 
+> **Layout (2026-10-30).** This tree holds only Kubernetes manifests, grouped as `nuplan_navsafe_recon/`,
+> `nureasoning_navsafe_recon/`, `paper_experiments/`, `closed_loop_vla/`, `promo/` and `infra/`. The code, configs,
+> results and notes of each directory are in `~/Projects/navsafe/` at the same relative path; see
+> `~/Projects/navsafe/README.md`. The serving manifests below are in `closed_loop_vla/nurec_serving/`.
+
 Cluster-specific k8s manifests for the NuRec **gRPC** closed-loop eval pipeline.
 These carry the cogrob specifics (the `avl-west-vol` / `horuan-hugsim-vol` PVCs,
 RTX-3090 affinity, `nautilus.io/reservation=cogrob` toleration, `ngc-pull` /

@@ -1,0 +1,137 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nvidia-fixer-pretrained-20261007
+  namespace: cogrob
+  labels:
+    app: navsafe-nuplan20-enhancer-compare
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 21600
+  template:
+    metadata:
+      labels:
+        app: navsafe-nuplan20-enhancer-compare
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: odyssey-fixer
+        image: nvcr.io/nvidia/cosmos/cosmos-predict2-container:1.2
+        command:
+        - /bin/bash
+        - -lc
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          CACHE="$ROOT/odyssey_fixer/cache"
+          RUN="$ROOT/enhancer_compare_20261007/nvidia_fixer_pretrained"
+          INPUT="$RUN/input"
+          OUTPUT="$RUN/fixed"
+          CODE=/tmp/Fixer
+          PAIRS="7403f892832b51d3:legacy 7403f892832b51d3:v1 7403f892832b51d3:v2 e3e0b3d6d5ae52a1:legacy e3e0b3d6d5ae52a1:v1 e3e0b3d6d5ae52a1:v2 c895b062e3735053:legacy c895b062e3735053:v1 c895b062e3735053:v2"
+          STATES="log_replay left_5m right_5m"
+          mkdir -p "$CACHE" "$INPUT" "$OUTPUT" "$RUN/videos"
+          exec > >(tee -a "$RUN/run.log") 2>&1
+          date -u
+          hostname
+          nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+          python3 -m pip install --no-deps "cosmos-predict2==1.0.9"
+          git clone --depth 1 https://github.com/nv-tlabs/Fixer.git "$CODE"
+          cd "$CODE"
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install "torchmetrics[image]" imageio-ffmpeg==0.6.0
+          export CACHE_DIR="$CACHE/odyssey-models" FIXER_BASE_DIR="$CACHE/nvidia-fixer"
+          python3 - <<'PY'
+          import os
+          from huggingface_hub import snapshot_download
+          snapshot_download(repo_id="nvidia/Fixer", allow_patterns=["base/*", "pretrained/pretrained_fixer.pkl"],
+                            local_dir=os.environ["FIXER_BASE_DIR"])
+          PY
+          MODEL="$CACHE/nvidia-fixer/pretrained/pretrained_fixer.pkl"
+          test -s "$MODEL"
+          mkdir -p "$CODE/models/base"
+          cp -a "$CACHE/nvidia-fixer/base/." "$CODE/models/base/"
+          mkdir -p /work/models/base
+          cp -a "$CACHE/nvidia-fixer/base/." /work/models/base/
+          test -s "$CODE/models/base/model_fast_tokenizer.pt"
+          test -s "$CODE/models/base/tokenizer_fast.pth"
+          : > "$RUN/frame_map.tsv"
+          for PAIR in $PAIRS; do
+            SCENE=${PAIR%%:*}; METHOD=${PAIR##*:}
+            for ONCE in 1; do
+              for STATE in $STATES; do
+                SRC="$ROOT/induced/$SCENE/frames/$STATE/$METHOD/camera_pcam_f0"
+                COUNT=$(find "$SRC" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) | wc -l)
+                test "$COUNT" -eq 200 || { echo "Expected 200 source frames: $SRC (got $COUNT)"; exit 2; }
+                for FRAME in "$SRC"/*; do
+                  BASE=$(basename "$FRAME")
+                  DEST="$INPUT/${SCENE}__${METHOD}__${STATE}__${BASE}"
+                  ln -sf "$FRAME" "$DEST"
+                  printf '%s\t%s\n' "${SCENE}__${METHOD}__${STATE}__${BASE}" "$FRAME" >> "$RUN/frame_map.tsv"
+                done
+              done
+            done
+          done
+          INPUT_COUNT=$(find "$INPUT" -maxdepth 1 -type l | wc -l)
+          test "$INPUT_COUNT" -eq 5400
+          python3 "$CODE/src/inference_pretrained_model.py" \
+            --model "$MODEL" --input "$INPUT" --output "$OUTPUT" \
+            --timestep 250 --resolution 1024 --warmup-iters 2
+          OUTPUT_COUNT=$(find "$OUTPUT" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) | wc -l)
+          test "$OUTPUT_COUNT" -eq 5400
+          date -u > "$RUN/COMPLETE"
+          echo NVIDIA_FIXER_PRETRAINED_DONE
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: OMP_NUM_THREADS
+          value: '4'
+        resources:
+          requests:
+            cpu: '8'
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+          limits:
+            cpu: '8'
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

@@ -1,0 +1,119 @@
+# Batch 2 of the promo-video renders: nine more scenarios from other leaves
+# (V-1, C-1, V-2, V-11, C-8, R-1, V-7, I-2). Two workers; any RTX 3090 node.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-promo-vis-20261004-b2
+  namespace: cogrob
+  labels: &labels
+    app: navsafe-promo-vis
+    navsafe-batch: promo-vis-20261004-b2
+spec:
+  completionMode: Indexed
+  completions: 2
+  parallelism: 2
+  backoffLimitPerIndex: 1
+  podReplacementPolicy: Failed
+  activeDeadlineSeconds: 28800
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              # --cache-size 4 plus the harmonizer needs a 24 GB card, and the
+              # Kit shader cache on the PVC is keyed to the 3090 driver.
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - /cfg/run_worker.sh
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
+        - name: WORKERS
+          value: '2'
+        - name: SEED
+          value: '0'
+        - name: OUTROOT
+          value: /avl-west/navsafe_eval/promo_video_20261004/out_b2
+        - name: DATASET
+          value: /avl-west/navsafe_eval/full_test
+        - name: NEXUSSIM_SHA
+          value: 649ddde
+        - name: CELL_TIMEOUT
+          value: 90m
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "Y"
+        - name: NAVSAFE_ASSET_BANK
+          value: /avl-west/navsafe_eval/asset
+        - name: NAVSAFE_GAIT_BANK
+          value: /avl-west/navsafe_eval/gait_bank
+        resources:
+          requests: &res
+            cpu: '4'
+            memory: 64Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '2'
+          limits: *res
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: cfg
+        configMap:
+          name: navsafe-promo-vis-20261004-b2-cfg
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol

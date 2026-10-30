@@ -1,0 +1,214 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-aux8-660c2f7a
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning
+    stage: aux
+    batch: full8-lidarinit-20261001
+    clip-hash: 660c2f7a
+  annotations:
+    navsafe/source-job: navsafe-nureasoning-full8-02-660c2f7a
+    navsafe/config-origin: Extracted from historical full8 initContainers; not a previously submitted standalone Job
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning
+        stage: aux
+        batch: full8-lidarinit-20261001
+        clip-hash: 660c2f7a
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |2
+
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          DEST="$RECON_ROOT/$CLIP_ID"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          mkdir -p "$DIAG"
+
+          exec > >(tee -a "$DIAG/aux.log") 2>&1
+          MANIFEST="pai_${CLIP_ID}.json"
+          test -s "/scratch/ncore/$MANIFEST"
+          complete=true
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            test -s "$NCORE_DIR/pai_${CLIP_ID}.aux.$kind.zarr.itar" || complete=false
+          done
+          if "$complete"; then
+            echo "AUX_REUSED $CLIP_ID (four persistent stores present; native train loads actual arrays)"
+          else
+            /app/apps/nre_tools ncore-aux-data --dataset-path="/scratch/ncore/$MANIFEST" --output-dir=/scratch/ncore --segmentation-backend=mask2former --zarr-store-type=itar --store-meta --lidar-seg-camvis --ego-mask --num-threads=8
+            for kind in sseg lidar-sseg lidar-camvis egomask; do
+              files=(/scratch/ncore/*.aux."$kind".zarr.itar)
+              test -s "${files[0]}"
+              file="${files[0]}"; base="$(basename "$file")"
+              cp -a "$file" "$NCORE_DIR/$base"
+              alias="pai_${CLIP_ID}.aux.$kind.zarr.itar"
+              if [[ "$base" != "$alias" ]]; then ln -sfn "$base" "$NCORE_DIR/$alias"; fi
+            done
+          fi
+          # Native GA26.04 discovers aux from the manifest stem before its first dot.
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_${CLIP_ID}.aux.$kind.zarr.itar"
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          echo "AUX_COMPLETE $CLIP_ID"
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: REPO_PATH
+          value: data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.zip
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        resources:
+          requests:
+            cpu: '8'
+            memory: 64Gi
+            ephemeral-storage: 200Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '8'
+            memory: 64Gi
+            ephemeral-storage: 200Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 185Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      initContainers:
+      - name: stage-ncore
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -lc
+        args:
+        - |
+          set -euo pipefail
+          cd "$REPO_ROOT"
+          test -s "$NCORE_DIR/pai_${CLIP_ID}.json"
+          mkdir -p /scratch/ncore
+          cp -a "$NCORE_DIR/." /scratch/ncore/
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /avl-west/navsafe_nureasoning/full8-lidarinit-20261001/recon
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: REPO_PATH
+          value: data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f.zip
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        resources:
+          requests:
+            cpu: '8'
+            memory: 32Gi
+            ephemeral-storage: 200Gi
+          limits:
+            cpu: '8'
+            memory: 32Gi
+            ephemeral-storage: 200Gi
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+  ttlSecondsAfterFinished: 7200

@@ -1,0 +1,115 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-pdmab-54ae
+  namespace: cogrob
+  labels:
+    app: navsafe280r-pdmab-54ae
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 50400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe280r-pdmab-54ae
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      initContainers:
+      - name: renderer
+        restartPolicy: Always
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - "set -e\nmkdir -p /tmp/shard\nT=54ae4b189e79541b\nln -sf /avl-west/navsafe280_release_20261021/bundles_20s/$T/$T.usdz /tmp/shard/\nfor u in /avl-west/navsafe_eval/full_test/$T/*.usdz; do ln -sf $u /tmp/shard/$(basename $u); done\nls /tmp/shard\nexec /app/run serve-grpc --host 0.0.0.0 --port 8080 --enable-editing-actors --renderer default --cache-size 4 \\\n  --enable-harmonizer --harmonizer-cache /avl-west/navsafe_eval/readme_verify_20261007/harmonizer-cache \\\n  --artifact-glob \"/tmp/shard/*.usdz\"\n"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - &id001
+          name: WORKER
+          value: '0'
+        resources:
+          requests:
+            cpu: '1'
+            memory: 8Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 1200m
+            memory: 9Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts: &id002
+        - name: avl-west
+          mountPath: /avl-west
+        - name: dshm
+          mountPath: /dev/shm
+        - name: cfg
+          mountPath: /cfg
+      containers:
+      - name: eval
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - bash
+        - -c
+        args:
+        - bash /cfg/run_pdm_ab.sh; rc=$?; echo "[ab] exit $rc"; exit $rc
+        env:
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: all
+        - *id001
+        - name: EXPECT_SHA
+          value: dbbb23b165e18abd2e3782e74139c00dba68939b
+        - name: OUT_ROOT
+          value: /avl-west/navsafe280_release_20261021/eval/pdm_ab_54ae
+        resources:
+          requests:
+            cpu: '4'
+            memory: 24Gi
+            ephemeral-storage: 150Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 4800m
+            memory: 28Gi
+            ephemeral-storage: 150Gi
+            nvidia.com/gpu: '1'
+        volumeMounts: *id002
+      volumes:
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      - name: cfg
+        configMap:
+          name: navsafe280r-pdmab-54ae

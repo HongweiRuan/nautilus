@@ -1,0 +1,335 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-lidarstruct-aux-660c2f7a
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning
+    stage: aux
+    batch: lidar-structured-20261009
+    clip-hash: 660c2f7a
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          OUT="$DEST/pai_${CLIP_ID}.aux.lidar-sseg.zarr.itar"
+          OUT_VIS="$DEST/pai_${CLIP_ID}.aux.lidar-camvis.zarr.itar"
+          DIAG="$DEST/diagnostics/${HOSTNAME:-manual}"
+          # New outputs only: never write over an existing store.
+          if [[ -e "$OUT" ]]; then echo "AUXFIX_REFUSED $OUT already exists"; exit 1; fi
+          mkdir -p "$DIAG" /scratch/ncore /scratch/out /scratch/patch
+          main() {
+          set -euo pipefail
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/patch/roof_lidar_sseg_patch.py <<'AUXFIX_PATCH_PY'
+          """lidar-sseg and lidar-camvis for the structured roof LiDAR of a nuReasoning clip (component lidar_top_structured).
+
+          Same idea as aux/lidar-sseg-fix-20261006/scripts/lidar_sseg_patch.py, but most of that patch is not needed here: the
+          structured component has its real ray origin (the roof mount), so the tool's own occluder mesh is correct. What stays:
+            1. cameras get their radial lens distortion (the camera segmentation was computed on the unrectified images),
+            2. occlusion tolerance abs_m + relative * distance instead of the tool's 1 mm (camera and LiDAR are 1-2 m apart),
+            3. returns on the ego vehicle (inside metadata.json `ego_dimensions` + margin, rig frame) and returns closer than
+               AUXFIX_MIN_RAY_LENGTH get a zero-length ray: the tool leaves them unlabelled and out of the occluder mesh.
+          Projection, occlusion test, fusion across cameras, store format and metadata are the tool's own code.
+
+          usage (nre-tools runtime):
+            python roof_lidar_sseg_patch.py ncore-aux-data --dataset-path=... --output-dir=... --segmentation-backend=none \
+                --no-ego-mask --lidar-seg-camvis --lidar-id=lidar_top_structured --camera-id=...
+          env: AUXFIX_SOURCE_METADATA (raw metadata.json), AUXFIX_LIDAR_CALIB_JSON (calibrate_lidars.py output),
+               AUXFIX_CAMERA_RADIAL (JSON {camera_id: [k1, k2]}), AUXFIX_MIN_RAY_LENGTH (0.5), AUXFIX_EGO_MARGIN (0.2),
+               AUXFIX_OCCLUSION_TOLERANCE ("0.1,0.02"), AUXFIX_REPORT (JSON summary)
+          """
+          import dataclasses
+          import json
+          import os
+          import types
+
+          import numpy as np
+
+          SOURCE_METADATA = os.environ["AUXFIX_SOURCE_METADATA"]
+          CALIB = os.environ["AUXFIX_LIDAR_CALIB_JSON"]
+          EGO_MARGIN = float(os.environ.get("AUXFIX_EGO_MARGIN", "0.2"))
+          CAMERA_RADIAL = json.loads(os.environ.get("AUXFIX_CAMERA_RADIAL") or "{}")
+          MIN_RAY_LENGTH = float(os.environ.get("AUXFIX_MIN_RAY_LENGTH", "0.5"))
+          TOL_ABS, TOL_REL = (float(v) for v in (os.environ.get("AUXFIX_OCCLUSION_TOLERANCE") or "0.1,0.02").split(","))
+          REPORT = os.environ.get("AUXFIX_REPORT", "")
+          IGNORE = 255
+          FRAMES = []
+
+
+          def say(*args):
+              print("[roof-auxfix]", *args, flush=True)
+
+
+          def _rot(roll, pitch):
+              cr, sr, cp, sp = np.cos(roll), np.sin(roll), np.cos(pitch), np.sin(pitch)
+              return (np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]])
+                      @ np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]]))
+
+
+          def sensor_to_rig():
+              (entry,) = [v for v in json.load(open(CALIB))["sensors"].values() if v["raw_lidar_info"] == 0]
+              return _rot(entry["roll_rad"], entry["pitch_rad"]).T, np.asarray(entry["mount_xyz_m"], dtype=np.float64)
+
+
+          def ego_box():
+              ego = json.load(open(SOURCE_METADATA))["ego_dimensions"]
+              # rig frame: origin at the rear axle, x ahead, y left, z up; the road is about 0.35 m below the origin
+              return np.array([[-ego["vehicle_rear_length"] - EGO_MARGIN, ego["length"] - ego["vehicle_rear_length"] + EGO_MARGIN],
+                               [-ego["width"] / 2 - EGO_MARGIN, ego["width"] / 2 + EGO_MARGIN], [-0.2, 2.0]])
+
+
+          def tolerant_intersector(pcu, tol_abs, tol_rel):
+              class TolerantRayMeshIntersector:
+                  def __init__(self, vertices, faces):
+                      self._vertices, self._faces = vertices, faces
+                      self._inner = pcu.RayMeshIntersector(vertices, faces)
+
+                  def intersect_rays(self, origins, directions, *args, **kwargs):
+                      face_indices, bary, distances = self._inner.intersect_rays(origins, directions, *args, **kwargs)
+                      if np.ndim(face_indices) == 0:
+                          return face_indices, bary, distances
+                      face_indices = face_indices.copy()
+                      hit = np.nonzero(face_indices >= 0)[0]
+                      points = pcu.interpolate_barycentric_coords(self._faces, face_indices[hit], bary[hit], self._vertices)
+                      to_end = np.linalg.norm(directions[hit], axis=-1)
+                      gap = to_end - np.linalg.norm(points - origins[hit], axis=-1)
+                      face_indices[hit[gap <= tol_abs + tol_rel * to_end]] = -1
+                      return face_indices, bary, distances
+
+              return TolerantRayMeshIntersector
+
+
+          def install():
+              import apps.aux_gen.estimators as estimators
+              from ncore.impl.data.v4.compat import SequenceLoaderV4
+
+              R, t = sensor_to_rig()
+              box = ego_box()
+              say(f"sensor -> rig: mount {t.round(3).tolist()} m; ego box x {box[0].round(2).tolist()} y {box[1].round(2).tolist()} z {box[2].tolist()} m (rig frame)")
+
+              assert CAMERA_RADIAL, "AUXFIX_CAMERA_RADIAL is empty"
+              original_get_camera_sensor = SequenceLoaderV4.get_camera_sensor
+              applied = {}
+
+              def get_camera_sensor_with_distortion(self, sensor_id):
+                  sensor = original_get_camera_sensor(self, sensor_id)
+                  coeffs = CAMERA_RADIAL.get(sensor_id)
+                  if coeffs is None:
+                      raise RuntimeError(f"roof-auxfix: no distortion coefficients for camera {sensor_id}")
+                  params = sensor._model_parameters
+                  rc = np.zeros(6, dtype=np.float32)
+                  rc[: len(coeffs)] = coeffs
+                  if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):
+                      raise RuntimeError(f"roof-auxfix: {sensor_id} already has radial coeffs {params.radial_coeffs}")
+                  sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)
+                  if sensor_id not in applied:
+                      applied[sensor_id] = rc[:2].tolist()
+                      say("camera distortion", sensor_id, applied[sensor_id])
+                  return sensor
+
+              SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion
+
+              real_pcu = estimators.pcu
+
+              class PcuWithTolerance:
+                  RayMeshIntersector = tolerant_intersector(real_pcu, TOL_ABS, TOL_REL)
+
+                  def __getattr__(self, name):
+                      return getattr(real_pcu, name)
+
+              estimators.pcu = PcuWithTolerance()
+              say(f"occlusion tolerance: {TOL_ABS} m + {TOL_REL} x distance; min ray length {MIN_RAY_LENGTH} m")
+
+              class SensorWithoutEgoReturns:
+                  def __init__(self, sensor):
+                      self._sensor = sensor
+
+                  def __getattr__(self, name):
+                      return getattr(self._sensor, name)
+
+                  def get_frame_point_cloud(self, frame_index, *args, **kwargs):
+                      pc = self._sensor.get_frame_point_cloud(frame_index, *args, **kwargs)
+                      end = np.asarray(pc.xyz_m_end)
+                      start = np.array(pc.xyz_m_start, copy=True)
+                      origin_spread = float(np.abs(start).max()) if len(start) else 0.0
+                      assert origin_spread < 1e-3, f"ray starts are not the sensor origin (max {origin_spread} m): not the structured component?"
+                      rig = end.astype(np.float64) @ R.T + t
+                      on_ego = np.all((rig >= box[:, 0]) & (rig <= box[:, 1]), axis=1)
+                      start[on_ego] = end[on_ego]
+                      FRAMES.append({"points": int(len(end)), "on_ego_vehicle": int(on_ego.sum()),
+                                     "closer_than_min_ray_length": int((np.linalg.norm(end, axis=1) < MIN_RAY_LENGTH).sum())})
+                      return types.SimpleNamespace(xyz_m_start=start, xyz_m_end=end, motion_compensation=getattr(pc, "motion_compensation", None))
+
+              original_predict = estimators.LidarSegmentationByProjectEstimator.predict
+              counter = {"n": 0}
+
+              def predict(self, lidar_sensor, frame_timestamp_us, vis_path=None):
+                  self.min_ray_length = MIN_RAY_LENGTH
+                  seg, visibility = original_predict(self, SensorWithoutEgoReturns(lidar_sensor), frame_timestamp_us, vis_path)
+                  labels = np.array(seg).reshape(-1)
+                  info = FRAMES[-1]
+                  info.update(timestamp_us=int(frame_timestamp_us), labelled=int((labels != IGNORE).sum()), in_any_image=int(visibility.any(1).sum()),
+                              in_image_per_camera={c: int(visibility[:, i].sum()) for c, i in self.lidar_camera_visibility_order.items()})
+                  if counter["n"] % 20 == 0:
+                      say(f"frame {counter['n']} ({frame_timestamp_us}): {info['points']} returns, {info['on_ego_vehicle']} on the ego vehicle, {info['in_any_image']} inside an image, {info['labelled']} labelled")
+                  counter["n"] += 1
+                  return seg, visibility
+
+              estimators.LidarSegmentationByProjectEstimator.predict = predict
+              say("installed")
+
+
+          def write_report():
+              if not REPORT or not FRAMES:
+                  return
+              labelled = [f.get("labelled", 0) for f in FRAMES]
+              inside = [f.get("in_any_image", 0) for f in FRAMES]
+              summary = {"frames": len(FRAMES), "labelled_min_median_max": [int(np.min(labelled)), int(np.median(labelled)), int(np.max(labelled))],
+                         "in_any_image_median": int(np.median(inside)), "points_min_max": [min(f["points"] for f in FRAMES), max(f["points"] for f in FRAMES)],
+                         "min_ray_length_m": MIN_RAY_LENGTH, "occlusion_tolerance": [TOL_ABS, TOL_REL], "camera_radial": CAMERA_RADIAL, "per_frame": FRAMES}
+              with open(REPORT, "w") as handle:
+                  json.dump(summary, handle, indent=1)
+              say("report", REPORT, "frames", len(FRAMES), "labelled min/median/max", summary["labelled_min_median_max"], "inside an image (median)", summary["in_any_image_median"])
+
+
+          if __name__ == "__main__":
+              install()
+              from apps.entrypoint import cli
+
+              try:
+                  cli(standalone_mode=False)
+              finally:
+                  write_report()
+          AUXFIX_PATCH_PY
+          printf '%s  %s\n' "$PATCH_SHA256" /scratch/patch/roof_lidar_sseg_patch.py | sha256sum -c -
+          MANIFEST="pai_${CLIP_ID}.json"
+          test -s "$NCORE_DIR/$MANIFEST"
+          test -s "$AUXFIX_SOURCE_METADATA"
+          # Inputs are copied to local scratch and only read: NCore, and the existing camera segmentation under the name
+          # the aux loader looks for (it truncates the manifest file name at its first dot).
+          cp -a "$NCORE_DIR/$MANIFEST" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 11
+          AUX_BASE="${MANIFEST%%.*}"
+          cp -aL "$OLD_NCORE_DIR/pai_$CLIP_ID.aux.sseg.zarr.itar" "/scratch/ncore/$AUX_BASE.aux.sseg.zarr.itar"
+          sha256sum "/scratch/ncore/$AUX_BASE.aux.sseg.zarr.itar"
+          # The tool's own runtime (what /app/apps/nre_tools sets up), started through the patch instead of entrypoint.py.
+          export RUNFILES_DIR=/app/apps/nre_tools.runfiles
+          source "$RUNFILES_DIR/_main/apps/nre_tools.venv/bin/activate"
+          AUXFIX_REPORT=/scratch/out/auxfix_report.json python -B /scratch/patch/roof_lidar_sseg_patch.py ncore-aux-data \
+            --dataset-path="/scratch/ncore/$MANIFEST" --output-dir=/scratch/out --segmentation-backend=none --no-ego-mask \
+            --lidar-seg-camvis --zarr-store-type=itar --store-meta --num-threads=4 --lidar-id=lidar_top_structured $CAMERA_ARGS
+          files=(/scratch/out/*.aux.lidar-sseg.zarr.itar)
+          test "${#files[@]}" -eq 1
+          test -s "${files[0]}"
+          vis=(/scratch/out/*.aux.lidar-camvis.zarr.itar)
+          test "${#vis[@]}" -eq 1
+          test -s "${vis[0]}"
+          cp "${vis[0]}" "$OUT_VIS.partial"
+          mv -n "$OUT_VIS.partial" "$OUT_VIS"
+          cp "${files[0]}" "$OUT.partial"
+          test "$(sha256sum < "${files[0]}")" == "$(sha256sum < "$OUT.partial")"
+          mv -n "$OUT.partial" "$OUT"
+          test ! -e "$OUT.partial"
+          cp -n /scratch/out/auxfix_report.json "$DEST/auxfix_report.json"
+          cp -n /scratch/out/*.aux-meta.json "$DEST/"
+          (cd "$DEST" && sha256sum "pai_${CLIP_ID}.aux.lidar-sseg.zarr.itar" "pai_${CLIP_ID}.aux.lidar-camvis.zarr.itar" > SHA256SUMS && cat SHA256SUMS)
+          ls -l "$DEST"
+          echo "AUXFIX_COMPLETE $CLIP_ID"
+          }
+          main 2>&1 | tee -a "$DIAG/aux.log"
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/lidar-structured-20261009/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: OLD_NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: AUXFIX_LIDAR_CALIB_JSON
+          value: /hugsim-storage/nuReasoning_mini/pipeline/lidar-structured-20261009/calib/660c2f7a.json
+        - name: DEST
+          value: /hugsim-storage/nuReasoning_mini/pipeline/lidar-structured-20261009/aux/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: AUXFIX_SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_3/2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f/metadata.json
+        - name: AUXFIX_CAMERA_RADIAL
+          value: '{"camera_pcam_b0": [-0.34, 0.05], "camera_pcam_f0": [-0.37, 0.05], "camera_pcam_l0": [-0.34, 0.05], "camera_pcam_l1": [-0.36, 0.05], "camera_pcam_l2": [-0.33, 0.05], "camera_pcam_r0": [-0.36, 0.05], "camera_pcam_r1": [-0.35, 0.05], "camera_pcam_r2": [-0.33, 0.05]}'
+        - name: AUXFIX_MIN_RAY_LENGTH
+          value: '0.5'
+        - name: AUXFIX_EGO_MARGIN
+          value: '0.2'
+        - name: AUXFIX_OCCLUSION_TOLERANCE
+          value: 0.1,0.02
+        - name: CAMERA_ARGS
+          value: --camera-id=camera_pcam_b0 --camera-id=camera_pcam_f0 --camera-id=camera_pcam_l0 --camera-id=camera_pcam_l1 --camera-id=camera_pcam_l2 --camera-id=camera_pcam_r0 --camera-id=camera_pcam_r1 --camera-id=camera_pcam_r2
+        - name: PATCH_SHA256
+          value: 807e6b65675a06eb811c5fddacf5a6972b3ce72ac8af20867cd546cd9d639a34
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 16Gi
+            ephemeral-storage: 30Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '3'
+            memory: 16Gi
+            ephemeral-storage: 30Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 4Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule
+      - key: nautilus.io/cogrob
+        operator: Exists
+        effect: NoSchedule

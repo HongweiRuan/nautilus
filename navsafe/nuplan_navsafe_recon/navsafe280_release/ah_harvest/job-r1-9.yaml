@@ -1,0 +1,145 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-ah-r1-9
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-ah
+    stage: harvest
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: harvest
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          nvidia-smi -L || exit 3
+
+          FAILED=
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/0166f867762a56e1/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/0166f867762a56e1 harvest 0166f867762a56e1 --max-assets 30; rc=$?; echo "[ah] 0166f867762a56e1 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/0166f867762a56e1/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/0166f867762a56e1/NOTHING_TO_HARVEST ]; then echo "[ah] 0166f867762a56e1 EMPTY"; else FAILED="$FAILED 0166f867762a56e1"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/050284885b2059e9/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/050284885b2059e9 harvest 050284885b2059e9 --max-assets 30; rc=$?; echo "[ah] 050284885b2059e9 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/050284885b2059e9/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/050284885b2059e9/NOTHING_TO_HARVEST ]; then echo "[ah] 050284885b2059e9 EMPTY"; else FAILED="$FAILED 050284885b2059e9"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/07c5114fdb395f8b/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/07c5114fdb395f8b harvest 07c5114fdb395f8b --max-assets 30; rc=$?; echo "[ah] 07c5114fdb395f8b rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/07c5114fdb395f8b/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/07c5114fdb395f8b/NOTHING_TO_HARVEST ]; then echo "[ah] 07c5114fdb395f8b EMPTY"; else FAILED="$FAILED 07c5114fdb395f8b"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/0ba54149d1575f95/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/0ba54149d1575f95 harvest 0ba54149d1575f95 --max-assets 30; rc=$?; echo "[ah] 0ba54149d1575f95 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/0ba54149d1575f95/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/0ba54149d1575f95/NOTHING_TO_HARVEST ]; then echo "[ah] 0ba54149d1575f95 EMPTY"; else FAILED="$FAILED 0ba54149d1575f95"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/10cfd645bb645e2e/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/10cfd645bb645e2e harvest 10cfd645bb645e2e --max-assets 30; rc=$?; echo "[ah] 10cfd645bb645e2e rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/10cfd645bb645e2e/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/10cfd645bb645e2e/NOTHING_TO_HARVEST ]; then echo "[ah] 10cfd645bb645e2e EMPTY"; else FAILED="$FAILED 10cfd645bb645e2e"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/18b5995484435fbe/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/18b5995484435fbe harvest 18b5995484435fbe --max-assets 30; rc=$?; echo "[ah] 18b5995484435fbe rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/18b5995484435fbe/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/18b5995484435fbe/NOTHING_TO_HARVEST ]; then echo "[ah] 18b5995484435fbe EMPTY"; else FAILED="$FAILED 18b5995484435fbe"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/2073f76964735ff7/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/2073f76964735ff7 harvest 2073f76964735ff7 --max-assets 30; rc=$?; echo "[ah] 2073f76964735ff7 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/2073f76964735ff7/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/2073f76964735ff7/NOTHING_TO_HARVEST ]; then echo "[ah] 2073f76964735ff7 EMPTY"; else FAILED="$FAILED 2073f76964735ff7"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/26f4d8d4d72a588e/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/26f4d8d4d72a588e harvest 26f4d8d4d72a588e --max-assets 30; rc=$?; echo "[ah] 26f4d8d4d72a588e rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/26f4d8d4d72a588e/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/26f4d8d4d72a588e/NOTHING_TO_HARVEST ]; then echo "[ah] 26f4d8d4d72a588e EMPTY"; else FAILED="$FAILED 26f4d8d4d72a588e"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/32d85d373126537e/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/32d85d373126537e harvest 32d85d373126537e --max-assets 30; rc=$?; echo "[ah] 32d85d373126537e rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/32d85d373126537e/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/32d85d373126537e/NOTHING_TO_HARVEST ]; then echo "[ah] 32d85d373126537e EMPTY"; else FAILED="$FAILED 32d85d373126537e"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/3d324bda0cec57ab/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/3d324bda0cec57ab harvest 3d324bda0cec57ab --max-assets 30; rc=$?; echo "[ah] 3d324bda0cec57ab rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/3d324bda0cec57ab/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/3d324bda0cec57ab/NOTHING_TO_HARVEST ]; then echo "[ah] 3d324bda0cec57ab EMPTY"; else FAILED="$FAILED 3d324bda0cec57ab"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/4fff5f5a86be53d5/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/4fff5f5a86be53d5 harvest 4fff5f5a86be53d5 --max-assets 30; rc=$?; echo "[ah] 4fff5f5a86be53d5 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/4fff5f5a86be53d5/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/4fff5f5a86be53d5/NOTHING_TO_HARVEST ]; then echo "[ah] 4fff5f5a86be53d5 EMPTY"; else FAILED="$FAILED 4fff5f5a86be53d5"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/61bce03d2e4659b9/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/61bce03d2e4659b9 harvest 61bce03d2e4659b9 --max-assets 30; rc=$?; echo "[ah] 61bce03d2e4659b9 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/61bce03d2e4659b9/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/61bce03d2e4659b9/NOTHING_TO_HARVEST ]; then echo "[ah] 61bce03d2e4659b9 EMPTY"; else FAILED="$FAILED 61bce03d2e4659b9"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/7403f892832b51d3/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/7403f892832b51d3 harvest 7403f892832b51d3 --max-assets 30; rc=$?; echo "[ah] 7403f892832b51d3 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/7403f892832b51d3/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/7403f892832b51d3/NOTHING_TO_HARVEST ]; then echo "[ah] 7403f892832b51d3 EMPTY"; else FAILED="$FAILED 7403f892832b51d3"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/888d1fb945ed5982/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/888d1fb945ed5982 harvest 888d1fb945ed5982 --max-assets 30; rc=$?; echo "[ah] 888d1fb945ed5982 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/888d1fb945ed5982/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/888d1fb945ed5982/NOTHING_TO_HARVEST ]; then echo "[ah] 888d1fb945ed5982 EMPTY"; else FAILED="$FAILED 888d1fb945ed5982"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/9869278b0f8f5061/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/9869278b0f8f5061 harvest 9869278b0f8f5061 --max-assets 30; rc=$?; echo "[ah] 9869278b0f8f5061 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/9869278b0f8f5061/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/9869278b0f8f5061/NOTHING_TO_HARVEST ]; then echo "[ah] 9869278b0f8f5061 EMPTY"; else FAILED="$FAILED 9869278b0f8f5061"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/a6b9a83019915658/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/a6b9a83019915658 harvest a6b9a83019915658 --max-assets 30; rc=$?; echo "[ah] a6b9a83019915658 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/a6b9a83019915658/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/a6b9a83019915658/NOTHING_TO_HARVEST ]; then echo "[ah] a6b9a83019915658 EMPTY"; else FAILED="$FAILED a6b9a83019915658"; fi; }
+
+          C=/avl-west/navsafe280_release_20261021/ah_corpus; [ -s /avl-west/navsafe280_release_20261021/ah_assets/c895b062e3735053/replace_manifest.json ] || { PYTHONPATH=/avl-west/navsafe280_release_20261021/code/navsafe-infty-c3c0ea4 /avl-west/asset_harvester/conda/envs/asset-harvester/bin/python -m navsafe.benchmark.harvest --corpus $C --out /avl-west/navsafe280_release_20261021/ah_assets/c895b062e3735053 harvest c895b062e3735053 --max-assets 30; rc=$?; echo "[ah] c895b062e3735053 rc=$rc"; if [ -s /avl-west/navsafe280_release_20261021/ah_assets/c895b062e3735053/replace_manifest.json ]; then :; elif [ $rc -eq 3 ]; then echo node cannot harvest; exit 3; elif [ $rc -eq 2 ] && [ -e /avl-west/navsafe280_release_20261021/ah_assets/c895b062e3735053/NOTHING_TO_HARVEST ]; then echo "[ah] c895b062e3735053 EMPTY"; else FAILED="$FAILED c895b062e3735053"; fi; }
+
+          echo "AH_LANE_DONE failed:$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: NAVSAFE_AH_HOME
+          value: /avl-west/asset_harvester
+        - name: HF_HOME
+          value: /avl-west/asset_harvester/hf
+        - name: NAVSAFE_WORK
+          value: /avl-west/navsafe280_release_20261021/ah_work
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 10Gi
+            ephemeral-storage: 40Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 12Gi
+            ephemeral-storage: 40Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-eval-r1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

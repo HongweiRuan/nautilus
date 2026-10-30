@@ -1,0 +1,103 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-convert-lidar-20261009
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: prepare
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ncore
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          mkdir -p "$ROOT/prep_lidar_20261009/$C/$HOSTNAME" /root/NavSafe-infty /root/py123d
+          exec > >(tee -a "$ROOT/prep_lidar_20261009/$C/$HOSTNAME/convert.log") 2>&1
+          if [ -s "$ROOT/inputs_lidar_20261009/$C/clips/$C/pai_$C.json" ]; then echo ALREADY_CONVERTED; exit 0; fi
+          # Immutable snapshot made from the user's new NavSafe-infty worktree.
+          tar -xzf "$ROOT/source/navsafe_source.tar.gz" -C /root/NavSafe-infty
+          (cd /root/NavSafe-infty; sha256sum -c "$ROOT/source/source_files.sha256")
+          tar -C /hugsim-storage/py123d --exclude=build --exclude='*.egg-info' --exclude=.git -cf - . | tar -C /root/py123d -xf -
+          python3 -m venv /root/cv
+          /root/cv/bin/pip install -q --upgrade pip
+          /root/cv/bin/pip install -q nuplan-devkit nvidia-ncore==18.7.0 '/root/py123d[nuplan]'
+          /root/cv/bin/pip freeze > "$ROOT/prep_lidar_20261009/$C/$HOSTNAME/packages.txt"
+          DBDIR=/tmp/nuplan_local/nuplan-v1.1/splits/test
+          mkdir -p "$DBDIR"
+          cp /avl-west/nuplan/nuplan-v1.1/splits/test/2021.06.28.20.24.43_veh-38_03385_04952.db "$DBDIR/"
+          cat > /tmp/convert.py <<'PY_CONVERTER'
+          import sys,json,pathlib
+          sys.path.insert(0,"/root/NavSafe-infty")
+          from navsafe.gs3d_converter.log_ingestion import NuplanLogReader
+          from navsafe.gs3d_converter.ncore_bridge import NCoreBridge
+          c,log,t0,t1=sys.argv[1],sys.argv[2],int(sys.argv[3]),int(sys.argv[4])
+          assert t1-t0==20000000
+          reader=NuplanLogReader(nuplan_data_root="/tmp/nuplan_local",sensor_root="/avl-west/nuplan/nuplan-v1.1/sensor_blobs",maps_root="/avl-west/nuplan/maps",scenes=[(log,c,t0,t1)],split="nuplan_test")
+          scene=next(iter(reader.iter_scenes()))
+          assert 198<=scene.n_frames<=201,(c,scene.n_frames)
+          assert 19800000<=int(scene.timestamps_us[-1]-scene.timestamps_us[0])<=20100000
+          print("FULL_20S_SCENE",c,"frames",scene.n_frames,flush=True)
+          cd=NCoreBridge.prepare(scene,pathlib.Path("/avl-west/navsafe_nuplan_dense_20261006/inputs_lidar_20261009")/c)
+          print("NCORE_20S_DONE",c,str(cd),flush=True)
+          PY_CONVERTER
+          export NCORE_REREF_FRAME0=1 NUPLAN_STRUCTURED_LIDAR=1 PYTHONPATH=/root/NavSafe-infty
+          /root/cv/bin/python -u /tmp/convert.py "$C" 2021.06.28.20.24.43_veh-38_03385_04952 1624916457549868 1624916477549868
+          test -s "$ROOT/inputs_lidar_20261009/$C/clips/$C/nurec_origin_offset.json"
+          ls -la "$ROOT/inputs_lidar_20261009/$C/clips/$C/"
+          test -s "$ROOT/inputs_lidar_20261009/$C/clips/$C/pai_$C.ncore4-lidar_top_structured.zarr.itar"
+          date -u +%FT%TZ > "$ROOT/prep_lidar_20261009/$C/ready"
+        resources:
+          requests:
+            cpu: '6'
+            memory: 24Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '8'
+            memory: 32Gi
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 172800

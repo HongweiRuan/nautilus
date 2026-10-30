@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hw-vla-verify-ol-20261021-r2
+  namespace: cogrob
+  labels: {app: hw-vla-verify}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 18000
+  ttlSecondsAfterFinished: 259200
+  template:
+    metadata:
+      labels: {app: hw-vla-verify}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      tolerations:
+        - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+        - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-11.sdsc.optiputer.net]}
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["bash", "-c"]
+          args: ["bash /cfg/run_open_loop.sh; rc=$?; echo \"[ol] exit $rc\"; exit $rc"]
+          env:
+            - {name: NVIDIA_DRIVER_CAPABILITIES, value: all}
+            - {name: EXPECT_SHA, value: b66ff3ed5f45a0365aefe8fbff4159ac02daa8fd}
+            - {name: OUT, value: /avl-west/navsafe_eval/vla_verify_20261021/open_loop_r2}
+            - {name: MODELS_OL, value: "recogdrive_il,resworld"}
+            - {name: OL_NO_EXTRA_FOR, value: resworld}
+          resources:
+            requests: {cpu: "4", memory: 48Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: "1"}
+            limits: {cpu: 4800m, memory: 57Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: "1"}
+          volumeMounts:
+            - {name: avl-west, mountPath: /avl-west}
+            - {name: dshm, mountPath: /dev/shm}
+            - {name: cfg, mountPath: /cfg}
+      volumes:
+        - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}
+        - {name: cfg, configMap: {name: hw-vla-verify-20261021}}

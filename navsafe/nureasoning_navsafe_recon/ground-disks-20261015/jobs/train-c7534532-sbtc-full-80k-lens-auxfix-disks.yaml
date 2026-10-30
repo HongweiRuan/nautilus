@@ -1,0 +1,1394 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur3-c7534532-sbtc-full-80k-lens-auxfix-disks
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning-v3
+    batch: nureasoning-recipe-v3-20261002
+    variant: sbtc-full-80k-lens-auxfix-disks
+    clip-hash: c7534532
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-v3
+        batch: nureasoning-recipe-v3-20261002
+        variant: sbtc-full-80k-lens-auxfix-disks
+        clip-hash: c7534532
+        job-id: navsafe-nur3-c7534532-sbtc-full-80k-lens-auxfix-disks
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: &id001
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env: &id002
+        - name: CLIP_ID
+          value: 2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/ncore/clips/2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa
+        - name: SOURCE_METADATA
+          value: /hugsim-storage/nuReasoning_mini/data/train/part_2/2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa/metadata.json
+        - name: DEST
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/c7534532-sbtc-full-80k-lens-auxfix-disks
+        - name: EXPERIMENT_ID
+          value: c7534532-sbtc-full-80k-lens-auxfix-disks
+        - name: LIDAR_SSEG_FIX
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001/aux-lidar-sseg-fix-20261006/2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa/pai_2026.01.14.20.28.10_PFDKB4AE3RF000062_c75345325b8b5ba68583c61dbea219fa.aux.lidar-sseg.zarr.itar
+        - name: LIDAR_SSEG_FIX_SHA256
+          value: 2c3ed964d8e67e0c51f7501914bd216e78df6c37214e84d9292d52cab1deedd9
+        - name: TRAIN_STEPS
+          value: '80000'
+        - name: GAUSSIAN_LIMIT
+          value: '3000000'
+        - name: VARIANT
+          value: sbtc-full-80k-lens
+        - name: CAMERA_SUBSAMPLE
+          value: '1'
+        - name: RECIPE_SHA256
+          value: a71d652c583c02708d3fdbd966f5d43737cdd7094bc506932917e9812eb0f053
+        - name: WRAPPER_SHA256
+          value: d1b49a263faade96f76f7392c7a5091b3224fd5b6f42279a036b9767c75491ca
+        - name: NUR_V3_ACTOR_RELOCATE_LAYERS
+          value: dynamic_rigids,dynamic_deformables,static_rigids,static_deformables
+        - name: NUR_V3_CAMERA_RADIAL
+          value: '{"camera_pcam_b0": [-0.36, 0.1], "camera_pcam_f0": [-0.36, 0.1], "camera_pcam_l0": [-0.36, 0.1], "camera_pcam_l1": [-0.36, 0.1], "camera_pcam_l2": [-0.36, 0.1], "camera_pcam_r0": [-0.36, 0.1], "camera_pcam_r1": [-0.36, 0.1], "camera_pcam_r2": [-0.36, 0.1]}'
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: OMP_NUM_THREADS
+          value: '2'
+        - name: MKL_NUM_THREADS
+          value: '2'
+        - name: OPENBLAS_NUM_THREADS
+          value: '2'
+        - name: NUR_V3_DEFORMABLE_RELOCATE_END_STEP
+          value: '35000'
+        - name: NUR_V3_RELOCATE_TRACK_FLOOR
+          value: '{"dynamic_rigids": 400, "dynamic_deformables": 3000, "static_rigids": 400, "static_deformables": 3000}'
+        - name: NUR_V3_TRACK_TARGETS
+          value: 5517cc74b73b5e4d982701e91d36432b:8937;dc874640e5ba55d3be6773f92aca4118:8937;6d8175a5e00c5aa9b1e4ffd9492feed4:8937;612182bba3535d3280ff9eb1a2c63003:8937;095d7c22f6bf56b8863f9bd3ca2af662:8937;4b9f9acb49555f399580f9fcd6062dc6:8937;7436dcfe7ee257c2a8699e1fe67b4dd3:8937;1caf029830675c02ad16f10b9fdf1cf3:8937;f5e6c84e8c5252bd8d234b03b2d1022d:8937;5cc647f3033a5d7cb14c23f459f603bc:8937;938ecf3a605659c5bd101d84eca3baae:8937;3d2788899be5581781c03017f494e2fc:8937;6d38a71d8d645d89bf46d76958c73bfc:8937;c51f9f94f3bb5bfabda12bb7107049fa:8937;4023b1968f6f528993922c61dac9aa10:8937;527e7573976e52bcaa6b56e70d944801:8937;71a8c5d2ee3e5236bd6e62844c7e6a76:8937;ba5c4ae4c3e252609bb95bc1234bb898:8937;5ef392359e8f59a491d81157a2aec7da:8937;c00e51782a9a5da49b0edff5609b5d34:8937;698e0b3d3b475d4d93989db02cfc4dbf:8937;9631c2cef2f7521280abc529c192a9b8:8937;bb8ef36301e058b8a5ee64340c180fee:8937;6e694452d66352608043cab9c71b3623:8937;e6e821e1b7005dd88f7daba57dd0e6cf:8937;799c64fa207456dda7a5e043c38c48bd:8937;0cfbb3506a3a522bae285aa633d33474:8937;74d23a52e0a251dd9ef8e96711b7812f:8937;8e4d0a26949755d7ad7205b141c338c6:8937;fa9fccc94f545155bb1ca21916f2496f:8937;d423921fe49e5972aadad85b4fc5cb37:8937;d0fc692587b05767900a2b70b341712e:8937;4603917574b6524cb6fc3d3bb11b79b7:8937;195f60a00be759709c940b1c19b8bc51:8937;06bf7ae074215f59b36e8443429f9762:8937;d55eec9ac47e554f96b1dd7c3d853c6e:8937;53e26a72f68856b5ad3007b0ca555658:8176;5d7eb53860ed54ae8bbd650dad044268:8095;870b4da120045cbbb9eb992254369ac6:7478;b37981fd4ef95d07b94b4244ecd82de4:7377;4c5f3bd142d0516ab39ef0a3994a4ece:7307;c413c03fcc2a5e6eb5a13521c7a81ae6:7072;7efac9e9af4e5d7da391c089cd57431d:6859;5b4bbf17b78055d28eb8f26a723f7d53:6072;be4ccb0f91e35cecb3180c695d1e8e52:5229;d8b36d1d2ee955748138c51650a9d90d:4991;e3207949644152229a2084a302afc4d2:4974;a96c17ad17b155468bc9a6f541d01bfe:4718;4bad06157ca85cf4858117b7cb9a08af:4520;553250f280db55d880787c60293792f2:4244;30d8e317ad785ebd829b0e6fa03af845:3956;82e42e64cda85e68a8f380cca49573f8:3874;e9b25adf9e555ed6a11852c5962c139a:3718;aa3e2b6789715c46a86912c40c0421e1:3710;c8c073e7bd63561190fe340e1a95a484:3433;dfab497aeda75ec6a2559fb9819f30d2:3421;61269036f5b7517ca3d28bdabfe9816e:3364;c15e6321651859099b1cd5b9e839fc45:3113;f9797fd3a157574f8558d195dd024e1f:3057;e67d37807521562ebb4befecd0305ee2:3039;0fc2c35fbac65c309cd76b9cb92c1846:3000;b31b3f35dc9d54ccbe66e8c12c4707f7:3000;d2b61990c8355825875edfa2eba46af8:3000;b9519a6ad4ad52d4a1f7648c8c3e7069:3000;452acad153275c289309857d11ae24fb:3000;f6442f554dcf57e7a1c061d7e77a9516:3000;899043a2f2be564a8252c68b8524f1f2:3000;3b31740d27c55fcdbfced54eff7e5707:3000;0a23373457ed5621befde9d5a02460df:3000;ce88c350873b582bbd74361fb2150935:3000;46ff6eeefe2f52b39a69a196fe4a0d6c:3000;f988b1e67ddf5daeb7a453fe3edb2955:3000;2f6debe81a185b4f823f2cd9985e3504:3000;33000502a9235103b099da080cbbe9b3:3000;33844ed68583512c9336101184c291bb:3000;18a492efd8c25376b453a14f15372dac:3000;9fa25ad72e6a565888b97d5b537fc5f9:3000;d6d13bbaffcf587bbbf0016662ae7cf4:3000;06344fb584fe5b5dbdb44e51f819b98d:3000;0c9d503d6b545c00b85e65ee4f4ba2ab:2804;0982007b3de45dbaa629b9393195a757:2738;b4e5b84c795954cc90d8e805063b3285:2716;ad7ecc266a0b5e8083a97db3b7c009ae:2701;9e860ddb69585af2b7b4274b8a15d022:2569;f544f05d33ff517bb7955ce49c9ee274:2556;a526fa79cab651ecb07c060eb9570a27:2514;fe7947a630d359d4920509e74db577bb:2267;e3aff861647e5c5f92dcaf9fe9ca0855:2219;7200de5153e7592b8717780faf84b5cc:2176;74dfc710aad4587fae662f2ad6789e90:2155;7a27651d9efa53dc8a9235ab12c98e82:2097;53b9c76a01895edcbd0328090170ce72:1801;9d06ff50693a5bec8e64faa32cf57865:1703;5f650edee9565161a77190d3044b154e:1657;40e52ea4b66656f3ac76acf769e0f8c8:1576;7a96ea7f155c5dffa90be9ed6b03728b:1496;a7107fd3dacd5ea5a87888570999560d:1493;92aeadf5d4ce5dc9a1086ad91650ec5d:1457;e0f66cdf419957618130777e9d0ca5ff:1414;7b8e9ce210ff59c99e20feb871054c50:1354;f9110eb20c6452e7897acaf42638eacc:1324;00908843f6db51df95bd05c8f23ed81d:1259;79f4817ed4865a80890d2bf5031cbdfb:1214;6f76cb4992485773ab5bf29c8555b7b3:1182;918965dcf7625682844e95ae9e21e0b4:1158;c8d90ad3a8f45a0eb9732624b87123d8:1102;dea70c9d97d55240abb7943f02cd6642:1092;c4e2b5c3966b57848bc845db96db2210:1079;89720a1f96505191b76951fa55baf621:1051;7865383fe62c561cb77deef465001f85:1050;74ca00e22f255d98bd7bbc3fa44d2f41:1045;ed514d59c3bb5f71b9d4fbfec081dea1:993;6e6d9f312ab75ff1a1b4d147e54c3e4c:991;cd3c3365ecc05be986a354ce0e0dbe9f:985;2b72ad48b9655a79a251eac1bb3a3274:980;6567c69d0258596bbd38fd61130846b8:934;0277694cedd85b49884f23903c4ee109:921;a4f1681e7dbd5f4f86d4d7fa4994c958:920;4c13fb208d1e54479691e0594a03d753:915;e7578901ccee51649cf3d8d7f7f5d409:903;9192bf37effe5286aada1cd5eed6d8f3:895;92a3be6780965f9c8ddbd714c3177b95:892;94695f397fb5553e9bca76209ffee2c5:888;a00da6a47847584cb7f4f25573e201c7:870;c26abfff84c35b43b54345d15a462c97:868;c603cea6f3d75441b61da372d11a51ff:858;7f3ee917fe7653f6af32b944226af035:857;cc3e2722f33251278c36d2febab6ca90:848;016263c6fa515e7897ccb0ac51c5a308:798;99732fb84db25bcc90a2d5327de26176:793;03d9fdefda665716b420305facd52ef5:792;26a27add6d975fd5b02677a7b8e7bf42:785;2734158da4b15c4fbf29fc97ab15639a:785;be2b66945f1b5000b3e8cff75d4704fb:783;c2f0cdf321a55a3091954425502db45d:780;00650f1b124e5a69b634b23494be5127:750;d7507d7d7d555bbb926e1ba5c09d9887:732;a394c10fa2425a9faec911821f8ee4d1:728;690469e5848055d1ab80842758f781eb:725;88b74f7aadc053c4a1e61dc36f3a9d38:721;399ad953c8f85cb0ac98fdd832395ec3:707;174d3d33eac95cc29c82e32689082439:704;5a6e0b5870d25230854737804e975ff3:698;dfed8297b7005cd4a1e849a5d84d1cd3:698;4919769591345c07b20a1451ebe8aeba:694;484d66b21b4753e5aee4b966c11cde0a:689;f2f4461ad68d51a585fc8ed966318001:686;cf0307a6eddd517896701cd378a29284:678;3625d83a8b7f593d81e716ef5f62e805:667;21e1d925972c5981af6f06974b5bcf29:665;9a071259bd775e85bb4e7d167dae0637:661;4d346fd136915fd79048584af91723aa:661;934e055047fc5af8959ad2fce1235100:659;4f123110e0d45616b1a2fecc5bffbd52:659;0582478d776556a69c49aa7ed9ea62ba:659;97069ca84b04544cb8f7b6dea779f764:659;9552855f06e05fd7979d4cc57264c20d:650;f39e6aafd5195f89aefee892e195a3c9:644;64028960b5685205971d83790508da30:638;fe34f16151ec581c9c3b4eee96a05228:636;c7878828758e57b38200d2a109910ae6:625;1bf05eb39eba56ffbe64a4f963261a10:624;cc8e33cc49b15d01bbcf940187f3de79:624;50c472c32c3956c7b3845a99cf2228bd:620;5023e074489e5881833d50815993b05d:614;c1a35fedb83153eeac36481022c2e713:614;c63678509e9d506fa1d60931ddc5b03f:614;2cbaa46a9b1a5e29a7cb32ba67801db0:611;40b0bbb928ff502eb69c174a57d61851:608;a0844707e6c95a3599190210bc03cdbd:604;a1af1e38210b56608014056feae02dea:603;f0eeae8d6f895ae7ade9aa83c4fb9b55:602;4492a1a129d150eeacf160ac46f42989:602;b1e3fff79694596eafdc1ab19f58bbd4:578;83d30d3b716c5f77b22ddd8876899dea:571;15e958a5d77457b7a3b86f2c8d1f4ed4:569;4b1291b2c2705722bb79c4f9d1d25268:569;a76535ab1ac557918c159e8d8d8a7033:569;2a1113e83fdb584e9357695a690eca2d:569;74645226887f5ba08cafa8214f6276b9:569;37ed9bc35fae5b808ed967b96bbcf5a5:567;5b98835f6e595bada6ee7056a9a136b0:561;300c965114615258929568c121fbabe0:561;f8507fadac25523bad721f6c6ebf7f39:557;498b59355924528fa51fe086fbdfc654:553;b2ce743aa4cc5ca28c626177b90de3d3:548;b86c1bd39973541dbb2f63fff8bd3a07:547;83db597d1a635660bd8a053b7a302933:546;11ce2b872b05533da8d0749b9cd77fc6:539;b0a72648ad8857aba778ae2c1f83c296:531;1bdceedf294a530ba38b09599c50e535:529;e0320b974f2652209163baad8bb076b9:525;e3b55947719250889086225befc37acb:525;9dd387ed91ec5939b4f9057c5211ac14:525;ab6bfb5e7ea25ded8632f5f621765f43:525;2a13f83041cb56169d25b55e9417b566:525;d543208cfabd599d9028112202c753c4:525;a272d33653005766b866a1d44d868b5c:521;f2665725e00e56c1a219fc6802392686:521;ded1a7173d37585bbef9bd775d249c07:519;1542014af4795e5f9856ba9dc53695f5:519;f7798999d8be5d0fb72526eddd429857:519;3a3c5b4b099f5e5b8358698312c72e35:519;b1be38ef6d605268b9d4b7c7eff341cd:519;7b59701a5e555a1a9c35bb2561d6f8f4:519;a72f28ddfddc5cccbf596fb57c8de0d0:519;2b91b85cad4e5a238215f4836f31f6b9:518;876177d1e37c56d5938b4cd0e639ed16:514;3ee689351a9b5d7cafd44d8c2d4ccbad:513;d21d8d80847b533dad964d05464e3297:512;61fa038bee5f5ef0bb769128fb04abf3:512;61d3c8e1e07552f699de148d953310a0:511;3620707d183b504db31682a3cc944e6e:511;d3e4eafdacac5258979f159ff4f6b7c9:511;435a639fcbad5e74be8b0bb1f88af7d8:510;60dabf7bf6545be58d6aa66c9531621f:510;d94ae589d57f5598951c13abb8baf074:510;bba9986da4455d9c8169e36907f45fd0:510;8e64a06f9a365f4ab5ec8fbbb86d09f1:510;addf7043189253c0bb3d2a7b93fbb876:510;ae3ef0a822df591997ca7e34dbc428d2:509;226e3bc0762c577584562a3fbbfdc680:508;a7d72f0965945f87812093c1da1b349d:508;36c5947f723652c1aa83826373110c42:508;fcdd89ca081f555b9bbc52f10a1b19d5:506;957e2764c40d512eb2a86f741ebdfb70:504;7c9b553c26235461aafe1b9143323e78:504;bdb87e8e338259e58449d35c5be1ad78:502;accac5e0ee0f5cc9a58ae641df4d6077:501;317484b7e4985c2e89b3b5da2e94fd8b:501;5c02af0cfa115669909d0ca5224b7935:501;a78d407ee5dd55cebc83d7eef50554b1:501;d162e4e753495e8bb6691a3e283ba68e:501;da212026bf28503290601b4c02af4976:500;b166bac78ca256ae90631877025f5708:500;ff57daf01bdd5eea9cb69d5d1dd27097:500;41b1c17bff9a5d5dab075c27c6018b19:497;acb4814c1de756dda7c600ce7a850de8:497;56fdb431880853068aaf247f76d0083c:497;f7b0c521ea1a5376a32ccaacf43773e5:495;6d7458b7985f544d87923e790b897970:494;7479e0f2786251bb894a3764cc60af15:493;d8391b5b218a5c35861717f6d7a8c057:490;7f39abf7048f5fa1a759d122e9ae1115:490;aaaa781464f0552b89d3296d02fec949:490;3d75eddcc2c954f58a49b1b28e22b64a:485;43abb918abe653a2b9f8e6d1cfcd3f5c:484;0ec205c8ec5c545a907de0047de406d7:484;b195948970a65004a3cf6091438a5cf4:483;1358a4ec00dc5683af1be49fff26f639:483;ee8b83bd275d5747b2eb627fc000f48c:482;e20cff6725415d9baf43a5c79772901d:480;f9ecfb0b2ee15ab9abbc27469356fa10:480;7dada159f8c05e6fa250dd45a5613386:480;64ad06946bdb5f28aef7c7212620d0db:480;10bfad3c20f7520db1d5055d489391dc:480;7cef407f53065f398d9a3e35405f7829:480;abc66b4bedd0508587fb7a4d565c9e35:479;15b9d4617f685b01b63c074f58ada3bf:477;993cf52250e255bdbd1a1a9e9f9896cd:477;7055127aef405c10928de78c923ffbe8:473;4990a95fbf865aa3afe1f94b510a10d3:473;ea8cff8444315ce69f26c2ec44a4e0c4:472;c2850e8fc07559c6af7941ab1b8131b0:472;6b3c7d4e481e598bb7398345bb36a5f8:471;1809ddc0eb265740b0f6dfcb0084503a:469;ad63582dc0555a06864f9e2b0c9d82a2:468;7f4ab3ec95855150aacd12f374ba1ab4:465;9c7df63632d75045897c20189d66cd92:465;5ddb2fcf109454c1b0adb79f47fa04c5:463;5e1b93955f7c5cf693f3d6640f2f9732:462;f07bcec0291f5758b28e2b13b1082c07:461;5555ba0ed66a5c69b0231e0ce618eec5:460;2ca9a489f801584ba5accde855d29db6:460;ae3d235f69c05ef3a8e16ec1a188dcf5:458;80732ff8053b58668cc0a82dd30f42b8:457;667083c88e965738a5ef288301b5753a:453;f0feaae2d35c5ab0adad2af5f11d5b35:451;e8005f4f92cd56b19ebd44574ed58b26:449;370bff1b67775b78a942c8db309d9b7f:446;a8565f3f0c4c52178f63fb329b3edee0:445;81d82a6421b45cb0880e3c2606ed67f5:445;19bf1a10b0b050908802d0f4b7b0e634:443;e396e90ebc0f5a00a364237d3b1f8e06:441;05aa06a07dbb559b8d2812036cce6d37:439;880f0e2fde5c595783776638f5bb38f6:437;3c5242c9a84d53d0b21fa85f39eb7c24:437;91841d786f8e58c68ef8e0aebfe019a5:436;7cb77757f1475e728cd51de8e131d01e:431;0f53c366069c5f6d837748dfbf1e25c4:431;1ebac73c1edd5b5ea0eee7e91689c089:429;00d4848ddae2516ebb79672be7c9887b:426;9f8ebfce90f55b279288b4f511122d20:426;6f10322f038c50ecadc7692f359821d2:426;84162dfbf0d25baa91c5c2d40c5f90be:426;a5d0b5de33c0502da377079fa5eedbde:425;8869cac95ed851f784b5de787867fc90:424;f7c9d68675ce5422be8dc920c52471cc:424;18bca330f8655c35b2ab489ae4f59651:423;14c14d1b4da95852a208e33db76b59b7:421;9f33f8b13afb5f199c2c4b7b96d1ebef:421;754dd0dfd31e5603b5c8cadd1681e829:420;090e401b1d425e9187ea89db3482d593:419;2b98587afd5050b1ab73988aaa60b2af:419;d652b33d07d954d3bb4060747c1c7057:418;aa98f59125c25678b5f1165bd565c6b8:418;b9540764a43a5b829c7ce88e73568b66:417;3a96fc305f9b5c8c9176e2a272223b6b:416;7ff6701e98f8538d9f21688a0799cf39:416;20292d9cbe5b5695b6864ee4fc9cc07b:414;1c905af2863452889117bc2bab2e9882:414;cfa059e6eb6d573180c9b7509ab2091c:413;5164b91e1870540182df6a0205c83fb2:408;6a4a1c3d09585b6c8c71c979df63bd7a:407;74c8fa7ae54b5e90860067b80d4f7dd1:406;e4dbceb1fbde5b428597806c7a724346:404;d5c84616a9fe5a1286d5dab557eee431:403;130121ac311f5086b3686d5b4041804d:401;6b03ab7bebbf5135ae653a53270f7500:400;d97f522cc2f4533ca0dc660501c086a0:400;a9a181c91087598fadbf5674394a4321:400;d8ce164064e25ce484a9de5ac542fdb0:400;112b5483546554d9a2e734b14be00837:400;71fe34e1cf0654dcaac8ce3d3b6d45b9:400;d156d0cc962f54dca6bea6fc2c7a6fa4:400;aef41081d0cd5fdc9ace74d17b806c8a:400;45b136e2fad059058881d8bea5a2cefd:400;b0e178eb2fc75306b3339b78d63b3171:400;8773c463357a51828b523c0cc5f3bddf:400;ef73b0a1bf6b5dac89a91ab616acd13d:400;f7b91c0263e654cb89030440376b0e1e:400;f5e71d154348522f83064b8d127c9ef1:400;f32db8b50a2755e5af1c8c7e0cd94ee4:400;4dba2fc47a735f218cf09fe749cd3243:400;0efadc28700a56f2b99c7aec56228c38:400;9f4f63a203a45ec88a50e8c6d2a537ed:400;352dcad5640455a3be240245faa80195:400;fb7ddce297df512daccac327d1cace05:400;060c8110881d5568b2f2dbb83d04fe21:400;8f0aa48ae3125984b87b3b2f47c11805:400;861a633e833d54c98fa94041b4801499:400;564522628d7555a9bccbc1cf645e8e34:400;72540b0b456850c7b7010ec062f9af28:400;fd62b2b88fe2542bb97738c189764c3b:400;04171ca57a165edc8438b3b7bc787593:400;755c18a293b55a3bbd1b85602cd1f5bf:400;9a41e4c582f450539db6b57a3af7320e:400;bdd8d40e8665598e9cb0c7440e96f543:400;50bfa200981d5181a118cc20c988dd42:400;64ef8b8a94495fefade4636f8b60b64f:400;571d1785ce5a553daf39514535dae2b3:400;1b0d619898f35da6beff1530c2845a24:400;ec0542dfddf35d8c97c4db4a49c7894e:400;66475710567f55878b811d5d4a19760b:400;7f968f5623aa5082b388327873405ba3:400;5b57b491751d53f09ce3e2427812b833:400;56ab4e063c0058f8b2a41c4e3b659de7:400;fd1117422e3e5fb0a8d28fb72163be4c:400;55910cca172a5bcc8baa51433d23b0c6:400;e4c87ea6c4d954398547aad23743b792:400;d5fe527a5347532fbf883afdc82ca5a1:400;7c09009b3a20534e8ffb7776da920a06:400;0fb2fad5a1c65cd5ba42d7693104acff:400;416a46db2617554ea881354da0ba23c4:400;7ef930304abe54979ce24496e19283cd:400;f14a4bc3424d5923b22ee3a0e900a507:400;079ee2506bf45f5c8b1fc861b2e28580:400;1f8a1eba192e5ad990570caabda9ef7e:400;a0f295aeaf5d5180b4057af86dd1ad5f:400;38f54b2f9bb55fe5a56dd0b8fb271f8a:400;56246ba8db795f5fa6c98e8bb498831b:400;d3438dbfd78458fca1ed8439139e6af9:400;ba4a6e337fbd5833bce930d7e67463f0:400;54bed0d24e4554c9b2aaf8712c0bb6ed:400;76e048e54fbf55c09c6f885f8ffbb1cb:400;5db89d927f11529987d4c267ef53611f:400;e2f57664b0e3563f87d95197ffb5a529:400;90f099fc740b59bf88ab0fc534472dd5:400;af458e47128e5ce28c06d1fab67abd92:400;3c35b2c02afb55e99c947a96aac871dc:400;c002251084325ddda7089be56747e3c4:400;313ad46494fc57b89f7a5c897bc9e130:400;7aa14e710a135a898bdd9dfe1ccf5dc9:400;76735cbca1b05621b89a0a980f4f1b29:400;6c035858d1d8585595c47e0f183bd78c:400;d302aac637635af6ac2ce6f42f515a87:400;c2c71c1a1ba35498a2702666865e6541:400;47cf303767905c3f8621b9c6f039c2ca:400;e97df11f68e85229902a268acdc57c93:400;cd77d16757585bb589b979f46f638f12:400;8aa7d92450e05a0e927e14c10bc1106e:400;e9c28c0ea91f525ab95e26fac064e738:400;2f7efe97da5e56bdbe92486450abfb0e:400;7bd779fe4ebb544392d5baa4a9f212ae:400;1706c24bb2ae5a00a78f27192889e177:400;3d141a2060825465a2e062ce9d52e72d:400;1dba9c9f0fcc5031a6188851b8dd07e0:400;fda8667e1adf52b780f374371c9c1bf5:400;c0eff833f35051828286a1fa9354dd11:400;1178a15726475504b20d0a4b7e1902ce:400;7d51ec2b16d65e93bae12f3ccca39ed9:400;c56d8c1cb3bb51d4bfd6a89b7121f158:400;8b68055f3c57560b8244b779f74d8bb4:400;d9329e3a00345c708ba27c30ff16b32d:400;7a93bdfb40945d4a9433bdca8ce47679:400;54c52a933d4d52d5a9e6f72e527dd9c2:400;2893168d569f5c9197011e18426dce6b:400;ffaa8d679d6154b288822a242881a5a3:400;5ef2eb6ec90657cf8fbe5d2fdf03f27e:400;52d71480da955ed0a1a6312008273d52:400;0f4e8190dbc95347b4471a74a1807128:400;a985a8ad2e2d5c0398e5ac7f11e90efc:400;f1fff62b298f5fcc86caa931b3960d98:400;108fe9b6237a5b4eb088ca3a3778a2f0:400;781880fa5b08553f87c4ca6f3d5ce7f1:400;fe8bf2874ba15b2291002cabde5bed8a:400;9148b2e1cde65493a3061ae844077e8d:400;0b5e167a70685414b0052dd5f72212d4:400;52719993c40e5ab4b4363a57bda1f79e:400;0bd15ee81eca501085591ee2f6b17594:400;04feeab66d44550ba769c4c97727e23c:400;406920820c185230aa2be0b3235e0f33:400;429e593cdf1051508151f353a792cc9a:400;a5fcdbb598f858da83078504221e7ca1:400;015518c9f7e759d7ba1a25492fc84339:400;84548e0b9b9052c98e14d6dbf2ffaa4b:400;a4a02e10d1395b748336b06bdb62b5e9:400;9f9b0cf548cf5eeea4fc690483821684:400;18c1910186685c30a1a9a7b7395138bd:400;9fc0d6b2f7f6534aa6175476b1e8cb56:400;d81e9513df8c50c2944e63e02af271bd:400;ce43e7d952165cba89e588f5f8a9fbbc:400;fa93d368416b564fbbc831f5014724da:400;b90a2f8c0a795459914e664ac82a3a8c:400;e62f57a023635196bfa48d269055fa96:400;936b4d43ff415220a7f8fae235a42f7e:400;d6f13311826157f3840c3f11045f49f8:400;68d4500b336951b9a27d16a7a8e0005f:400;afb5ec9e1fa95c38a076eb1ceea8a649:400;04c8e0ce623756aaa07753d8bdb9098a:400;3a96922c5c695145a3d1853dff657d00:400;df1a5f2268d75923a55ce024d05cff3f:400;ab35262a64c256c6a82939f651437d47:400;6975b17a628f5ce49f69be40799b05d7:400;9feec53f607057ffae9695a610d9ca34:400;a7d1bc33d13b547ca71f5dcb4e8d4db1:400;5edbdf1601f25a98a40454ce5b9d4a77:400;a04bb6dcb0425419ac189b8ff1c8aae7:400;b82add1056f15dfea628c4c5451f2fff:400;147589395ac45c08a9e740c60cd586bb:400;8bff8e3319f856eda696731a2311565f:400;876c35a2ac1d5963930d84ce51e4206f:400;7d4d23c60239517d9fcb1e822e8b0a22:400;665b7ed0dcd95ff5a3b51891b443b1e2:400;412774bafd89544ba5c82251b36fcb88:400;9098c6992cfb5f089d4434266c2f9daf:400;e3770930798d51ef9ec6f84f144c8283:400;74c5a441c7e658a4aa76e3a89747451f:400;2569dc2f14ed5da99b07ea5edac524ca:400;157557b4ec2253bbbe96f0bf0c7fbf0b:400;1cc2ce2d9c6259adbb37efb8cf210e33:400;f7dbf239446c5e88a9eba26819ab4e20:400;baf86e5d3b2f59bbb90fb0c87655c47f:400;7cf12bbb317d555f9ee677081691d57c:400;9a5aa39a90235a9e9e4a86f16e2acc55:400;9d99236a800250fa8dc65a0f13e28fee:400;207f37f5c6835d2dbd27eba262bff5ba:400;5d97034ca14b5fc585e94db5624e0825:400;56b39b5afb355ea7b521ebfcaf38d113:400;ef20d54673aa534e888f5f5dbda21c0f:400;3d2fdf2c82a251e58cd8d9bd3ab7806a:400;b9e09ed330d250eaa22ea4bffb9755b7:400;5af23ab5a7645c8b9fbf048699fd1720:400;fce1c232c51d5faea06aa24e7365190c:400;1c2894371527557d933cabc4024b3254:400;61eb2367d643571d8877d4b32419dcde:400;b75ab6cc579d5bd0a68efd49cd7d1a95:400;1ffffc0835205aa78e37304ad165b1c3:400;d809fff2553b54178bfaf143accd9501:400;81f346db50ae51f7b8d96b8772002fcf:400;8292644867d85bab8e6834e4ab317bb7:400;0e20a9905bd2567586d0106500ed4fcc:400;c7c0dc41a32e5a6fa9958e01489c5bd4:400;55f770673def5129b4f4d40f739469b1:400;b93fd989c2cb58329ad606562c0db435:400;3a805591d8205f4b909a3f154d83bd80:400;773b3e69c35a5529a7a3b4906d983e56:400;b1000233d6445a64b965526d04197c55:400;91d4f0550e325e1cbd692b2d6c83326a:400;694f0f3343e852d3bcabcb3acf294674:400;831571a146bd5315a81b6c1b2c592ac6:400;fff56e22fc7153b38a674b72c1be2234:400;41d36e49ce8a516c93f8ce1b87e630f4:400;daaa84e535c3554896a28f8686910f3e:400;a2dbad70d44f55f586b5bce75f9bbe27:400;dbaf98d19e2d5e4bad6c92d24cd831b9:400;b68b1b85b29b5909ac9c59e57b73b4c5:400;98034d19d45a5136b6edb9b2118d9c33:400;677c340d44485c3fb058479863b31823:400;7bd7b30e47e652caa5f54d1336e46e47:400;baaa387139ee5a3981463167852bfadd:400;c69774295a085813bdd8d0f6e2365969:400;74f2f4480d7e5f66b9dac514d4d4a25e:400;6c67737b16fd568889b7732663391220:400;8b8f501a742759e8b8692da84acd9381:400;975a46879e83500392d66c2c423b0856:400;790d8198bc50582d9a9654156a7a4ddf:400;fde9f87b0ce458b494925ad5a8f4a65b:400;de649330f35a5d05a0b13de227129ed7:400;af8a429fefa05f9198e2f3e59c2d1972:400;d98c95637f1c59a2976d3b68341775df:400;666704f238ec53139ed41ff7f6729c22:400;d53a7eedfb715aa38723e173fd6d4df2:400;bcb01c98970c5229a6f768c8a0a26d6a:400;59b0bcb3afba55a2a60e9e1f05a73560:400;7d793eba596958d2a497be78fef5f864:400;277b7346ef7553f3a207a4fde5adabb3:400;aaa8f48260e851a799410ec72b6ebf12:400;c75c0fd63b06531f9cad193976cfc695:400;29e5f810715457d4986cb72ff3beb97b:400;0f5ad1b67732505fbbc0819630a7af25:400;7562b541438c59d88c354e4310176935:400;308b871d1d445460a1d080ae138cb151:400;653a43adccfe5f92bfd30502345a2779:400;549c3f4251a05c72af2d0e5fd0764d09:400;fb5baa4c002052c29daa96c903b8c1d7:400;e5e224ff14345970b0e30dde92a1b96d:400;763f29a822c955c78fdbbf8c647987c8:400;144b1f7d640d5399b4957f3fbc8114a2:400;46b488b4f0ae5f4e8c93d909b8a9cd7b:400;a29ca61571d250d79cda03f373e974e0:400;f0e07fd5575b584d86a542d30ef2c28c:400;4114be75bf4657d5b0c136ac34ceb49a:400;455f769ea1fc5182904568cea5b718a7:400;ca362101927057899618353894d9a081:400;480ba1b1e47c584e98aebf821e99d991:400;c9e68a61f2dc50f18677a096f13bd635:400;67f3b4e146165282a791eca85ed19584:400;b218e1e3651954358cd4918d246f2adc:400;77f202e914225e979a55607181e3bc6f:400;b87d3a2d6ed25efdbb87e8ed4a630e31:400;065039318f3450ac92ce6f2715fe3e3c:400;d2323e07474f5b91be1ed577f81c6f24:400;4976429bf2015c45a42206ac3d4fb85c:400;7aa3f2b126fd5061b9b2cebd42c520c8:400;57700f36bc195c45a2945cced6f26e07:400;98d77bcc66da58fcba5ce9202621df0b:400;c9fd9da1da2f5a86957cbac343e10ad9:400;d2d7ea2a4e4c59e7b9dbb3bd3b0e5f02:400;5b2f8c2fa5fa54fb945a40f16e0f8398:400;512b4a3ae0625bfda7e9809096d6a551:400;2e8f7076bdc15db99e7e1410d65ce216:400;9f6342ec911c528ea668a986b5a368f9:400;401cbadac4225c78bf30cb390b88e0d8:400;d14c5b8e1a8e511da247489099a34ccd:400;9789f2bbd2c3544bba8bafd553792e8b:400;348e57a3bd055d3f8cd526e02848e144:400;34a16dbf08a85f6eba65541faf0d1575:400;d2a102dabc7658c1ae69d13bce27f4b6:400;786af3febbaa516785d85c74ff276388:400;7dcad530e77b5ad3b0bbe94e8ed81ebd:400;94b25033c7fe5b37af7b33f2eed4843d:400;b1ece4d895035cc6a28cb7746eacf6e4:400;62467024aa6e5cb3b5dc4d221f67e4c6:400;ee3f090f9d2d502781e781497edd4068:400;428e74459a255b5dafd89dd9e0f2677f:400;e49b1a1d40fb5267b44d406f4dc4ab14:400;03bae4ef5ce2550a9618faefc637e885:400;0983d930eacb5385b436bfabc00fae4f:400;8ee29c77d86a5c1cba186a4fbe4c852e:400;2fe09f9d1b655f0ead729180580dab93:400;6cc11ed2fc285fae9bac9a403e2abb19:400;74a93e7cf58351d4a0ad374840f232df:400;7e90ec6337da5e7299dae24599961a71:400;a9e315ffa9715ec6b154e7556aa89cd6:400;fb2a8fb5766054c28a366f5a9b7efe65:400;76b6222f3bca5fc9913f210fea38a007:400;387aab0b9a6252448e40e975717e9f27:400;119437cb14545cceb29dea311bfd108b:400;1d88ffe4a1205daea4ccfe1a04d627c6:400;e8e3f2206f4156efae1668972db78bcd:400;5c0b8f33406e53939da3efd9ccc86247:400;1cae1f3037b15a748fe2d030fdc9fd0f:400;431cc13f76e1557babecfba56baea0bd:400;2da79f065e455db6ad134af65c760068:400;e519bc4caa1a5b84a6b9d951c887367b:400
+        - name: NUR_V3_ACTOR_SCALE_CAP
+          value: '0.5'
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        volumeMounts: &id003
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: scratch
+          mountPath: /scratch
+        - name: dshm
+          mountPath: /dev/shm
+        name: stage-inputs
+        args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG" /scratch/ncore
+          exec > >(tee -a "$DIAG/prepare.log") 2>&1
+          test -s "$NCORE_DIR/nurec_origin_offset.json"
+          test -s "$NCORE_DIR/pai_$CLIP_ID.json"
+          test -s "$SOURCE_METADATA"
+          cp -a "$NCORE_DIR/pai_$CLIP_ID.json" /scratch/ncore/
+          for src in "$NCORE_DIR/pai_$CLIP_ID".ncore4*.zarr.itar; do
+            test -s "$src"
+            cp -aL "$src" /scratch/ncore/
+          done
+          test "$(find /scratch/ncore -maxdepth 1 -name '*.ncore4*.zarr.itar' | wc -l)" -eq 10
+          # Native aux loader truncates the filename at its first dot.
+          MANIFEST="pai_$CLIP_ID.json"
+          AUX_BASE="${MANIFEST%%.*}"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            src="$NCORE_DIR/pai_$CLIP_ID.aux.$kind.zarr.itar"
+            # auxfix: the regenerated lidar-sseg store replaces the original; the other three stores are unchanged.
+            if [[ "$kind" == lidar-sseg ]]; then src="$LIDAR_SSEG_FIX"; fi
+            test -s "$src"
+            cp -aL "$src" "/scratch/ncore/$AUX_BASE.aux.$kind.zarr.itar"
+          done
+          printf '%s  %s\n' "$LIDAR_SSEG_FIX_SHA256" "/scratch/ncore/$AUX_BASE.aux.lidar-sseg.zarr.itar" | sha256sum -c -
+          echo "STAGING_COMPLETE $EXPERIMENT_ID"
+        resources:
+          requests:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '1'
+            memory: 4Gi
+            ephemeral-storage: 100Gi
+      containers:
+      - image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command: *id001
+        env: *id002
+        volumeMounts: *id003
+        name: train
+        args:
+        - |
+          set -euo pipefail
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG"
+          exec > >(tee -a "$DIAG/train.log") 2>&1
+          finish() {
+            rc=$?
+            trap - EXIT
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+            exit "$rc"
+          }
+          trap finish EXIT
+          RUN="$DEST/native/$CLIP_ID"
+          test ! -e "$RUN"
+          mkdir -p "$DEST/checkpoints" "$RUN" /scratch/native-artifacts
+          ln -s "$DEST/checkpoints" "$RUN/checkpoints"
+          ln -s /scratch/native-artifacts "$RUN/artifacts"
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+          cat > /scratch/recipe.yaml <<'NRE_RECIPE'
+          # @package _global_
+          defaults:
+          - /apps/AV/_base_3dgut_dynamic_road_semantic
+          - /apps/prod/options/artifact: default
+          - /apps/prod/options/nrend: disabled
+          - /apps/prod/options/difix/3dgut: disabled
+          - /apps/prod/options/mesh: disabled
+          - /apps/prod/options/ground: disabled
+          - /apps/prod/options/subsampling/3dgut: batch_sampler_2
+          - /apps/prod/options/calib: enabled
+          - /apps/AV/module_mixins/_mcmc_mixin.yaml
+          - /model/gaussians/models@model.layers.static_rigids: rigid_gaussians
+          - /model/gaussians/initialization@model.layers.static_rigids.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_rigids.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_rigids.tracks_calib: static
+          - /model/gaussians/models@model.layers.static_deformables: deformable_gaussians
+          - /model/gaussians/initialization@model.layers.static_deformables.initialization: lidar_dynamic_tracks
+          - /model/gaussians/extra_signal@model.layers.static_deformables.extra_signal:
+            - semantic_logits
+          - /model/tracks_calib@model.layers.static_deformables.tracks_calib: direct
+          - override /model/calib: free_pose
+          - override /model/gaussians/strategy@model.strategy: mcmc
+          - override /model/post_processing@model.post_processing.b: ppisp
+          - override /model/post_processing@model.post_processing.c: null
+          - override /logger: tensorboard
+          - _self_
+          model:
+            layers:
+              static_rigids:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  symmetric_axis: Y
+                  camera_ids: []
+                  step_frame: 1
+                  fill_with_random_points: true
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 584606
+                  lidar_ids:
+                  - lidar_top_360fov
+                  num_point_cloud_points_per_track: 8937
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id001
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id001
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_rigids:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.VEHICLE_CAR
+                  - NureasoningBoxDetectionLabel.VEHICLE_TRUCK
+                  - NureasoningBoxDetectionLabel.VEHICLE_BUS
+                  - NureasoningBoxDetectionLabel.OTHER_TRAFFICCONE
+                  - NureasoningBoxDetectionLabel.OTHER_TEMPORARY_TRAFFICSIGN
+                  - NureasoningBoxDetectionLabel.OTHER_OTHER
+                  - NureasoningBoxDetectionLabel.VEHICLE_DOOR
+                  - NureasoningBoxDetectionLabel.CONSTRUCTION_TRAFFIC_CONE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 128723
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 8937
+                  fill_with_random_points: true
+                fourier_features_dim: 5
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id002
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id002
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              dynamic_deformables:
+                tracks:
+                  is_dynamic: true
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                  - NureasoningBoxDetectionLabel.VEHICLE_PERSONAL_MOBILITY_BYCICLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_MOTORCYCLE
+                  - NureasoningBoxDetectionLabel.VEHICLE_BICYCLE
+                initialization:
+                  name: lidar-dynamic-tracks
+                  num_point_cloud_points_in_layer: 18000
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_per_track: 3000
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id003
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id003
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              background:
+                initialization:
+                  name: lidar-rig-trajectory
+                  num_point_cloud_points: 800000
+                  num_near_points: 100000
+                  num_far_points: 100000
+                  non_dynamic_points_only: true
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                fourier_features_dim: 1
+              road:
+                class_labels:
+                - road
+                fourier_features_dim: 1
+                scale_pos_lr_by_scene_extent: false
+                initialization:
+                  name: lidar-ground-mesh-road
+                  scale_multiplier: 1.0
+                  num_random_points: 0
+                  default_density: 0.99
+                  default_scale:
+                  - 0.05
+                  - 0.05
+                  - 0.001
+                  step_frame: 1
+                  min_ray_length: 0.1
+                  voxel_size: 0.05
+                  smoothing_passes: 10
+                  ground_compat_max_distance: 0.5
+                  ground_compat_max_angle_deg: 60.0
+                  num_plane_hypotheses: 100
+                  plane_max_distance: 0.3
+                  plane_max_angle_deg: 30
+                  plane_min_eval_points: 1000
+                  plane_max_eval_points: 10000
+                  plane_min_inliers: 1000
+                  enable_plane_extension: false
+                  min_points_per_voxel: 1
+                  num_point_cloud_points: 400000
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.00016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas:
+                    - 0.9
+                    - 0.99
+                  params:
+                    densities:
+                      args:
+                        lr: 0.01
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.001
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+              static_deformables:
+                tracks:
+                  is_dynamic: false
+                  label_classes:
+                  - NureasoningBoxDetectionLabel.HUMAN
+                  - NureasoningBoxDetectionLabel.HUMAN_PEDESTRIAN
+                fourier_features_dim: 1
+                initialization:
+                  name: lidar-dynamic-tracks
+                  lidar_ids:
+                  - lidar_top_360fov
+                  camera_ids: []
+                  step_frame: 1
+                  num_point_cloud_points_in_layer: 48534
+                  num_point_cloud_points_per_track: 3364
+                  fill_with_random_points: true
+                  symmetric_axis: null
+                is_static: false
+                scale_pos_lr_by_scene_extent: false
+                optimizers:
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: &id004
+                    - 0.9
+                    - 0.99
+                  params:
+                    positions:
+                      args:
+                        lr: 0.0016
+                  scheduler:
+                    name: ExponentialLR
+                    interval: step
+                    args:
+                      gamma: ${calc_exp_lr_decay_rate:0.01,${mul:${trainer.max_epochs},${dataset.n_samples_per_epoch}}}
+                - name: fused_adam
+                  args:
+                    lr: 0.01
+                    eps: 1.0e-15
+                    betas: *id004
+                  params:
+                    densities:
+                      args:
+                        lr: 0.05
+                    features_albedo:
+                      args:
+                        lr: 0.0025
+                    features_specular:
+                      args:
+                        lr: 0.000125
+                    rotations:
+                      args:
+                        lr: 0.001
+                    scales:
+                      args:
+                        lr: 0.005
+                    extra_signal:
+                      args:
+                        lr: 0.01
+                    camera_extra_signal:
+                      args:
+                        lr: 0.01
+                    lidar_extra_signal:
+                      args:
+                        lr: 0.01
+            strategy:
+              add:
+                max_n_gaussians: 2100137
+                end_iteration: 70000
+                start_iteration: 10000
+                frequency: 100
+              relocate:
+                end_iteration: 70000
+                frequency: 100
+              perturb:
+                end_iteration: 80000
+              exclude_layer_ids:
+              - road
+              - dynamic_rigids
+              - dynamic_deformables
+              - static_rigids
+              - static_deformables
+            calib:
+              name: free-pose-calib
+              camera:
+                enabled: true
+              lidar:
+                enabled: false
+            renderer:
+              outputs:
+                camera:
+                  enable_ray_gradients: true
+                lidar:
+                  enable_ray_gradients: false
+            post_processing:
+              b:
+                per_frame_ppisp_enabled: false
+          dataset:
+            n_samples_per_epoch: 80000
+            camera_ids: &id005
+            - camera_pcam_f0
+            - camera_pcam_b0
+            - camera_pcam_l0
+            - camera_pcam_l1
+            - camera_pcam_l2
+            - camera_pcam_r0
+            - camera_pcam_r1
+            - camera_pcam_r2
+            train_camera_ids: *id005
+            val_camera_ids: *id005
+            lidar_ids:
+            - lidar_top_360fov
+            train_lidar_ids:
+            - lidar_top_360fov
+            val_lidar_ids: []
+            n_train_sample_lidar_rays: 0
+            val_lidar: false
+            train_sequential_lidar: false
+            use_real_lidar_rays: false
+            n_train_sequential_image_subsample: 2
+            n_val_image_subsample: 2
+            aux_data: true
+            cuboid_tracks_params:
+              track_label_sources:
+              - GT_ANNOTATION
+            samplers:
+              batch_sampler:
+                ratio_camera_samples: 1.0
+                ratio_lidar_samples: 0.0
+                camera_pixel_sampler:
+                  subsample: 1
+                  crop_type: full_image
+            val_camera_frame_step: 10
+            val_camera: true
+            interp_with_rig: true
+          loss:
+            lidar:
+              lambda_: 0.0
+            background_lidar:
+              lambda_: 0.0
+            intensity:
+              lambda_: 0.0
+            raydrop:
+              lambda_: 0.0
+            normal:
+              lambda_: 0.0
+            rgb:
+              fn: l1
+              lambda_: 0.8
+            ssim:
+              lambda_: 0.2
+            gaussian_density:
+              layer_lambdas:
+                road: 1
+                dynamic_rigids: 0.1
+                dynamic_deformables: 0.1
+                static_rigids: 0.1
+                static_deformables: 0.1
+            background_in_track_gaussian:
+              fn: bce_with_logits
+              reduce:
+                name: mean
+              lambda_: 0.1
+              layer_names:
+              - background
+              layer_labels_to_use:
+                background:
+                - person
+                - rider
+                - car
+                - truck
+                - bus
+                - train
+                - motorcycle
+                - bicycle
+            node_semantic_gaussians:
+              layer_labels_to_exclude:
+                background:
+                - road
+                dynamic_rigids:
+                - road
+                dynamic_deformables:
+                - road
+                static_rigids:
+                - road
+                static_deformables:
+                - road
+          trainer:
+            max_epochs: 1
+            precision: 32
+            world_size: 1
+            num_nodes: 1
+            num_sanity_val_steps: 0
+            val_check_interval: 20000
+            log_every_n_steps: 50
+          datamodule:
+            train_num_workers: 8
+            val_num_workers: 4
+            test_num_workers: 4
+          checkpoint:
+            every_n_train_steps: 20000
+            save_top_k: 1
+            save_on_train_epoch_end: true
+            artifact:
+              enabled: true
+              mesh:
+                ground:
+                  enabled: false
+            save_last: true
+          seed: 42
+          mode: trainval
+          out_dir: /avl-west/navsafe_nureasoning/recipe-v3-20261002/c7534532-sbtc-full-80k-lens-auxfix-disks/native
+          logger:
+            enabled: true
+            run_id: <generate>
+          system:
+            warmup_steps: 1000
+            record_quality_metrics:
+              psnr_interval: 100
+            test:
+              save_results: true
+              save_inputs: true
+              save_videos: true
+              save_stats: true
+              separate_val_dir_per_step: true
+              use_camera_name_dirs: true
+              video_fps: 1
+              metrics:
+                ssim:
+                  enabled: true
+                lpips:
+                  enabled: false
+              val_render_selected_nodes: {}
+          NRE_RECIPE
+          printf '%s  %s\n' "$RECIPE_SHA256" /scratch/recipe.yaml | sha256sum -c -
+          cat > /scratch/nur_v3_train.py <<'NUR_V3_PY'
+          """nuReasoning recipe v3 training entry: NRE main + two input-hygiene patches.
+
+          Run inside the NRE image: /app/run run-script nur_v3_train.py
+          Environment:
+            NUR_V3_ARGS_FILE         NRE main args, one per line (same as `/app/run <args>`); or NUR_V3_ARGS as JSON
+            NUR_V3_REPORT_DIR        where patch reports are written
+            NUR_V3_SOURCE_METADATA   raw nuReasoning metadata.json (camera filename clocks)
+            NUR_V3_TRACK_CLEAN       1/0  (P1)
+            NUR_V3_CAMERA_CLOCK      1/0  (P2)
+            NUR_V3_ACTOR_RELOCATE_LAYERS  comma list of actor layers for P3 (empty = off)
+            NUR_V3_CAMERA_RADIAL     JSON {camera_id: [k1, k2]} for P4 (empty = off)
+
+          P1 track hygiene: nuReasoning boxes are per-frame detections. Consecutive boxes jump 0.1-0.8 m,
+          some headings flip by pi on parked objects (left as annotated), and NRE takes each track's box size
+          from its first observation. Rigid actors live in the box frame, so the jitter turns into blur. Each track is
+          re-estimated: robust LOESS on xyz, near-stationary tracks snapped to one position, box size =
+          per-track percentile of all observations. Headings are never re-oriented: tracks with a single-frame heading
+          jump > 30 deg (dataset flips / glitches) keep every annotated rotation; only the other tracks get their
+          small yaw jitter smoothed.
+
+          P2 camera clock: the py123d NCore bridge stamps every camera image with the LiDAR/ego frame time,
+          while the cameras are triggered during the LiDAR sweep (-18..+24 ms, some frames +-40 ms). Rig
+          trajectories handed to the model now carry each image's filename capture time, so camera poses
+          and actor-track interpolation use the real exposure time. Image / aux lookups keep the original
+          sensor timestamps, which are untouched.
+
+          P3 actor relocation: actor layers stay out of the global MCMC (so the background cannot drain
+          them) but get MCMC relocation inside their own layer; see install_actor_relocation_patch.
+
+          P4 lens distortion: the images are not rectified (nuPlan-like barrel, k1 ~ -0.35); the NCore camera
+          model gets the fitted radial coefficients; see install_camera_distortion_patch.
+          """
+
+          import hashlib
+          import json
+          import math
+          import os
+          import pickle
+          import sys
+          import time
+
+          import numpy as np
+
+          REPORT_DIR = os.environ.get("NUR_V3_REPORT_DIR", "/tmp/nur_v3")
+          TRACK_CLEAN = os.environ.get("NUR_V3_TRACK_CLEAN", "1") == "1"
+          CAMERA_CLOCK = os.environ.get("NUR_V3_CAMERA_CLOCK", "1") == "1"
+          HALF_WINDOW_S = float(os.environ.get("NUR_V3_SMOOTH_HALF_WINDOW_S", "0.8"))
+          DIM_PERCENTILE = float(os.environ.get("NUR_V3_DIM_PERCENTILE", "75"))
+          STATIC_SNAP_M = float(os.environ.get("NUR_V3_STATIC_SNAP_M", "0.5"))
+          MAX_YAW_STEP_DEG = float(os.environ.get("NUR_V3_MAX_YAW_STEP_DEG", "30"))
+          ACTOR_RELOCATE_LAYERS = [x for x in os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS", "").split(",") if x]
+          # Last step at which deformable layers are relocated; 0 = same schedule as the rigid layers.
+          DEFORMABLE_RELOCATE_END_STEP = int(os.environ.get("NUR_V3_DEFORMABLE_RELOCATE_END_STEP", "0"))
+          # {layer: n}: relocation never leaves a track of that layer with fewer than n Gaussians; {} = no floor.
+          RELOCATE_TRACK_FLOOR = {k: int(v) for k, v in json.loads(os.environ.get("NUR_V3_RELOCATE_TRACK_FLOOR", "{}")).items()}
+          # Largest allowed Gaussian scale in an actor layer, as a fraction of the longest side of the object's box; 0 = no cap.
+          ACTOR_SCALE_CAP = float(os.environ.get("NUR_V3_ACTOR_SCALE_CAP", "0"))
+          # "track_id:n;track_id:n;...": Gaussians each track starts with; empty = NRE's even split per layer.
+          TRACK_TARGETS = {k: int(v) for k, v in (item.split(":") for item in os.environ.get("NUR_V3_TRACK_TARGETS", "").split(";") if item)}
+          CAMERA_RADIAL = json.loads(os.environ.get("NUR_V3_CAMERA_RADIAL", "{}"))
+          MOVING_SPEED_MS = 1.0
+          CAMERA_FOLDER_TO_NCORE = {
+              "CAM_M_F": "camera_pcam_f0",
+              "CAM_M_B": "camera_pcam_b0",
+              "CAM_M_L0": "camera_pcam_l0",
+              "CAM_M_L1": "camera_pcam_l1",
+              "CAM_M_L2": "camera_pcam_l2",
+              "CAM_M_R0": "camera_pcam_r0",
+              "CAM_M_R1": "camera_pcam_r1",
+              "CAM_M_R2": "camera_pcam_r2",
+          }
+
+
+          def _say(*parts):
+              print("[nur_v3]", *parts, flush=True)
+
+
+          def _write_report(name, obj):
+              os.makedirs(REPORT_DIR, exist_ok=True)
+              with open(os.path.join(REPORT_DIR, name), "w") as f:
+                  json.dump(obj, f, indent=1, default=float)
+
+
+          # ---------------------------------------------------------------- P1: track hygiene
+
+
+          def _wrap(a):
+              return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+
+
+          def _rotz(a):
+              c, s = math.cos(a), math.sin(a)
+              return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+          def loess(t, y, half_window, degree=2, robust_iters=2, scale_floor=0.05):
+              """Robust local polynomial regression (tricube kernel, bisquare reweighting).
+
+              The local degree drops when the window is thin or one-sided (track ends, gaps), and every
+              fit is clamped to the range of the samples it used, so sparse tracks cannot extrapolate.
+              """
+              t = np.asarray(t, dtype=np.float64)
+              y = np.asarray(y, dtype=np.float64)
+              squeeze = y.ndim == 1
+              y = y.reshape(len(t), -1)
+              n = len(t)
+              out = y.copy()
+              robust = np.ones(n)
+              for it in range(robust_iters + 1):
+                  for i in range(n):
+                      d = np.abs(t - t[i])
+                      k = min(n - 1, degree + 2)
+                      h = max(half_window, np.partition(d, k)[k] * 1.0001)
+                      w = np.clip(1.0 - (d / h) ** 3, 0.0, None) ** 3 * robust
+                      m = w > 1e-12
+                      count = int(m.sum())
+                      if count == 0:
+                          continue
+                      dt = t[m] - t[i]
+                      deg = degree
+                      if not (np.any(dt < -1e-9) and np.any(dt > 1e-9)):
+                          deg = min(deg, 1)
+                      deg = max(0, min(deg, count - 3))
+                      ym, wm = y[m], w[m][:, None]
+                      X = np.vander(dt, deg + 1, increasing=True)
+                      A = X.T @ (wm * X) + 1e-9 * np.eye(deg + 1)
+                      fit = np.linalg.solve(A, X.T @ (wm * ym))[0]
+                      lo, hi = ym.min(axis=0), ym.max(axis=0)
+                      pad = 0.25 * (hi - lo) + scale_floor
+                      out[i] = np.clip(fit, lo - pad, hi + pad)
+                  if it < robust_iters:
+                      r = np.linalg.norm(y - out, axis=1)
+                      s = max(6.0 * np.median(r), scale_floor)
+                      robust = np.clip(1.0 - (r / s) ** 2, 0.0, None) ** 2
+              return out[:, 0] if squeeze else out
+
+
+          def clean_track(timestamps_us, poses, dims):
+              """Return (clean poses list, clean dims, info) for one track.
+
+              poses: list of 4x4 world poses (z-up), dims: (M, 3) array of all observed box sizes.
+              """
+              P = np.stack(poses).astype(np.float64)
+              n = len(P)
+              info = {"n": n}
+              new_dims = np.percentile(np.asarray(dims, dtype=np.float64), DIM_PERCENTILE, axis=0) if len(dims) else None
+              if n < 4:
+                  info["skipped"] = "few_poses"
+                  return poses, new_dims, info
+              t = (np.asarray(timestamps_us, dtype=np.int64) - int(timestamps_us[0])) / 1e6
+              if np.any(np.diff(t) <= 0):
+                  info["skipped"] = "non_increasing_time"
+                  return poses, new_dims, info
+              xyz = P[:, :3, 3]
+              yaw = np.arctan2(P[:, 1, 0], P[:, 0, 0])
+              tilt = np.einsum("nij,njk->nik", np.stack([_rotz(-a) for a in yaw]), P[:, :3, :3])
+              tilt_deg = float(np.degrees(np.arccos(np.clip((np.trace(tilt, axis1=1, axis2=2) - 1) / 2, -1, 1))).max())
+              info["max_tilt_deg"] = tilt_deg
+
+              xyz_s = loess(t, xyz, HALF_WINDOW_S)
+              vel = np.gradient(xyz_s[:, :2], t, axis=0)
+              speed = np.linalg.norm(vel, axis=1)
+              moving = speed > MOVING_SPEED_MS
+              center = np.median(xyz_s[:, :2], axis=0)
+              spread = float(np.max(np.linalg.norm(xyz_s[:, :2] - center, axis=1)))
+              info["jitter_rms_m"] = float(np.sqrt(np.mean(np.sum((xyz - xyz_s) ** 2, axis=1))))
+              info["spread_m"] = spread
+              info["moving_frac"] = float(moving.mean())
+
+              # Headings are never re-oriented: a track whose yaw jumps by more than 30 deg between consecutive
+              # observations (dataset heading flips / glitches; real objects turn < ~17 deg per 0.1 s) keeps every
+              # frame's rotation exactly as annotated. Only the remaining tracks get their small yaw jitter smoothed.
+              yaw_u = np.unwrap(yaw)
+              has_flip = bool(np.any(np.abs(_wrap(np.diff(yaw))) > np.radians(MAX_YAW_STEP_DEG)))
+              info["heading_flip_left_untouched"] = has_flip
+              if not has_flip:
+                  yaw_s = loess(t, yaw_u, HALF_WINDOW_S, scale_floor=0.02)
+                  info["yaw_jitter_rms_rad"] = float(np.sqrt(np.mean((yaw_u - yaw_s) ** 2)))
+
+              snapped = spread < STATIC_SNAP_M and not moving.any()
+              info["static_snapped"] = bool(snapped)
+              if snapped:
+                  xyz_s = np.repeat(np.median(xyz_s, axis=0, keepdims=True), n, axis=0)
+                  if not has_flip:
+                      mean_yaw = math.atan2(np.mean(np.sin(yaw_s)), np.mean(np.cos(yaw_s)))
+                      yaw_s = np.full(n, mean_yaw)
+              keep_tilt = tilt_deg > 3.0
+              out = []
+              for i in range(n):
+                  T = np.eye(4)
+                  if has_flip:
+                      T[:3, :3] = P[i, :3, :3]
+                  else:
+                      T[:3, :3] = _rotz(yaw_s[i]) @ (tilt[i] if keep_tilt else np.eye(3))
+                  T[:3, 3] = xyz_s[i]
+                  out.append(T)
+              return out, new_dims, info
+
+
+          def _bbox_dims(b):
+              if isinstance(b, dict):
+                  return tuple(float(x) for x in b["dim"])
+              return tuple(float(x) for x in b.dim)
+
+
+          def install_track_patch():
+              import nre.datasets.utils as du
+
+              original = du.consolidate_cuboid_tracks
+
+              def consolidate_and_clean(*args, **kwargs):
+                  all_tracks = original(*args, **kwargs)
+                  cuboids_df = kwargs["cuboids_df"] if "cuboids_df" in kwargs else args[0]
+                  key_src = repr(sorted((k, len(v["timestamps_us"]), v["timestamps_us"][0]) for k, v in all_tracks.items() if v["timestamps_us"]))
+                  cache = os.path.join("/tmp", "nur_v3_tracks_" + hashlib.sha1(key_src.encode()).hexdigest()[:16] + ".pkl")
+                  if os.path.exists(cache):
+                      with open(cache, "rb") as f:
+                          cleaned = pickle.load(f)
+                      for track_id, (poses, dims) in cleaned.items():
+                          all_tracks[track_id]["poses"] = poses
+                          if dims is not None:
+                              all_tracks[track_id]["dimension"] = dims
+                      _say("track hygiene: reused cache", cache, "tracks", len(cleaned))
+                      return all_tracks
+                  start = time.time()
+                  dims_by_track = {}
+                  for track_id, bbox3 in zip(cuboids_df["track_id"].tolist(), cuboids_df["bbox3"].tolist()):
+                      dims_by_track.setdefault(track_id, []).append(_bbox_dims(bbox3))
+                  cleaned, report = {}, {}
+                  for track_id, track in all_tracks.items():
+                      if not track["timestamps_us"]:
+                          continue
+                      first_dims = np.asarray(track["dimension"], dtype=np.float64)
+                      poses, dims, info = clean_track(track["timestamps_us"], track["poses"], dims_by_track.get(track_id, []))
+                      if dims is not None:
+                          dims = dims.astype(np.asarray(track["dimension"]).dtype)
+                          track["dimension"] = dims
+                          info["dims_first"] = first_dims.tolist()
+                          info["dims_new"] = dims.tolist()
+                      track["poses"] = poses
+                      info["label_class"] = str(track["label_class"])
+                      cleaned[track_id] = (poses, dims)
+                      report[track_id] = info
+                  tmp = f"{cache}.{os.getpid()}.tmp"
+                  with open(tmp, "wb") as f:
+                      pickle.dump(cleaned, f)
+                  os.replace(tmp, cache)
+                  jit = np.array([r.get("jitter_rms_m", 0.0) for r in report.values()])
+                  summary = {
+                      "tracks": len(report),
+                      "seconds": time.time() - start,
+                      "half_window_s": HALF_WINDOW_S,
+                      "dim_percentile": DIM_PERCENTILE,
+                      "static_snapped": int(sum(r.get("static_snapped", False) for r in report.values())),
+                      "tracks_with_heading_flips_left_untouched": int(sum(r.get("heading_flip_left_untouched", False) for r in report.values())),
+                      "tracks_yaw_jitter_smoothed": int(sum("yaw_jitter_rms_rad" in r for r in report.values())),
+                      "removed_jitter_rms_m_p50_p90_max": [float(np.percentile(jit, 50)), float(np.percentile(jit, 90)), float(jit.max())] if len(jit) else [],
+                      "max_tilt_deg": float(max([r.get("max_tilt_deg", 0.0) for r in report.values()] or [0.0])),
+                  }
+                  _write_report("track_hygiene.json", {"summary": summary, "tracks": report})
+                  _say("track hygiene:", json.dumps(summary))
+                  return all_tracks
+
+              du.consolidate_cuboid_tracks = consolidate_and_clean
+              _say("installed track hygiene patch")
+
+
+          # ---------------------------------------------------------------- P2: camera capture clock
+
+
+          def load_capture_clock(metadata_path):
+              meta = json.load(open(metadata_path))
+              clock = {}
+              for frame in meta["frames"]:
+                  ego_ts = int(frame["timestamp_us"])
+                  for rel in frame["sensors"]["cameras"].values():
+                      folder = rel.split("/")[1]
+                      capture_ts = int(os.path.splitext(rel)[0].rsplit("_", 1)[1])
+                      clock.setdefault(CAMERA_FOLDER_TO_NCORE[folder], {})[ego_ts] = capture_ts
+              return clock
+
+
+          def install_camera_clock_patch(metadata_path):
+              import torch
+              import nre.datasets.ncore as nc
+              from ncore.impl.common.transformations import PoseInterpolator
+
+              clock = load_capture_clock(metadata_path)
+              original = nc.NCOREDataSource.get_rig_trajectories
+              reported = {"done": False}
+
+              def get_rig_trajectories_capture_clock(self):
+                  rts = original(self)
+                  stats = {}
+                  for rt in rts.rig_trajectories:
+                      pose_ts = rt.T_rig_world_timestamps_us.cpu().numpy()
+                      lo, hi = int(pose_ts.min()), int(pose_ts.max())
+                      for unique_id, ts in list(rt.cameras_frame_timestamps_us.items()):
+                          logical = rts.camera_calibrations[unique_id].logical_sensor_name
+                          table = clock.get(logical)
+                          if table is None:
+                              raise RuntimeError(f"nur_v3: no capture clock for camera {logical}")
+                          stamped = ts.cpu().numpy().astype(np.int64)
+                          found = np.array([int(e) in table for e in stamped[:, 1]])
+                          if found.mean() < 0.95:
+                              raise RuntimeError(f"nur_v3: capture clock covers only {found.mean():.1%} of {logical} frames")
+                          capture = np.array([table.get(int(e), int(e)) for e in stamped[:, 1]], dtype=np.int64)
+                          capture = np.clip(capture, lo, hi)
+                          for i in range(1, len(capture)):  # keep strictly increasing frame times
+                              if capture[i] <= capture[i - 1]:
+                                  capture[i] = stamped[i, 1] if stamped[i, 1] > capture[i - 1] else capture[i - 1] + 1
+                          new = np.stack([capture, capture], axis=1)
+                          rt.cameras_frame_timestamps_us[unique_id] = torch.from_numpy(new).to(ts.dtype)
+                          if rt.cameras_frame_T_rig_worlds is not None and unique_id in rt.cameras_frame_T_rig_worlds:
+                              interp = PoseInterpolator(rt.T_rig_worlds.cpu().numpy(), pose_ts)
+                              T = interp.interpolate_to_timestamps(capture, dtype=np.float64)
+                              rt.cameras_frame_T_rig_worlds[unique_id] = torch.from_numpy(np.stack([T, T], axis=1))
+                          off = (capture - stamped[:, 1]) / 1e3
+                          stats[logical] = {
+                              "frames": len(capture),
+                              "coverage": float(found.mean()),
+                              "offset_ms_median": float(np.median(off)),
+                              "offset_ms_min": float(off.min()),
+                              "offset_ms_max": float(off.max()),
+                              "frames_abs_offset_gt_30ms": int(np.sum(np.abs(off) > 30)),
+                          }
+                  if not reported["done"]:
+                      reported["done"] = True
+                      _write_report("camera_clock.json", {"metadata": metadata_path, "cameras": stats})
+                      _say("camera clock:", json.dumps({k: round(v["offset_ms_median"], 1) for k, v in stats.items()}))
+                  return rts
+
+              nc.NCOREDataSource.get_rig_trajectories = get_rig_trajectories_capture_clock
+              _say("installed camera capture-clock patch", metadata_path)
+
+
+          # ---------------------------------------------------------------- P4: camera lens distortion
+
+
+          def install_camera_distortion_patch(radial):
+              """Give each NCore camera its radial distortion; the bridge stored a distortion-free pinhole.
+
+              nuReasoning ships only K, but the images are not rectified: cross-camera reprojection on
+              stationary frames gives k1 ~ -0.33..-0.38, k2 ~ +0.05..+0.10 (nuPlan-like barrel). A pinhole
+              model misplaces the left/right image borders by ~115 px and the corners by ~190-200 px.
+              radial: {camera_id: [k1, k2, ...]} in OpenCV order (numerator k1, k2, k3, denominator k4, k5, k6).
+              """
+              import dataclasses
+              from ncore.impl.data.v4.compat import SequenceLoaderV4
+
+              original = SequenceLoaderV4.get_camera_sensor
+              applied = {}
+
+              def get_camera_sensor_with_distortion(self, sensor_id):
+                  sensor = original(self, sensor_id)
+                  coeffs = radial.get(sensor_id)
+                  if coeffs is None:
+                      raise RuntimeError(f"nur_v3: no distortion coefficients for camera {sensor_id}")
+                  params = sensor._model_parameters
+                  rc = np.zeros(6, dtype=np.float32)
+                  rc[: len(coeffs)] = coeffs
+                  if np.any(params.radial_coeffs) and not np.allclose(params.radial_coeffs, rc):
+                      raise RuntimeError(f"nur_v3: {sensor_id} already has radial coeffs {params.radial_coeffs}")
+                  sensor._model_parameters = dataclasses.replace(params, radial_coeffs=rc)
+                  if sensor_id not in applied:
+                      applied[sensor_id] = rc[:2].tolist()
+                      _say("camera distortion", sensor_id, applied[sensor_id])
+                  return sensor
+
+              SequenceLoaderV4.get_camera_sensor = get_camera_sensor_with_distortion
+              _say("installed camera distortion patch", json.dumps(radial))
+
+
+          # ---------------------------------------------------------------- P5: per-track initialisation counts
+
+
+          def targeted_subsample(original, targets):
+              """Replacement for NRE's subsample_points that gives every track its own number of points.
+
+              NRE fills each track of a layer to the same per-track count and then thins the whole layer by one
+              ratio, so a telehandler and a cone start with the same number of Gaussians. Relocation does not
+              repair that: Gaussians of small objects stay faintly visible instead of dying, so in the first
+              scene-budget run the telehandler ended at 8k of its 27k target. Here the layer-wide thinning is
+              replaced by one pass per track down to targets[track index]; measured (LiDAR) points are kept
+              before random filler. Calls that cover a single track are NRE's own per-track step and pass through.
+              """
+
+              def subsample(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts):
+                  owner = [int(g.reshape(-1)[0]) if g.numel() else None for g in gaussian_cuboid_ids]
+                  tracks = sorted({t for t in owner if t is not None})
+                  if len(tracks) <= 1 or any(t not in targets for t in tracks):
+                      return original(num_points, point_clouds, gaussian_cuboid_ids, gaussian_scales, observed_counts)
+                  out = ([], [], [], [])
+                  for track in tracks:
+                      pieces = [i for i, o in enumerate(owner) if o == track]
+                      measured = [i for i in pieces if observed_counts[i] > 0]
+                      filler = [i for i in pieces if observed_counts[i] == 0]
+                      n_measured = sum(point_clouds[i].n_points for i in measured)
+                      want = targets[track]
+                      parts = []
+                      if n_measured > 0:
+                          parts.append((min(want, n_measured), measured))
+                      if filler and want > n_measured:
+                          parts.append((want - n_measured, filler))
+                      for n, selection in parts:
+                          kept = original(n, [point_clouds[i] for i in selection], [gaussian_cuboid_ids[i] for i in selection],
+                                          [gaussian_scales[i] for i in selection], [observed_counts[i] for i in selection])
+                          for collected, part in zip(out, kept):
+                              collected.extend(part)
+                  return out
+
+              return subsample
+
+
+          def install_track_target_patch(targets):
+              import torch
+
+              import nre.models.gaussians.initializations as initializations
+
+              original = initializations.DynamicTracksInitialization.initialize_from_datasource
+
+              def initialize_with_track_targets(self, datasource, **kwargs):
+                  tracks = kwargs.get("cuboid_tracks")
+                  tokens = [str(t) for t in tracks.tracks_id] if tracks is not None else []
+                  if not tokens:  # a layer without objects in this scene (834aa758 has no moving people)
+                      return original(self, datasource, **kwargs)
+                  by_index = {i: targets[t] for i, t in enumerate(tokens) if t in targets}
+                  if len(by_index) != len(tokens):
+                      _say("track targets:", len(tokens) - len(by_index), "of", len(tokens), "tracks have no target; NRE's even split kept for this layer")
+                      return original(self, datasource, **kwargs)
+                  saved = initializations.subsample_points
+                  initializations.subsample_points = targeted_subsample(saved, by_index)
+                  try:
+                      result = original(self, datasource, **kwargs)
+                  finally:
+                      initializations.subsample_points = saved
+                  ids = self.gaussian_cuboid_ids
+                  ids = torch.cat([g.reshape(-1) for g in ids]) if isinstance(ids, (list, tuple)) else ids.reshape(-1)
+                  counts = torch.bincount(ids.long(), minlength=len(tokens))
+                  _say("track targets: tracks", len(tokens), "wanted", sum(by_index.values()), "placed", int(counts.sum()),
+                       "per track min/median/max", int(counts.min()), int(counts.float().median()), int(counts.max()))
+                  return result
+
+              initializations.DynamicTracksInitialization.initialize_from_datasource = initialize_with_track_targets
+              _say("installed per-track initialisation targets for", len(targets), "tracks")
+
+
+          # ---------------------------------------------------------------- P3: actor-layer MCMC relocation
+
+
+          def protect_track_floor(model, floor, opacity_threshold):
+              """Keep at least `floor` Gaussians in every track of this layer during the next relocation pass.
+
+              Relocation takes dead Gaussians (opacity <= threshold) from anywhere in the layer and re-creates them on
+              alive ones sampled by opacity, so a small or rarely seen object can be emptied by its neighbours (e08a9f05:
+              one of two dynamic_deformables tracks ended with 0 of 60000). For every track with fewer than `floor`
+              alive Gaussians, enough of its dead ones are lifted just above the threshold to stay where they are.
+              Returns the number of Gaussians held back.
+              """
+              import torch
+
+              ids = model.gaussian_cuboid_ids.long().view(-1)
+              opacity = model.get_densities().detach().view(-1)
+              dead = opacity <= opacity_threshold
+              if not bool(dead.any()):
+                  return 0
+              n_tracks = int(ids.max()) + 1
+              need = (floor - torch.bincount(ids[~dead], minlength=n_tracks)).clamp(min=0)
+              dead_idx = torch.where(dead)[0]
+              order = torch.argsort(ids[dead_idx], stable=True)
+              sorted_idx, sorted_ids = dead_idx[order], ids[dead_idx][order]
+              rank = torch.arange(len(sorted_ids), device=ids.device) - torch.searchsorted(sorted_ids, sorted_ids)
+              keep = sorted_idx[rank < need[sorted_ids]]
+              if len(keep):
+                  lifted = torch.full((len(keep),), opacity_threshold * 1.05, dtype=model.densities.dtype, device=ids.device)
+                  with torch.no_grad():
+                      model.densities.data.view(-1)[keep] = model.density_activation_inv(lifted)
+              return int(len(keep))
+
+
+          def cap_actor_scales(model, factor):
+              """Keep every Gaussian of an actor layer no larger than `factor` x the longest side of its object's box.
+
+              Nothing bounds the scale of actor Gaussians (the layers are outside the MCMC strategy), and over long runs a few
+              grow to metres inside sub-metre objects: 660c2f7a sbt had 13 opaque dynamic-rigid Gaussians above 1 m at 40k
+              steps and 62 at 80k, one of them 19 m long in a 0.3 x 0.6 x 1.7 m object, which shows as a dark band on the road.
+              Returns the number of Gaussians that were clamped.
+              """
+              import torch
+
+              tracks = getattr(model, "cuboid_tracks", None)
+              if tracks is None:
+                  return 0
+              ids = model.gaussian_cuboid_ids.long().view(-1)
+              limit = (tracks.cuboids_dims.max(dim=1).values * factor)[ids].unsqueeze(-1)
+              raw_limit = model.scale_activation_inv(limit).to(model.scales.dtype).expand_as(model.scales.data)
+              with torch.no_grad():
+                  over = int((model.scales.data > raw_limit).any(dim=1).sum())
+                  if over:
+                      model.scales.data.copy_(torch.minimum(model.scales.data, raw_limit))
+              return over
+
+
+          def install_actor_relocation_patch(layers):
+              """Relocate dead Gaussians inside each actor layer on the MCMC relocation schedule.
+
+              v2 keeps actor layers out of the global MCMC so the background cannot drain them, but then
+              nothing recycles their dead Gaussians: in the v2 3M/40k checkpoint 96-98% of every actor
+              layer ended with opacity < 0.05. Here each listed layer gets its own relocation pass: dead
+              Gaussians (opacity <= threshold) move onto alive ones of the same layer (cuboid ids follow
+              the target), counts stay fixed, nothing crosses layers. Death is opacity-only; the
+              invisible-steps rule would recycle actors that are simply off-screen for a while.
+
+              Deformable layers degrade when this keeps running: 660c2f7a checkpoints after relocation
+              to 35k / 70k / 140k steps had 0 / 3 / 6 of 9 dynamic_deformables tracks collapsed into
+              needles (median anisotropy > 100, scales of metres) and the cyclist lost 2/3 of its
+              Gaussians to other tracks; without relocation (v2, 160k) none collapse. Rigid layers stay
+              healthy at every length. NUR_V3_DEFORMABLE_RELOCATE_END_STEP stops it for deformables only.
+              """
+              from nre.models.gaussians.strategies.mcmc import MCMCStrategy
+
+              original = MCMCStrategy.update_step_train_batch_end
+              logged = {"n": 0}
+
+              def update_step_with_actor_relocation(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs):
+                  original(self, epoch, global_step, batch, system, gaussians_nodes, **kwargs)
+                  relocate = self.config.relocate
+                  if ACTOR_SCALE_CAP > 0 and global_step % relocate.frequency == 0:
+                      capped = {layer: cap_actor_scales(gaussians_nodes[layer], ACTOR_SCALE_CAP) for layer in layers
+                                if layer in gaussians_nodes and gaussians_nodes[layer].get_num_gaussians() > 0}
+                      if global_step % (50 * relocate.frequency) == 0:
+                          _say("actor scale cap at step", global_step, "clamped", capped)
+                  if not self._check_step_condition(
+                      step=global_step, start=relocate.start_iteration, end=relocate.end_iteration, freq=relocate.frequency
+                  ):
+                      return
+                  saved_exclude, saved_invisible = list(self.config.exclude_layer_ids), relocate.max_invisible_steps
+                  held = {}
+                  try:
+                      relocate.max_invisible_steps = None
+                      for layer in layers:
+                          if layer not in gaussians_nodes or gaussians_nodes[layer].get_num_gaussians() == 0:
+                              continue
+                          if "deformables" in layer and 0 < DEFORMABLE_RELOCATE_END_STEP < global_step:
+                              continue
+                          if RELOCATE_TRACK_FLOOR.get(layer, 0) > 0:
+                              held[layer] = protect_track_floor(gaussians_nodes[layer], RELOCATE_TRACK_FLOOR[layer], self.config.opacity_threshold)
+                          self.config.exclude_layer_ids = [name for name in gaussians_nodes.keys() if name != layer]
+                          self.relocate_gaussians(gaussians_nodes)
+                  finally:
+                      self.config.exclude_layer_ids = saved_exclude
+                      relocate.max_invisible_steps = saved_invisible
+                  if logged["n"] < 3:
+                      logged["n"] += 1
+                      _say("actor relocation pass at step", global_step, "layers", layers, "held back by track floor", held)
+
+              MCMCStrategy.update_step_train_batch_end = update_step_with_actor_relocation
+              _say("installed actor-layer relocation patch", layers, "deformable end step", DEFORMABLE_RELOCATE_END_STEP or "same as rigid",
+                   "track floor", RELOCATE_TRACK_FLOOR or "none", "scale cap", ACTOR_SCALE_CAP or "none")
+
+
+          def main():
+              if "NUR_V3_ARGS_FILE" in os.environ:
+                  args = [a for a in open(os.environ["NUR_V3_ARGS_FILE"]).read().split("\n") if a]
+              else:
+                  args = json.loads(os.environ["NUR_V3_ARGS"])
+              if TRACK_CLEAN:
+                  install_track_patch()
+              if CAMERA_CLOCK:
+                  install_camera_clock_patch(os.environ["NUR_V3_SOURCE_METADATA"])
+              if ACTOR_RELOCATE_LAYERS:
+                  install_actor_relocation_patch(ACTOR_RELOCATE_LAYERS)
+              if TRACK_TARGETS:
+                  install_track_target_patch(TRACK_TARGETS)
+              if CAMERA_RADIAL:
+                  install_camera_distortion_patch(CAMERA_RADIAL)
+              from nre.run.main import main as nre_main
+
+              _say("NRE main args:", args)
+              nre_main.main(args=args, standalone_mode=False)
+
+
+          if __name__ == "__main__":
+              main()
+          NUR_V3_PY
+          printf '%s  %s\n' "$WRAPPER_SHA256" /scratch/nur_v3_train.py | sha256sum -c -
+          ARGS=(--config-name=/scratch/recipe.yaml mode=trainval "logger.run_id='$CLIP_ID'" "dataset.path=/scratch/ncore/pai_$CLIP_ID.json" "out_dir=$DEST/native")
+          /app/run export-parsed-config --config-name=/scratch/recipe.yaml --output "$DEST/parsed-preflight.yaml" -- "${ARGS[@]:1}"
+          printf '%s\n' "${ARGS[@]}" > /scratch/nre_args.txt
+          NUR_V3_ARGS_FILE=/scratch/nre_args.txt NUR_V3_REPORT_DIR="$DEST/nur_v3" NUR_V3_SOURCE_METADATA="$SOURCE_METADATA" \
+            /app/run run-script /scratch/nur_v3_train.py
+          test -s /scratch/native-artifacts/last.usdz
+          mkdir -p "$DEST/artifacts"
+          cp -a /scratch/native-artifacts/last.usdz "$DEST/artifacts/last.usdz"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/"
+          cp -a "$NCORE_DIR/nurec_origin_offset.json" "$DEST/artifacts/"
+          cp -a "$RUN/config" "$DEST/"
+          test -s "$DEST/nur_v3/track_hygiene.json"
+          test -s "$DEST/nur_v3/camera_clock.json"
+          # Use the image's native Python runtime to check checkpoint state and artifact.
+          export RUNFILES_DIR=/app/run.runfiles
+          source <(head -n -1 /app/run)
+          python3 - <<'CHECK_OUTPUT'
+          import os,json,zipfile,pathlib,torch
+          p=pathlib.Path(os.environ["DEST"])
+          z=p/"artifacts/last.usdz"
+          with zipfile.ZipFile(z) as archive:
+              assert archive.testzip() is None
+              assert "checkpoint.ckpt" in archive.namelist()
+              assert "parsed_config.yaml" in archive.namelist()
+          ckpt=torch.load(p/"checkpoints/last.ckpt",map_location="cpu",weights_only=False)
+          assert ckpt["global_step"]==int(os.environ["TRAIN_STEPS"])
+          record=dict(experiment_id=os.environ["EXPERIMENT_ID"],clip_id=os.environ["CLIP_ID"],recipe="nureasoning-v3",
+              variant=os.environ["VARIANT"],train_steps=ckpt["global_step"],scene_gaussian_budget_max=int(os.environ["GAUSSIAN_LIMIT"]),
+              camera_train_subsample=int(os.environ["CAMERA_SUBSAMPLE"]),track_hygiene=True,camera_capture_clock=True,
+              actor_relocation_layers=os.environ.get("NUR_V3_ACTOR_RELOCATE_LAYERS",""),camera_radial=os.environ.get("NUR_V3_CAMERA_RADIAL",""),
+              seed=42,lidar_initialization=True,lidar_supervision=False,temporal_splitting=False,
+              recipe_sha256=os.environ["RECIPE_SHA256"],wrapper_sha256=os.environ["WRAPPER_SHA256"],usdz_bytes=z.stat().st_size)
+          (p/"SUCCESS.json").write_text(json.dumps(record,indent=2)+"\n")
+          print("TRAIN_DONE",json.dumps(record))
+          CHECK_OUTPUT
+        resources:
+          requests:
+            cpu: '2'
+            memory: 28Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: '2'
+            memory: 28Gi
+            ephemeral-storage: 100Gi
+            nvidia.com/gpu: '1'
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: scratch
+        emptyDir:
+          sizeLimit: 80Gi
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+        effect: NoSchedule
+      - key: nautilus.io/cogrob
+        operator: Exists
+        effect: NoSchedule

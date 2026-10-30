@@ -1,0 +1,34 @@
+# CPU-only pod (no GPU) with the NRE GA26.04 runtime: validation of the LiDAR label fill patch (NUR_V3_LIDAR_LABEL_FILL).
+# Finite sleep so it exits on its own after 3h.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nur-fill-prep
+  namespace: cogrob
+  labels: {app: navsafe-nureasoning-audit}
+spec:
+  restartPolicy: Never
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+  - name: prep
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: ["bash", "-c", "sleep 10800"]
+    resources:
+      requests: {cpu: "4", memory: 24Gi, ephemeral-storage: 20Gi}
+      limits: {cpu: "4", memory: 24Gi, ephemeral-storage: 20Gi}
+    volumeMounts:
+    - {name: avl-west, mountPath: /avl-west}
+    - {name: hugsim, mountPath: /hugsim-storage}
+  volumes:
+  - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+  - {name: hugsim, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [ry-gpu-06.sdsc.optiputer.net, ry-gpu-07.sdsc.optiputer.net, ry-gpu-08.sdsc.optiputer.net, ry-gpu-12.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+  tolerations:
+  - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}

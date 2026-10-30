@@ -1,0 +1,404 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-convert-colmap-20261010
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: prepare
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ncore
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          mkdir -p "$ROOT/prep_lidar4_colmap_20261010/$C/$HOSTNAME" /root/NavSafe-infty /root/py123d
+          exec > >(tee -a "$ROOT/prep_lidar4_colmap_20261010/$C/$HOSTNAME/convert.log") 2>&1
+          if [ -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/pai_$C.json" ]; then echo ALREADY_CONVERTED; exit 0; fi
+          # Immutable snapshot made from the user's new NavSafe-infty worktree.
+          tar -xzf "$ROOT/source/navsafe_source.tar.gz" -C /root/NavSafe-infty
+          (cd /root/NavSafe-infty; sha256sum -c "$ROOT/source/source_files.sha256")
+          tar -C /hugsim-storage/py123d --exclude=build --exclude='*.egg-info' --exclude=.git -cf - . | tar -C /root/py123d -xf -
+          python3 -m venv /root/cv
+          /root/cv/bin/pip install -q --upgrade pip
+          /root/cv/bin/pip install -q nuplan-devkit nvidia-ncore==18.7.0 '/root/py123d[nuplan]'
+          /root/cv/bin/pip freeze > "$ROOT/prep_lidar4_colmap_20261010/$C/$HOSTNAME/packages.txt"
+          DBDIR=/tmp/nuplan_local/nuplan-v1.1/splits/test
+          mkdir -p "$DBDIR"
+          cp /avl-west/nuplan/nuplan-v1.1/splits/test/2021.06.28.20.24.43_veh-38_03385_04952.db "$DBDIR/"
+          cat > /root/NavSafe-infty/navsafe/gs3d_converter/nuplan_multi_lidar.py <<'MULTI_LIDAR_PY'
+          """Structured components for nuPlan's top, left, right and back LiDARs (overlay for NavSafe-infty, not part of the repo).
+
+          Differences from navsafe/gs3d_converter/nuplan_structured_lidar.py, each one measured on log
+          2021.06.28.20.24.43_veh-38_03385_04952 (see ../v4_lidar/README.md):
+
+          * Four sensors instead of the top one. Left, right and back fit a beam model as well as the top sensor does; together
+            they carry about 91 % of the merged cloud instead of 33 %. The front sensor is skipped (beams near horizontal).
+          * Calibration comes from a JSON made by calibrate_nuplan_lidars.py out of standing sweeps of the same log, not from
+            the first sweep of the clip.
+          * No per-ray timing. The merged cloud is already motion-compensated: with a fixed mount the per-beam elevation scatter
+            of the top sensor grows from 0.003 deg standing to 0.08 deg at 10 m/s and 0.12 deg above 12 m/s. Giving NRE a
+            rotation to undo would compensate a second time, so every ray carries the frame time and the frame lasts 1 us.
+          * The frame time is the lidar_pc stamp plus NUPLAN_LIDAR_TIME_OFFSET_US (the bridge patch applies it to the merged
+            component too): static structure seen from a moving sweep lines up best with a standing sweep at +37.5 ms.
+          * NUPLAN_LIDAR_COLUMNS azimuth columns (default 3600, 0.1 deg). NRE rebuilds ray directions from (row, column) unless
+            dataset.use_real_lidar_rays is on, and the repo's choice of about 800 columns rounds azimuth by up to 0.22 deg.
+          """
+
+          from __future__ import annotations
+
+          import json
+          import logging
+          import os
+          from typing import Optional
+
+          import numpy as np
+
+          logger = logging.getLogger(__name__)
+
+          COMPONENT_IDS = {"top": "lidar_top_structured", "left": "lidar_left_structured",
+                           "right": "lidar_right_structured", "back": "lidar_back_structured"}
+          TIME_OFFSET_US = int(os.environ.get("NUPLAN_LIDAR_TIME_OFFSET_US", "37500"))
+          N_COLUMNS = int(os.environ.get("NUPLAN_LIDAR_COLUMNS", "3600"))
+
+
+          def _rot(roll: float, pitch: float) -> np.ndarray:
+              cr, sr, cp, sp = np.cos(roll), np.sin(roll), np.cos(pitch), np.sin(pitch)
+              return (np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]])
+                      @ np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]]))
+
+
+          def sweep_points(lidar_mod):
+              """(xyz ego frame, ring, intensity 0..1, py123d lidar id) of one merged sweep, or None."""
+              feats = getattr(lidar_mod, "point_cloud_features", None)
+              xyz = getattr(lidar_mod, "xyz", None)
+              if feats is None or xyz is None:
+                  ds_root = getattr(lidar_mod, "_dataset_root", None)
+                  rel = getattr(lidar_mod, "_relative_path", None)
+                  if ds_root is None or rel is None or not str(rel).endswith(".pcd"):
+                      return None
+                  from pathlib import Path
+                  from py123d.parser.nuplan.nuplan_sensor_io import load_nuplan_point_cloud_data_from_path
+                  xyz, feats = load_nuplan_point_cloud_data_from_path(Path(ds_root) / rel)
+              from py123d.datatypes.sensors.lidar import LidarFeature
+              ids = np.asarray(feats[LidarFeature.IDS.serialize()])
+              ring = np.asarray(feats[LidarFeature.CHANNEL.serialize()]).astype(np.int32)
+              inten = feats.get(LidarFeature.INTENSITY.serialize())
+              inten = np.ones(len(ids), np.float32) if inten is None else np.asarray(inten).astype(np.float32) / 255.0
+              return np.asarray(xyz).astype(np.float64), ring, inten.clip(0.0, 1.0), ids
+
+
+          class SensorLidar:
+              """One spinning sensor of the merged cloud, with the interface NCoreBridge expects of a structured LiDAR."""
+
+              sweep_us = 50000
+
+              def __init__(self, name: str, calib: dict):
+                  self.name = name
+                  self.component_id = COMPONENT_IDS[name]
+                  self.lidar_id = int(calib["py123d_lidar_id"])
+                  self._R = _rot(float(calib["roll_rad"]), float(calib["pitch_rad"]))
+                  self._t = np.asarray(calib["mount_xyz_m"], dtype=np.float64)
+                  elev = np.asarray(calib["ring_elevations_rad"], dtype=np.float64)
+                  self.n_rows = len(elev)
+                  # NCore wants row 0 to be the highest beam; nuPlan counts rings from the bottom.
+                  order = np.argsort(elev)[::-1]
+                  self._ring_to_row = np.empty(self.n_rows, np.int64)
+                  self._ring_to_row[order] = np.arange(self.n_rows)
+                  self.row_elevations = elev[order].astype(np.float32)
+                  assert np.all(np.diff(self.row_elevations) < 0), (name, "beam elevations are not strictly ordered")
+                  self.n_columns = N_COLUMNS
+                  self.fit_residual_deg = float(calib["fit_scatter_deg"])
+                  self.deskew = False
+                  self.extrinsic = np.eye(4, dtype=np.float64)   # lidar -> rig
+                  self.extrinsic[:3, :3] = self._R.T
+                  self.extrinsic[:3, 3] = self._t
+                  self.n_frames = 0
+
+              def column_azimuths(self) -> np.ndarray:
+                  az = (np.arange(self.n_columns, dtype=np.float64) + 0.5) / self.n_columns * 2.0 * np.pi - np.pi
+                  return az.astype(np.float32)
+
+              def spinning_params(self):
+                  from ncore.impl.data.types import RowOffsetStructuredSpinningLidarModelParameters
+                  return RowOffsetStructuredSpinningLidarModelParameters(
+                      spinning_frequency_hz=1e6 / self.sweep_us, spinning_direction="ccw",
+                      n_rows=self.n_rows, n_columns=self.n_columns,
+                      row_elevations_rad=self.row_elevations, column_azimuths_rad=self.column_azimuths(),
+                      row_azimuth_offsets_rad=np.zeros(self.n_rows, np.float32))
+
+              def decode(self, lidar_mod, frame_ts_us: int) -> Optional[dict]:
+                  """One sweep of this sensor. ``frame_ts_us`` already includes the time offset."""
+                  got = sweep_points(lidar_mod)
+                  if got is None:
+                      return None
+                  P, ring, inten, ids = got
+                  m = ids == self.lidar_id
+                  if m.sum() < 200:
+                      return None
+                  v = (P[m] - self._t) @ self._R.T
+                  ring, inten = ring[m], inten[m]
+                  dist = np.linalg.norm(v, axis=1)
+                  ok = (dist > 1e-3) & (ring >= 0) & (ring < self.n_rows)
+                  v, dist, ring, inten = v[ok], dist[ok], ring[ok], inten[ok]
+                  az = np.arctan2(v[:, 1], v[:, 0])
+                  col = np.clip(((az + np.pi) / (2.0 * np.pi) * self.n_columns).astype(np.int64), 0, self.n_columns - 1)
+                  row = self._ring_to_row[ring]
+                  # One return per (row, column): NRE scatters into a row x column image and a second return would overwrite
+                  # the first. Keep the nearer one.
+                  key = row * self.n_columns + col
+                  order = np.lexsort((dist, key))
+                  first = order[np.concatenate([[True], np.diff(key[order]) != 0])]
+                  self.n_frames += 1
+                  return {
+                      "model_element": np.column_stack([row[first], col[first]]).astype(np.uint16),
+                      "direction": (v[first] / dist[first, None]).astype(np.float32),
+                      "distance_m": dist[first].astype(np.float32),
+                      "intensity": inten[first].astype(np.float32),
+                      "timestamp_us": np.full(len(first), frame_ts_us, np.uint64),
+                      "frame_timestamp_us": int(frame_ts_us),
+                      "frame_end_timestamp_us": int(frame_ts_us) + 1,
+                      "dropped_duplicates": int(len(key) - len(first)),
+                  }
+
+
+          def load_sensors() -> list:
+              """Sensors listed in NUPLAN_LIDAR_SENSORS (default all four) with the calibration in NUPLAN_LIDAR_CALIB_JSON."""
+              calib = json.load(open(os.environ["NUPLAN_LIDAR_CALIB_JSON"]))
+              names = [n for n in os.environ.get("NUPLAN_LIDAR_SENSORS", "top,left,right,back").split(",") if n]
+              sensors = [SensorLidar(n, calib["sensors"][n]) for n in names]
+              for s in sensors:
+                  logger.warning("nuplan_multi_lidar: %s -> %s, %d beams x %d columns, mount [%.3f %.3f %.3f] m, standing scatter %.4f deg",
+                                 s.name, s.component_id, s.n_rows, s.n_columns, *s._t, s.fit_residual_deg)
+              return sensors
+          MULTI_LIDAR_PY
+          cat > /tmp/patch_bridge.py <<'PATCH_BRIDGE_PY'
+          """Patch a COPY of navsafe/gs3d_converter/ncore_bridge.py (inside the conversion job) to write nuPlan's top, left,
+          right and back LiDARs as structured components and to stamp every LiDAR frame at lidar_pc time + offset.
+
+          usage: patch_bridge.py /root/NavSafe-infty/navsafe/gs3d_converter/ncore_bridge.py
+          Every replacement must match exactly once; the script fails otherwise, so a changed bridge cannot be patched silently.
+          """
+          import sys
+
+          path = sys.argv[1]
+          src = open(path).read()
+
+
+          def once(a, b):
+              global src
+              assert src.count(a) == 1, (src.count(a), a)
+              src = src.replace(a, b)
+
+
+          # 1. calibration: sensors from the per-vehicle JSON instead of a single-sweep fit of the top sensor
+          once("""    nuplan_lidar = None
+              if (structured_lidar is None
+          """, """    nuplan_lidar = None
+              _multi = []
+              _LIDAR_OFF = int(os.environ.get("NUPLAN_LIDAR_TIME_OFFSET_US", "0"))
+              if (structured_lidar is None
+          """)
+          once("""            probe = _first_lidar_modality(scene)
+                      if probe is not None:
+                          cand = NuplanStructuredLidar()
+                          if cand.calibrate(probe):
+                              nuplan_lidar = cand
+          """, """            from navsafe.gs3d_converter.nuplan_multi_lidar import load_sensors
+                      _multi = load_sensors()
+                      nuplan_lidar = _multi[0]
+          """)
+          once("""                       "bracket, so falling back to the flattened path")
+                  nuplan_lidar = None
+          """, """                       "bracket, so falling back to the flattened path")
+                  raise RuntimeError("nuplan_multi_lidar needs the native ego trajectory")
+          """)
+
+          # 2. one writer and one static pose per sensor (the repo's single structured writer stays unused)
+          once("""    lidar_struct_w = None if nuplan_lidar is None else writer.register_component_writer(
+                  LidarSensorComponent.Writer, _STRUCT_LIDAR_ID, group_name=_STRUCT_LIDAR_ID
+              )
+          """, """    lidar_struct_w = None
+              _multi_w = {_s.component_id: writer.register_component_writer(
+                  LidarSensorComponent.Writer, _s.component_id, group_name=_s.component_id) for _s in _multi}
+          """)
+          once("""    n_structured_frames = 0
+              n_nuplan_struct_frames = 0
+          """, """    for _s in _multi:
+                  poses_w.store_static_pose(_s.component_id, _RIG_FRAME_ID, np.asarray(_s.extrinsic, dtype=_POSE_DTYPE))
+              n_structured_frames = 0
+              n_nuplan_struct_frames = 0
+          """)
+
+          # 3. merged cloud: same points, frame time moved by the offset
+          once("""                    per_ray_ts = np.full(len(xyz), ts_us, dtype=np.uint64)
+          """, """                    per_ray_ts = np.full(len(xyz), ts_us + _LIDAR_OFF, dtype=np.uint64)
+          """)
+          once("""                        intensity=intensity.astype(np.float32)[None, :],   # (1, N)
+                                  frame_timestamps_us=np.array([ts_us, ts_us], dtype=np.uint64),
+          """, """                        intensity=intensity.astype(np.float32)[None, :],   # (1, N)
+                                  frame_timestamps_us=np.array([ts_us + _LIDAR_OFF, ts_us + _LIDAR_OFF], dtype=np.uint64),
+          """)
+
+          # 4. structured sweeps of every sensor
+          once("""                if lidar_struct_w is not None:
+                              srec = nuplan_lidar.decode(mod, int(ts_us))
+          """, """                for _s in _multi:
+                              _r = _s.decode(mod, int(ts_us) + _LIDAR_OFF)
+                              if _r is None:
+                                  continue
+                              _multi_w[_s.component_id].store_frame(
+                                  direction=_r["direction"], timestamp_us=_r["timestamp_us"],
+                                  model_element=_r["model_element"], distance_m=_r["distance_m"][None, :],
+                                  intensity=_r["intensity"][None, :],
+                                  frame_timestamps_us=np.array([_r["frame_timestamp_us"], _r["frame_end_timestamp_us"]], dtype=np.uint64),
+                                  generic_data={}, generic_meta_data={})
+                              _s.points = getattr(_s, "points", 0) + len(_r["distance_m"])
+                              _s.duplicates = getattr(_s, "duplicates", 0) + _r["dropped_duplicates"]
+                          if lidar_struct_w is not None:
+                              srec = nuplan_lidar.decode(mod, int(ts_us))
+          """)
+
+          # 5. spinning model per sensor
+          once("""    if lidar_struct_w is not None and n_nuplan_struct_frames:
+          """, """    for _s in _multi:
+                  assert _s.n_frames > 0, _s.name
+                  intr_w.store_lidar_intrinsics(_s.component_id, _s.spinning_params())
+                  logger.warning("NCoreBridge: %s: %d sweeps, %d rays, %d second returns dropped, frame time offset %d us",
+                                 _s.component_id, _s.n_frames, _s.points, _s.duplicates, _LIDAR_OFF)
+              if lidar_struct_w is not None and n_nuplan_struct_frames:
+          """)
+          open(path, "w").write(src)
+          print("BRIDGE_PATCHED", path)
+          PATCH_BRIDGE_PY
+          /root/cv/bin/python /tmp/patch_bridge.py /root/NavSafe-infty/navsafe/gs3d_converter/ncore_bridge.py
+          cat > /tmp/patch_bridge_pose_delta.py <<'POSE_DELTA_PY'
+          """Second patch of the COPY of ncore_bridge.py: apply the COLMAP corrections (z, roll, pitch, yaw; x and y stay as
+          logged) to every rig pose before it is stored. T_rig_world' = T_rig_world @ D(t), D interpolated from
+          NUPLAN_POSE_DELTA_JSON (colmap_model.py extract). All sensors follow, because their poses come from this trajectory.
+
+          usage: patch_bridge_pose_delta.py /root/NavSafe-infty/navsafe/gs3d_converter/ncore_bridge.py
+          """
+          import sys
+
+          path = sys.argv[1]
+          src = open(path).read()
+          a = """    if rig_poses:
+                  poses_arr = np.stack(rig_poses, axis=0).astype(np.float64)
+          """
+          assert src.count(a) == 1, src.count(a)
+          src = src.replace(a, a + """        if os.environ.get("NUPLAN_POSE_DELTA_JSON"):
+                      poses_arr = _apply_colmap_pose_delta(poses_arr, rig_ts_us)
+          """)
+          src += '''
+
+          def _apply_colmap_pose_delta(poses_arr, rig_ts_us):
+              import json
+              d = json.load(open(os.environ["NUPLAN_POSE_DELTA_JSON"]))
+              t = np.asarray(d["timestamps_us"], dtype=np.float64)
+              q = np.asarray(rig_ts_us, dtype=np.float64)
+              z, roll, pitch, yaw = (np.interp(q, t, np.asarray(d[k], dtype=np.float64)) for k in ("z_m", "roll_rad", "pitch_rad", "yaw_rad"))
+              out = np.empty_like(poses_arr)
+              for i in range(len(poses_arr)):
+                  cr, sr, cp, sp, cy, sy = np.cos(roll[i]), np.sin(roll[i]), np.cos(pitch[i]), np.sin(pitch[i]), np.cos(yaw[i]), np.sin(yaw[i])
+                  D = np.eye(4)
+                  D[:3, :3] = (np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1.0]]) @ np.array([[cp, 0, sp], [0, 1.0, 0], [-sp, 0, cp]])
+                               @ np.array([[1.0, 0, 0], [0, cr, -sr], [0, sr, cr]]))
+                  D[2, 3] = z[i]
+                  out[i] = poses_arr[i] @ D
+              logger.warning("NCoreBridge: COLMAP pose corrections applied to %d rig poses: |z| max %.3f m, |roll| %.3f, |pitch| %.3f, |yaw| %.3f deg max",
+                             len(out), np.abs(z).max(), np.degrees(np.abs(roll).max()), np.degrees(np.abs(pitch).max()), np.degrees(np.abs(yaw).max()))
+              return out
+          '''
+          open(path, "w").write(src)
+          print("BRIDGE_POSE_DELTA_PATCHED", path)
+          POSE_DELTA_PY
+          /root/cv/bin/python /tmp/patch_bridge_pose_delta.py /root/NavSafe-infty/navsafe/gs3d_converter/ncore_bridge.py
+          test -s /avl-west/navsafe_nuplan_dense_20261006/colmap_pose_20261010/$C/pose_delta_v2.json
+          test -s /avl-west/navsafe_nuplan_dense_20261006/lidar_calib_20261009/2021.06.28.20.24.43_veh-38_03385_04952.json
+          cat > /tmp/convert.py <<'PY_CONVERTER'
+          import sys,json,pathlib
+          sys.path.insert(0,"/root/NavSafe-infty")
+          from navsafe.gs3d_converter.log_ingestion import NuplanLogReader
+          from navsafe.gs3d_converter.ncore_bridge import NCoreBridge
+          c,log,t0,t1=sys.argv[1],sys.argv[2],int(sys.argv[3]),int(sys.argv[4])
+          assert t1-t0==20000000
+          reader=NuplanLogReader(nuplan_data_root="/tmp/nuplan_local",sensor_root="/avl-west/nuplan/nuplan-v1.1/sensor_blobs",maps_root="/avl-west/nuplan/maps",scenes=[(log,c,t0,t1)],split="nuplan_test")
+          scene=next(iter(reader.iter_scenes()))
+          assert 198<=scene.n_frames<=201,(c,scene.n_frames)
+          assert 19800000<=int(scene.timestamps_us[-1]-scene.timestamps_us[0])<=20100000
+          print("FULL_20S_SCENE",c,"frames",scene.n_frames,flush=True)
+          cd=NCoreBridge.prepare(scene,pathlib.Path("/avl-west/navsafe_nuplan_dense_20261006/inputs_lidar4_colmap_20261010")/c)
+          print("NCORE_20S_DONE",c,str(cd),flush=True)
+          PY_CONVERTER
+          export NUPLAN_POSE_DELTA_JSON=/avl-west/navsafe_nuplan_dense_20261006/colmap_pose_20261010/$C/pose_delta_v2.json NCORE_REREF_FRAME0=1 NUPLAN_STRUCTURED_LIDAR=1 NUPLAN_LIDAR_CALIB_JSON=/avl-west/navsafe_nuplan_dense_20261006/lidar_calib_20261009/2021.06.28.20.24.43_veh-38_03385_04952.json NUPLAN_LIDAR_TIME_OFFSET_US=37500 NUPLAN_LIDAR_COLUMNS=3600 PYTHONPATH=/root/NavSafe-infty
+          /root/cv/bin/python -u /tmp/convert.py "$C" 2021.06.28.20.24.43_veh-38_03385_04952 1624916457549868 1624916477549868
+          test -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/nurec_origin_offset.json"
+          ls -la "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/"
+          test -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/pai_$C.ncore4-lidar_top_structured.zarr.itar"
+          test -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/pai_$C.ncore4-lidar_left_structured.zarr.itar"
+          test -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/pai_$C.ncore4-lidar_right_structured.zarr.itar"
+          test -s "$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C/pai_$C.ncore4-lidar_back_structured.zarr.itar"
+          grep -a "COLMAP pose corrections applied" "$ROOT/prep_lidar4_colmap_20261010/$C/$HOSTNAME/convert.log"
+          SRCAUX="$ROOT/inputs_lidar4_20261009/$C/clips/$C"; DST="$ROOT/inputs_lidar4_colmap_20261010/$C/clips/$C"
+          for kind in sseg lidar-sseg lidar-camvis egomask; do cp -n "$SRCAUX/$C.aux.$kind.zarr.itar" "$DST/"; done
+          mkdir -p "$ROOT/aux_lidar4_colmap_20261010/$C"
+          (cd "$DST"; sha256sum "$C".aux.*.zarr.itar) > "$ROOT/aux_lidar4_colmap_20261010/$C/aux.sha256"
+          cmp "$ROOT/aux_lidar4_colmap_20261010/$C/aux.sha256" "$ROOT/aux_lidar4_20261009/$C/aux.sha256"
+          date -u +%FT%TZ > "$ROOT/aux_lidar4_colmap_20261010/$C/ready"
+          date -u +%FT%TZ > "$ROOT/prep_lidar4_colmap_20261010/$C/ready"
+        resources:
+          requests:
+            cpu: '3'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '3'
+            memory: 32Gi
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 172800

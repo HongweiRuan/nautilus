@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-pvc-look
+  namespace: cogrob
+spec:
+  restartPolicy: Never
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+  containers:
+  - name: c
+    image: robinwangucsd/metabench:latest
+    command: [sleep, "21000"]
+    resources:
+      requests: {cpu: "1", memory: 4Gi}
+      limits: {cpu: 1200m, memory: 4800Mi}
+    volumeMounts:
+    - {name: avl-west, mountPath: /avl-west}
+  volumes:
+  - name: avl-west
+    persistentVolumeClaim: {claimName: avl-west-vol}

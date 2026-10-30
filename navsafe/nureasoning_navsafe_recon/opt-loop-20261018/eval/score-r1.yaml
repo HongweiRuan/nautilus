@@ -1,0 +1,94 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur-eval-score-r1
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nureasoning
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: score
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - 'set -o pipefail
+
+          unset PYTHONPATH
+
+          source /opt/conda/etc/profile.d/conda.sh
+
+          conda activate /avl-west/drivearena_bench/envs/ue
+
+          mkdir -p /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/scores
+
+          python3 /pipeline/score_nur.py /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/scores/r1.json /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-auxfix /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-auxfix-r2 /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-auxfix-dd0 /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/660c2f7a-sbtc-full-80k-lens-auxfix-reloc70k /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/c7534532-sbtc-full-80k-lens /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/c7534532-sbtc-full-80k-lens-auxfix /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/c7534532-sbtcl-full-80k-lens /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/c7534532-sbtc-full-80k-lens-auxfix-disks-ws-r4 /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/e08a9f05-full-80k-lens /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/e08a9f05-sb-full-80k-lens
+          /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/e08a9f05-sbt-full-80k-lens /avl-west/navsafe_nureasoning/eval/opt-loop-20261018/e08a9f05-sbtc-full-80k-lens
+
+          '
+        env: []
+        resources:
+          requests:
+            cpu: '3'
+            memory: 12Gi
+            ephemeral-storage: 20Gi
+          limits:
+            cpu: '3'
+            memory: 14Gi
+            ephemeral-storage: 20Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe-nur-optloop-eval
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

@@ -1,0 +1,201 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-fid-0
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-eval
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 43200
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/00185dab0ba153b9/FID_FEATURES_COMPLETE ] || TOKEN=00185dab0ba153b9 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/00185dab0ba153b9/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/00185dab0ba153b9/clips/00185dab0ba153b9/pai_00185dab0ba153b9.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/00185dab0ba153b9 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 00185dab0ba153b9"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/00c1e4eb4a045f20/FID_FEATURES_COMPLETE ] || TOKEN=00c1e4eb4a045f20 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/00c1e4eb4a045f20/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/00c1e4eb4a045f20/clips/00c1e4eb4a045f20/pai_00c1e4eb4a045f20.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/00c1e4eb4a045f20 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 00c1e4eb4a045f20"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/02379e524f105926/FID_FEATURES_COMPLETE ] || TOKEN=02379e524f105926 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/02379e524f105926/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/02379e524f105926/clips/02379e524f105926/pai_02379e524f105926.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/02379e524f105926 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 02379e524f105926"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0334cae9f1ef56ae/FID_FEATURES_COMPLETE ] || TOKEN=0334cae9f1ef56ae NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0334cae9f1ef56ae/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/0334cae9f1ef56ae/clips/0334cae9f1ef56ae/pai_0334cae9f1ef56ae.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0334cae9f1ef56ae /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0334cae9f1ef56ae"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/04aa69f18d255c96/FID_FEATURES_COMPLETE ] || TOKEN=04aa69f18d255c96 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/04aa69f18d255c96/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/04aa69f18d255c96/clips/04aa69f18d255c96/pai_04aa69f18d255c96.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/04aa69f18d255c96 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 04aa69f18d255c96"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/05d0a1a763fc5334/FID_FEATURES_COMPLETE ] || TOKEN=05d0a1a763fc5334 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/05d0a1a763fc5334/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/05d0a1a763fc5334/clips/05d0a1a763fc5334/pai_05d0a1a763fc5334.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/05d0a1a763fc5334 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 05d0a1a763fc5334"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/06b2df49f0455bd0/FID_FEATURES_COMPLETE ] || TOKEN=06b2df49f0455bd0 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/06b2df49f0455bd0/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/06b2df49f0455bd0/clips/06b2df49f0455bd0/pai_06b2df49f0455bd0.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/06b2df49f0455bd0 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 06b2df49f0455bd0"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0802a51b0a1d512c/FID_FEATURES_COMPLETE ] || TOKEN=0802a51b0a1d512c NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0802a51b0a1d512c/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/0802a51b0a1d512c/clips/0802a51b0a1d512c/pai_0802a51b0a1d512c.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0802a51b0a1d512c /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0802a51b0a1d512c"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0980dd9cdc0e543a/FID_FEATURES_COMPLETE ] || TOKEN=0980dd9cdc0e543a NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0980dd9cdc0e543a/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/0980dd9cdc0e543a/clips/0980dd9cdc0e543a/pai_0980dd9cdc0e543a.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0980dd9cdc0e543a /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0980dd9cdc0e543a"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0b1250020ea95539/FID_FEATURES_COMPLETE ] || TOKEN=0b1250020ea95539 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0b1250020ea95539/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/0b1250020ea95539/clips/0b1250020ea95539/pai_0b1250020ea95539.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0b1250020ea95539 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0b1250020ea95539"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0ce170237acd51c2/FID_FEATURES_COMPLETE ] || TOKEN=0ce170237acd51c2 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/0ce170237acd51c2/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/0ce170237acd51c2/clips/0ce170237acd51c2/pai_0ce170237acd51c2.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0ce170237acd51c2 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0ce170237acd51c2"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/0e272e003af65a71/FID_FEATURES_COMPLETE ] || TOKEN=0e272e003af65a71 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step3_grounddisks/0e272e003af65a71/artifacts/last.usdz NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0e272e003af65a71/clips/0e272e003af65a71/pai_0e272e003af65a71.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/0e272e003af65a71 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 0e272e003af65a71"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/107a64d478fa508f/FID_FEATURES_COMPLETE ] || TOKEN=107a64d478fa508f NEW_ART=/avl-west/navsafe280_release_20261021/train/best/107a64d478fa508f/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/107a64d478fa508f/clips/107a64d478fa508f/pai_107a64d478fa508f.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/107a64d478fa508f /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 107a64d478fa508f"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/13bb7469606159e9/FID_FEATURES_COMPLETE ] || TOKEN=13bb7469606159e9 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/13bb7469606159e9/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/13bb7469606159e9/clips/13bb7469606159e9/pai_13bb7469606159e9.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/13bb7469606159e9 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 13bb7469606159e9"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/17296f6032025ecc/FID_FEATURES_COMPLETE ] || TOKEN=17296f6032025ecc NEW_ART=/avl-west/navsafe280_release_20261021/train/best/17296f6032025ecc/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/17296f6032025ecc/clips/17296f6032025ecc/pai_17296f6032025ecc.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/17296f6032025ecc /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 17296f6032025ecc"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/190bf8dd22a25d1c/FID_FEATURES_COMPLETE ] || TOKEN=190bf8dd22a25d1c NEW_ART=/avl-west/navsafe280_release_20261021/train/best/190bf8dd22a25d1c/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/190bf8dd22a25d1c/clips/190bf8dd22a25d1c/pai_190bf8dd22a25d1c.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/190bf8dd22a25d1c /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 190bf8dd22a25d1c"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/1ad96f74e72750db/FID_FEATURES_COMPLETE ] || TOKEN=1ad96f74e72750db NEW_ART=/avl-west/navsafe280_release_20261021/train/best/1ad96f74e72750db/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/1ad96f74e72750db/clips/1ad96f74e72750db/pai_1ad96f74e72750db.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/1ad96f74e72750db /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 1ad96f74e72750db"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/1d0334886e9f535b/FID_FEATURES_COMPLETE ] || TOKEN=1d0334886e9f535b NEW_ART=/avl-west/navsafe280_release_20261021/train/best/1d0334886e9f535b/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/1d0334886e9f535b/clips/1d0334886e9f535b/pai_1d0334886e9f535b.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/1d0334886e9f535b /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 1d0334886e9f535b"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/20fffc4aa17d5a12/FID_FEATURES_COMPLETE ] || TOKEN=20fffc4aa17d5a12 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/20fffc4aa17d5a12/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/20fffc4aa17d5a12/clips/20fffc4aa17d5a12/pai_20fffc4aa17d5a12.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/20fffc4aa17d5a12 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 20fffc4aa17d5a12"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/2391f12d7e6a5e7f/FID_FEATURES_COMPLETE ] || TOKEN=2391f12d7e6a5e7f NEW_ART=/avl-west/navsafe280_release_20261021/train/best/2391f12d7e6a5e7f/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/2391f12d7e6a5e7f/clips/2391f12d7e6a5e7f/pai_2391f12d7e6a5e7f.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/2391f12d7e6a5e7f /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 2391f12d7e6a5e7f"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/262333f372975eef/FID_FEATURES_COMPLETE ] || TOKEN=262333f372975eef NEW_ART=/avl-west/navsafe280_release_20261021/train/best/262333f372975eef/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/262333f372975eef/clips/262333f372975eef/pai_262333f372975eef.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/262333f372975eef /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 262333f372975eef"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/2b7bf25209dd5705/FID_FEATURES_COMPLETE ] || TOKEN=2b7bf25209dd5705 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/2b7bf25209dd5705/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/2b7bf25209dd5705/clips/2b7bf25209dd5705/pai_2b7bf25209dd5705.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/2b7bf25209dd5705 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 2b7bf25209dd5705"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/2ee44628526e524c/FID_FEATURES_COMPLETE ] || TOKEN=2ee44628526e524c NEW_ART=/avl-west/navsafe280_release_20261021/train/best/2ee44628526e524c/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/2ee44628526e524c/clips/2ee44628526e524c/pai_2ee44628526e524c.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/2ee44628526e524c /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 2ee44628526e524c"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/342f42c4b2855ffb/FID_FEATURES_COMPLETE ] || TOKEN=342f42c4b2855ffb NEW_ART=/avl-west/navsafe280_release_20261021/train/best/342f42c4b2855ffb/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/342f42c4b2855ffb/clips/342f42c4b2855ffb/pai_342f42c4b2855ffb.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/342f42c4b2855ffb /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 342f42c4b2855ffb"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/3862c9ed94ab5f90/FID_FEATURES_COMPLETE ] || TOKEN=3862c9ed94ab5f90 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/3862c9ed94ab5f90/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/3862c9ed94ab5f90/clips/3862c9ed94ab5f90/pai_3862c9ed94ab5f90.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/3862c9ed94ab5f90 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 3862c9ed94ab5f90"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/3a6525cd871a5fff/FID_FEATURES_COMPLETE ] || TOKEN=3a6525cd871a5fff NEW_ART=/avl-west/navsafe280_release_20261021/train/best/3a6525cd871a5fff/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/3a6525cd871a5fff/clips/3a6525cd871a5fff/pai_3a6525cd871a5fff.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/3a6525cd871a5fff /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 3a6525cd871a5fff"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/42a20478abeb54d5/FID_FEATURES_COMPLETE ] || TOKEN=42a20478abeb54d5 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/42a20478abeb54d5/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/42a20478abeb54d5/clips/42a20478abeb54d5/pai_42a20478abeb54d5.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/42a20478abeb54d5 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 42a20478abeb54d5"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/4874da28248a5026/FID_FEATURES_COMPLETE ] || TOKEN=4874da28248a5026 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/4874da28248a5026/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/4874da28248a5026/clips/4874da28248a5026/pai_4874da28248a5026.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/4874da28248a5026 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 4874da28248a5026"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/4ee177f621f259da/FID_FEATURES_COMPLETE ] || TOKEN=4ee177f621f259da NEW_ART=/avl-west/navsafe280_release_20261021/train/best/4ee177f621f259da/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/4ee177f621f259da/clips/4ee177f621f259da/pai_4ee177f621f259da.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/4ee177f621f259da /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 4ee177f621f259da"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/56c64f7e47b15e0d/FID_FEATURES_COMPLETE ] || TOKEN=56c64f7e47b15e0d NEW_ART=/avl-west/navsafe280_release_20261021/train/best/56c64f7e47b15e0d/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/56c64f7e47b15e0d/clips/56c64f7e47b15e0d/pai_56c64f7e47b15e0d.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/56c64f7e47b15e0d /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 56c64f7e47b15e0d"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/5bd2bc00e2d358e0/FID_FEATURES_COMPLETE ] || TOKEN=5bd2bc00e2d358e0 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/5bd2bc00e2d358e0/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/5bd2bc00e2d358e0/clips/5bd2bc00e2d358e0/pai_5bd2bc00e2d358e0.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/5bd2bc00e2d358e0 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 5bd2bc00e2d358e0"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/63c145828c3b5fd8/FID_FEATURES_COMPLETE ] || TOKEN=63c145828c3b5fd8 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/63c145828c3b5fd8/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/63c145828c3b5fd8/clips/63c145828c3b5fd8/pai_63c145828c3b5fd8.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/63c145828c3b5fd8 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 63c145828c3b5fd8"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/689abfdd66235378/FID_FEATURES_COMPLETE ] || TOKEN=689abfdd66235378 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/689abfdd66235378/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/689abfdd66235378/clips/689abfdd66235378/pai_689abfdd66235378.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/689abfdd66235378 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 689abfdd66235378"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/6f75ee5c660855e7/FID_FEATURES_COMPLETE ] || TOKEN=6f75ee5c660855e7 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/6f75ee5c660855e7/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/6f75ee5c660855e7/clips/6f75ee5c660855e7/pai_6f75ee5c660855e7.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/6f75ee5c660855e7 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 6f75ee5c660855e7"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/771c4e378bef58e4/FID_FEATURES_COMPLETE ] || TOKEN=771c4e378bef58e4 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step3_grounddisks/771c4e378bef58e4/artifacts/last.usdz NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/771c4e378bef58e4/clips/771c4e378bef58e4/pai_771c4e378bef58e4.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/771c4e378bef58e4 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 771c4e378bef58e4"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/7cdcf11e211759cf/FID_FEATURES_COMPLETE ] || TOKEN=7cdcf11e211759cf NEW_ART=/avl-west/navsafe280_release_20261021/train/best/7cdcf11e211759cf/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/7cdcf11e211759cf/clips/7cdcf11e211759cf/pai_7cdcf11e211759cf.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/7cdcf11e211759cf /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 7cdcf11e211759cf"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/8661a7e9b4a95042/FID_FEATURES_COMPLETE ] || TOKEN=8661a7e9b4a95042 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/8661a7e9b4a95042/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/8661a7e9b4a95042/clips/8661a7e9b4a95042/pai_8661a7e9b4a95042.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/8661a7e9b4a95042 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 8661a7e9b4a95042"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/8d261d29f3655aec/FID_FEATURES_COMPLETE ] || TOKEN=8d261d29f3655aec NEW_ART=/avl-west/navsafe280_release_20261021/train/best/8d261d29f3655aec/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/8d261d29f3655aec/clips/8d261d29f3655aec/pai_8d261d29f3655aec.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/8d261d29f3655aec /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 8d261d29f3655aec"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/92c6df44cf055882/FID_FEATURES_COMPLETE ] || TOKEN=92c6df44cf055882 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/92c6df44cf055882/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/92c6df44cf055882/clips/92c6df44cf055882/pai_92c6df44cf055882.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/92c6df44cf055882 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 92c6df44cf055882"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/99a98a7ffb075389/FID_FEATURES_COMPLETE ] || TOKEN=99a98a7ffb075389 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/99a98a7ffb075389/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/99a98a7ffb075389/clips/99a98a7ffb075389/pai_99a98a7ffb075389.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/99a98a7ffb075389 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 99a98a7ffb075389"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/9eb1dcda60165ae3/FID_FEATURES_COMPLETE ] || TOKEN=9eb1dcda60165ae3 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/9eb1dcda60165ae3/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/9eb1dcda60165ae3/clips/9eb1dcda60165ae3/pai_9eb1dcda60165ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/9eb1dcda60165ae3 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED 9eb1dcda60165ae3"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/a43dbb1d34665f24/FID_FEATURES_COMPLETE ] || TOKEN=a43dbb1d34665f24 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/a43dbb1d34665f24/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/a43dbb1d34665f24/clips/a43dbb1d34665f24/pai_a43dbb1d34665f24.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/a43dbb1d34665f24 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED a43dbb1d34665f24"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/ac01c31d1a5a5ed2/FID_FEATURES_COMPLETE ] || TOKEN=ac01c31d1a5a5ed2 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/ac01c31d1a5a5ed2/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/ac01c31d1a5a5ed2/clips/ac01c31d1a5a5ed2/pai_ac01c31d1a5a5ed2.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/ac01c31d1a5a5ed2 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED ac01c31d1a5a5ed2"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/bea8f31993cd5a1b/FID_FEATURES_COMPLETE ] || TOKEN=bea8f31993cd5a1b NEW_ART=/avl-west/navsafe280_release_20261021/train/best/bea8f31993cd5a1b/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/bea8f31993cd5a1b/clips/bea8f31993cd5a1b/pai_bea8f31993cd5a1b.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/bea8f31993cd5a1b /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED bea8f31993cd5a1b"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/c8600743d9e050a9/FID_FEATURES_COMPLETE ] || TOKEN=c8600743d9e050a9 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/c8600743d9e050a9/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/c8600743d9e050a9/clips/c8600743d9e050a9/pai_c8600743d9e050a9.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/c8600743d9e050a9 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED c8600743d9e050a9"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/d64a3964875f5b41/FID_FEATURES_COMPLETE ] || TOKEN=d64a3964875f5b41 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/d64a3964875f5b41/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/d64a3964875f5b41/clips/d64a3964875f5b41/pai_d64a3964875f5b41.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/d64a3964875f5b41 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED d64a3964875f5b41"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/fid_best/e9567d54464052f7/FID_FEATURES_COMPLETE ] || TOKEN=e9567d54464052f7 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/e9567d54464052f7/artifacts/last.usdz NCORE=/avl-west/navsafe280_release_20261021/inputs/e9567d54464052f7/clips/e9567d54464052f7/pai_e9567d54464052f7.json OUT=/avl-west/navsafe280_release_20261021/eval/fid_best/e9567d54464052f7 /app/run run-script /pipeline/render_fid.py || FAILED="$FAILED e9567d54464052f7"
+
+          echo FID_JOB_DONE failed: "$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: STEP
+          value: '2'
+        - name: HEIGHT
+          value: '540'
+        - name: FID_ASSETS
+          value: /avl-west/navsafe280_release_20261021/eval/fid_assets
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-fid
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

@@ -1,0 +1,154 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-ltf-bench-e3e0-v3-halfres-novis-harm-clean-batch-1009
+  namespace: cogrob
+  labels:
+    app: navsafe-nuplan20-dense
+    stage: ltf-bench
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nuplan20-dense
+        stage: ltf-bench
+        experiment: dense-20261006
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      initContainers:
+      - name: renderer
+        restartPolicy: Always
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -euo pipefail
+
+          OUT=/avl-west/navsafe_nuplan_dense_20261006/ltf_bench_20261009/e3e0b3d6d5ae52a1/v3-halfres-novis-harm-clean-batch
+
+          mkdir -p "$OUT"
+
+          exec > >(tee -a "$OUT/renderer.log") 2>&1
+
+          export NAVSAFE_ARTIFACT_GLOB=''/avl-west/navsafe_nuplan_dense_20261006/train_v3_20261008/v3-halfres-r2/e3e0b3d6d5ae52a1/artifacts/last.usdz'' NAVSAFE_EXPECTED_MODELS=1 NAVSAFE_MODEL_AUDIT="$OUT/model_audit.json"
+
+          /app/run run-script /cfg/audit_models.py
+
+          (while true; do nvidia-smi --query-gpu=timestamp,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits; sleep 1; done > "$OUT/gpu_renderer.csv" 2>&1) & (while true; do echo "T $(date +%s.%N)"; cat /sys/fs/cgroup/cpu.stat; sleep 1; done > "$OUT/cpustat_renderer.log" 2>&1) & exec /app/run serve-grpc --host 0.0.0.0 --port 8080 --enable-harmonizer --harmonizer-cache /avl-west/navsafe_dev/.harmonizer-cache --renderer default --cache-size 1 --enable-editing-actors --artifact-glob ''/avl-west/navsafe_nuplan_dense_20261006/train_v3_20261008/v3-halfres-r2/e3e0b3d6d5ae52a1/artifacts/last.usdz''
+
+          '
+        env:
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "all"
+        resources:
+          requests:
+            cpu: '2'
+            memory: 14Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+          limits:
+            cpu: '2'
+            memory: 16Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 20Gi
+        volumeMounts: &id001
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: cfg
+          mountPath: /cfg
+          readOnly: true
+        - name: dshm
+          mountPath: /dev/shm
+      containers:
+      - name: eval
+        image: docker.io/library/ubuntu@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
+        command:
+        - bash
+        - -lc
+        args:
+        - "set -euo pipefail\nOUT=/avl-west/navsafe_nuplan_dense_20261006/ltf_bench_20261009/e3e0b3d6d5ae52a1/v3-halfres-novis-harm-clean-batch\nmkdir -p \"$OUT\"\nexec > >(tee -a \"$OUT/bootstrap_eval.log\") 2>&1\nfinish() { rc=$?; trap - EXIT; printf '{\"exit_code\":%s,\"finished_utc\":\"%s\"}\\n' \"$rc\" \"$(date -u +%FT%TZ)\" > \"$OUT/exit_status.json\"; exit \"$rc\"; }\ntrap finish EXIT\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y --no-install-recommends git curl ca-certificates libgl1 libglib2.0-0 libegl1 libx11-6 libxext6 libxrender1 libxi6 libxrandr2 libxinerama1 libxcursor1 libsm6 libice6 libstdc++6 libgomp1 libglu1-mesa libxt6\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nexport PATH=/root/.local/bin:$PATH\nexport UV_CACHE_DIR=/root/.cache/uv\nexport UV_HTTP_TIMEOUT=1800\nexport UV_LOCK_TIMEOUT=1800\nuv --version\ncd /root\ngit clone --no-checkout https://github.com/VAIL-UCLA/NavSafe-infty.git\ncd /root/NavSafe-infty\ngit checkout a6e8717c4b8a120dedc94a4f1950c7295a18aef4\ngit submodule update --init --recursive\ntest \"$(git rev-parse HEAD)\" = a6e8717c4b8a120dedc94a4f1950c7295a18aef4\ntest \"$(git -C third_party/IsaacLab rev-parse HEAD)\" = a4a7602f29e755e2673fe0022ea35566df6dd7d5\nuv sync --locked --python 3.12\nsource .venv/bin/activate\npython /cfg/patch_batch.py navsafe/render/nurec_grpc.py\npython -c 'import ctypes; ctypes.CDLL(\"libGLU.so.1\"); ctypes.CDLL(\"libXt.so.6\"); print(\"SYSTEM_GRAPHICS_LIBS_READY\")'\nexport LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6\nexport PYTHONPATH=/root/NavSafe-infty\npython -u /cfg/prepare_bench.py --scenario e3e0b3d6d5ae52a1 --artifact /avl-west/navsafe_nuplan_dense_20261006/train_v3_20261008/v3-halfres-r2/e3e0b3d6d5ae52a1/artifacts/last.usdz --origin-file /avl-west/navsafe_nuplan_dense_20261006/inputs/e3e0b3d6d5ae52a1/clips/e3e0b3d6d5ae52a1/nurec_origin_offset.json --output-dir \"$OUT\"\nmkdir -p /tmp/bench\nexport BENCH_OUT=/tmp/bench\n(while true; do nvidia-smi --query-gpu=timestamp,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits; sleep 1; done > \"$OUT/gpu_eval.csv\" 2>&1) &\nexport NAVSAFE_PREPARED_INPUTS=\"$OUT/prepared_inputs.json\"\nexport NUREC_GRPC_HANDOFF=\"$(python -c 'import json,os;print(json.load(open(os.environ[\"NAVSAFE_PREPARED_INPUTS\"]))[\"handoff_string\"])')\"\nexport NUREC_GRPC_CAMDUMP=/tmp/bench/camdump.txt\npython - <<'READY'\nimport socket,time\nfor i in range(600):\n try:\n  with socket.create_connection(('127.0.0.1',8080),timeout=2): break\n except OSError: time.sleep(2)\nelse: raise RuntimeError('Renderer readiness timeout')\nprint('RENDERER_SOCKET_READY',flush=True)\nREADY\npython -u /cfg/run_bench.py \\\n --scenario-source py123d --py123d-data-root /avl-west/navsafe_eval/full_test/e3e0b3d6d5ae52a1/arrow --py123d-scene-index 0 \\\n --render-backend nurec_grpc --model-type ltf --checkpoint /avl-west/navsafe_eval/model_zoo/ltf/ltf_seed_0.ckpt \\\n --traffic-mode log_replay --controller pure_pursuit --execution-mode controller \\\n --ego-replay-frames 192 --eval-frames 8 --replan-rate 5 --eval-seed 42 \\\n --camera-resolution-scale 1.0 --log-level INFO --output-dir \"$OUT\" 2>&1 | tee \"$OUT/eval.log\"\ncp /tmp/bench/* \"$OUT\"/\ndate -u +%FT%TZ > \"$OUT/ROLLOUT_COMPLETE\"\n"
+        env:
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: OMNI_KIT_ACCEPT_EULA
+          value: "YES"
+        - name: PY123D_RECENTER
+          value: "1"
+        - name: NUREC_GRPC_MAX_NOVEL_VIEW_M
+          value: "0"
+        - name: NUREC_GRPC_HANDOFF_MODE
+          value: "time"
+        - name: NUREC_GRPC_CAM_RIG
+          value: "recon"
+        - name: NUREC_GRPC_STRICT
+          value: "1"
+        - name: NUREC_GRPC_HOST
+          value: "127.0.0.1"
+        - name: NUREC_GRPC_PORT
+          value: "8080"
+        - name: NUREC_GRPC_TIMEOUT_S
+          value: "600"
+        - name: NEXUSSIM_NO_OVERLAY
+          value: "1"
+        - name: NEXUSSIM_NO_CAM_MAP_LINES
+          value: "1"
+        - name: NEXUSSIM_NUREC_CACHE_SIZE
+          value: "1"
+        - name: NAVSAFE_DATA_ROOT
+          value: "/avl-west/navsafe_eval"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "all"
+        - name: BENCH_PROF
+          value: "1"
+        resources:
+          requests:
+            cpu: '4'
+            memory: 28Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+          limits:
+            cpu: '4'
+            memory: 32Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+        volumeMounts: *id001
+      volumes:
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: cfg
+        configMap:
+          name: navsafe-nuplan20-ltf-bench-cfg-20261009-r5
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

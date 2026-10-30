@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-fidabl-abl-4-1016c
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-fidelity-ablation
+    stage: train
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 432000
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: train
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - "set -uo pipefail\nFAILED=\nQUICK=0\n/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main/internal/scripts/pycena/runtime/pycena_run_venv_deps.venv/bin/python -c \"import torch; torch.zeros(1).cuda(); print('CUDA_OK', torch.cuda.get_device_name())\" || { echo CUDA_BROKEN; exit 1; }\nrun() {\n  local t0=$SECONDS\n  if ROOT=/avl-west/navsafe_fidelity_ablation_20261012 C=$1 LOG=$2 RECIPE=$3 bash /pipeline/train.sh; then QUICK=0; else\n    FAILED=\"$FAILED ${1:0:8}/$3\"\n    if [ $((SECONDS - t0)) -lt 180 ]; then QUICK=$((QUICK + 1)); else QUICK=0; fi\n    if [ $QUICK -ge 2 ]; then echo \"LANE_STOPPED two quick failures in a row, failed:$FAILED\"; exit 1; fi\n  fi\n}\nrun 3123935b28265c80 2021.09.29.18.19.40_veh-28_01268_01685 abl_a_base\nrun 17a6a4a6137553cd 2021.06.28.16.29.11_veh-38_01415_01821 abl_c_sampling\nrun 227d62f5dfd95624 2021.09.16.19.27.01_veh-45_01749_03230 abl_c_sampling\nrun 58d40da0cce05d8c 2021.09.29.14.44.26_veh-28_01202_01296 abl_c_sampling\nrun\
+          \ 771c4e378bef58e4 2021.09.16.15.12.03_veh-42_01037_01434 abl_c_sampling\nrun 9157902936a456bf 2021.06.03.13.55.17_veh-35_02572_02855 abl_c_sampling\nrun a6b9a83019915658 2021.05.25.14.26.37_veh-27_04122_04279 abl_c_sampling\necho LANE_DONE failed: \"$FAILED\"\n[ -z \"$FAILED\" ]\n"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '2'
+            memory: 20Gi
+            ephemeral-storage: 80Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 24Gi
+            ephemeral-storage: 80Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe-fidabl-pipeline-r5
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

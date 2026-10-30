@@ -1,0 +1,146 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nureasoning-v060-aux-smoke
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning
+    stage: aux
+    profile: smoke
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 7200
+  activeDeadlineSeconds: 14400
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning
+        stage: aux
+        profile: smoke
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          : "${NCORE_DIR:?}" "${CLIP_ID:?}"
+          MANIFEST="pai_${CLIP_ID}.json"
+          test -s "$NCORE_DIR/$MANIFEST"
+          for camera in f0 b0 l0 l1 l2 r0 r1 r2; do
+            compgen -G "$NCORE_DIR/*.ncore4-camera_pcam_$camera.zarr.itar" >/dev/null || {
+              echo "ERROR: expected camera_pcam_$camera store missing" >&2; exit 2;
+            }
+          done
+          compgen -G "$NCORE_DIR/*.ncore4-lidar*.zarr.itar" >/dev/null || {
+            echo "ERROR: no real LiDAR NCore store; this recipe requires source LiDAR." >&2; exit 2;
+          }
+          complete=true
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            test -s "$NCORE_DIR/pai_${CLIP_ID}.aux.$kind.zarr.itar" || complete=false
+          done
+          if "$complete"; then echo "AUX_ALREADY_COMPLETE $CLIP_ID"; exit 0; fi
+          L=$(mktemp -d /tmp/nureasoning-aux.XXXXXX)
+          cp -a "$NCORE_DIR/." "$L/"
+          # Process the entire native clip: no offset/duration or frame slicing.
+          /app/apps/nre_tools ncore-aux-data \
+            --dataset-path="$L/$MANIFEST" --output-dir="$L" \
+            --segmentation-backend=mask2former --zarr-store-type=itar --store-meta \
+            --lidar-seg-camvis --ego-mask --num-threads=4
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            compgen -G "$L/*.aux.$kind.zarr.itar" >/dev/null || {
+              echo "ERROR: auxiliary store $kind missing" >&2; exit 3;
+            }
+          done
+          for file in "$L"/*.aux.*.zarr.itar; do
+            test -f "$file" || continue
+            base=$(basename "$file")
+            cp -a "$file" "$NCORE_DIR/$base"
+            suffix="${base#*.aux.}"
+            alias="pai_${CLIP_ID}.aux.$suffix"
+            if [[ "$base" != "$alias" ]]; then ln -sfn "$base" "$NCORE_DIR/$alias"; fi
+          done
+          for file in "$L"/*.meta.yaml "$L"/*.aux-meta.json; do
+            test ! -f "$file" || cp -a "$file" "$NCORE_DIR/"
+          done
+          echo "AUX_DONE $CLIP_ID (complete clip, all stored sensors)"
+        env:
+        - name: NAVSAFE_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: NCORE_DIR
+          value: /hugsim-storage/nuReasoning_mini/pipeline/upstream-v060/ncore/clips/2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae
+        - name: RECON_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/upstream-v060/recon
+        - name: CLIP_ID
+          value: 2026.02.19.17.20.39_PFDKB4AE0RF000102_a62db8cd1ce25fb1b27cf37488233aae
+        - name: PROFILE
+          value: smoke
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '4'
+            memory: 32Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '4'
+            memory: 32Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 100Gi
+        volumeMounts:
+        - name: hugsim
+          mountPath: /hugsim-storage
+        - name: avl-west
+          mountPath: /avl-west
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

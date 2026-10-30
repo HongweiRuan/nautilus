@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-eval-direct-0
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-eval
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 21600
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/direct_diag/a43dbb1d34665f24/RENDER_COMPLETE ] || TOKEN=a43dbb1d34665f24 NEW_ART=/avl-west/navsafe280_release_20261021/train/best/a43dbb1d34665f24/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/a43dbb1d34665f24 NCORE=/avl-west/navsafe280_release_20261021/inputs/a43dbb1d34665f24/clips/a43dbb1d34665f24/pai_a43dbb1d34665f24.json OUT=/avl-west/navsafe280_release_20261021/eval/direct_diag/a43dbb1d34665f24 /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED a43dbb1d34665f24"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/direct_diag/6b7c5199f84e5aac/RENDER_COMPLETE ] || TOKEN=6b7c5199f84e5aac NEW_ART=/avl-west/navsafe280_release_20261021/train/best/6b7c5199f84e5aac/artifacts/last.usdz LEGACY_DIR=/avl-west/navsafe_eval/full_test/6b7c5199f84e5aac NCORE=/avl-west/navsafe280_release_20261021/inputs/6b7c5199f84e5aac/clips/6b7c5199f84e5aac/pai_6b7c5199f84e5aac.json OUT=/avl-west/navsafe280_release_20261021/eval/direct_diag/6b7c5199f84e5aac /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 6b7c5199f84e5aac"
+
+          echo RENDER_JOB_DONE failed: "$FAILED"
+
+          [ -z "$FAILED" ]
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: STEP
+          value: '10'
+        - name: OFFSETS
+          value: '0'
+        - name: HEIGHT
+          value: '1080'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-eval-r1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

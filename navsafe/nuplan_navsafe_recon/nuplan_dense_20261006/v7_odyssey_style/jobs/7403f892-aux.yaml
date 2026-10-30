@@ -1,0 +1,96 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-7403f892-aux-lidar4-20261009
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: aux
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: nre-aux
+        image: nvcr.io/nvidia/nre/nre-tools-ga@sha256:46d78256219a6541601fd16517c7edca3e7a6ec9634f1858f7977279bd98f9ff
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=7403f892832b51d3
+          SRC="$ROOT/inputs_lidar4_20261009/$C/clips/$C"
+          mkdir -p "$ROOT/aux_lidar4_20261009/$C/$HOSTNAME" /scratch/ncore
+          exec > >(tee -a "$ROOT/aux_lidar4_20261009/$C/$HOSTNAME/aux.log") 2>&1
+          test -s "$ROOT/prep_lidar4_20261009/$C/ready"
+          if [ -s "$ROOT/aux_lidar4_20261009/$C/ready" ]; then echo AUX_ALREADY_READY; exit 0; fi
+          cp -a "$SRC/." /scratch/ncore/
+          /app/apps/nre_tools ncore-aux-data --dataset-path=/scratch/ncore/pai_$C.json --output-dir=/scratch/ncore --segmentation-backend=mask2former --zarr-store-type=itar --store-meta --lidar-seg-camvis --ego-mask
+          for kind in sseg lidar-sseg lidar-camvis egomask; do
+            test -s /scratch/ncore/$C.aux.$kind.zarr.itar
+            cp -a /scratch/ncore/$C.aux.$kind.zarr.itar "$SRC/"
+          done
+          (cd "$SRC"; sha256sum "$C".aux.*.zarr.itar) > "$ROOT/aux_lidar4_20261009/$C/aux.sha256"
+          date -u +%FT%TZ > "$ROOT/aux_lidar4_20261009/$C/ready"
+          echo AUX_20S_DONE "$C"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '3'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+  activeDeadlineSeconds: 172800

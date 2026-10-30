@@ -1,0 +1,35 @@
+# Scheduling probe: GPU, CPU and ephemeral-storage requests of one eval pod (6 + 2 cores), pinned to ry-08, command `true`.
+# Memory is 8 + 24 Gi instead of 16 + 48 Gi: standalone Pods are limited to 32 GB, and ry-08 has ~300 Gi unrequested.
+# If it does not fit, the FailedScheduling event names the missing resource; if it fits it exits within seconds.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-nur-ry08-fit-probe
+  namespace: cogrob
+  labels: {app: navsafe-nureasoning-audit}
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 300
+  imagePullSecrets: [{name: ngc-pull}]
+  containers:
+  - name: a
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: ["true"]
+    resources:
+      requests: {cpu: "2", memory: 8Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "1"}
+      limits: {cpu: "2", memory: 8Gi, ephemeral-storage: 100Gi, nvidia.com/gpu: "1"}
+  - name: b
+    image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+    command: ["true"]
+    resources:
+      requests: {cpu: "6", memory: 24Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "1"}
+      limits: {cpu: "6", memory: 24Gi, ephemeral-storage: 150Gi, nvidia.com/gpu: "1"}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-08.sdsc.optiputer.net]}
+  tolerations:
+  - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}
+  - {key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule}

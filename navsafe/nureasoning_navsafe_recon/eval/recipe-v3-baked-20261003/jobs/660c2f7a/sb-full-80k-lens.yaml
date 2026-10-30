@@ -1,0 +1,182 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nur3-evalb-660c2f7a-sb-full-80k-lens
+  namespace: cogrob
+  labels:
+    app: navsafe-nureasoning-eval-v3
+    batch: nureasoning-eval-v3-baked-20261003
+    clip-hash: 660c2f7a
+    variant: sb-full-80k-lens
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app: navsafe-nureasoning-eval-v3
+        batch: nureasoning-eval-v3-baked-20261003
+        clip-hash: 660c2f7a
+        variant: sb-full-80k-lens
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - args:
+        - "set -euo pipefail\ncd \"$REPO_ROOT\"\nmkdir -p \"$OUTPUT_DIR\" /root/nurec-artifact /sync\nexec > >(tee -a \"$OUTPUT_DIR/renderer.log\") 2>&1\non_exit() {\n  rc=$?\n  if [[ ! -e /sync/EVAL_DONE ]]; then echo \"$rc\" > /sync/SERVE_FAILED; fi\n}\ntrap on_exit EXIT\ntest -s \"$SOURCE_RECON/SUCCESS.json\"\ntest -s \"$SOURCE_RECON/artifacts/last.usdz\"\ncp -a \"$SOURCE_RECON/artifacts/last.usdz\" /root/nurec-artifact/last.usdz\n/app/run serve-grpc --host 0.0.0.0 --renderer default --artifact-glob /root/nurec-artifact/last.usdz &\nserver_pid=$!\n# Finite companion: stop our own renderer after the two evaluations finish.\nwhile kill -0 \"$server_pid\" 2>/dev/null; do\n  if [[ -e /sync/EVAL_DONE ]]; then\n    kill -TERM \"$server_pid\" 2>/dev/null || true\n    wait \"$server_pid\" || true\n    echo \"RENDERER_FINISHED $CLIP_ID\"\n    exit 0\n  fi\n  sleep 2\ndone\nwait \"$server_pid\"\necho 'ERROR: renderer exited before evaluations finished' >&2\nexit 7\n"
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /root/navsafe-eval-recon
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sb-full-80k-lens
+        - name: OUTPUT_DIR
+          value: /avl-west/navsafe_nureasoning/eval-v3-baked-20261003/660c2f7a-sb-full-80k-lens
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: EXPERIMENT_ID
+          value: 660c2f7a-sb-full-80k-lens
+        - name: RENDER_CLIENT_SHA256
+          value: 0ffc865482f5552dcb70dc714cf786b2fb840beaeae60dd683cd5237d3d79c91
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        name: renderer
+        ports:
+        - containerPort: 8080
+          name: grpc
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 90
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: '2'
+            ephemeral-storage: 100Gi
+            memory: 16Gi
+            nvidia.com/gpu: '1'
+          requests:
+            cpu: '2'
+            ephemeral-storage: 100Gi
+            memory: 16Gi
+            nvidia.com/gpu: '1'
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /dev/shm
+          name: dshm
+        - name: sync
+          mountPath: /sync
+      - command:
+        - bash
+        - -lc
+        env:
+        - name: CLIP_ID
+          value: 2026.01.13.20.33.55_PFDKB4AE7RF000100_660c2f7a5f755ec58014cf79c52cdd6f
+        - name: BATCH_ROOT
+          value: /hugsim-storage/nuReasoning_mini/pipeline/full8-lidarinit-20261001
+        - name: RECON_ROOT
+          value: /root/navsafe-eval-recon
+        - name: SOURCE_RECON
+          value: /avl-west/navsafe_nureasoning/recipe-v3-20261002/660c2f7a-sb-full-80k-lens
+        - name: OUTPUT_DIR
+          value: /avl-west/navsafe_nureasoning/eval-v3-baked-20261003/660c2f7a-sb-full-80k-lens
+        - name: REPO_ROOT
+          value: /hugsim-storage/NavSafe-infty
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-nureasoning
+              key: HF_TOKEN
+        - name: EXPERIMENT_ID
+          value: 660c2f7a-sb-full-80k-lens
+        - name: RENDER_CLIENT_SHA256
+          value: 0ffc865482f5552dcb70dc714cf786b2fb840beaeae60dd683cd5237d3d79c91
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        name: eval
+        resources:
+          limits:
+            cpu: '8'
+            ephemeral-storage: 150Gi
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+          requests:
+            cpu: '8'
+            ephemeral-storage: 150Gi
+            memory: 48Gi
+            nvidia.com/gpu: '1'
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+        - mountPath: /dev/shm
+          name: dshm
+        - name: sync
+          mountPath: /sync
+        workingDir: /hugsim-storage/NavSafe-infty
+        args:
+        - "set -euo pipefail\ncd \"$REPO_ROOT\"\nOUT=\"$OUTPUT_DIR\"\nLOCAL=/root/navsafe-eval-output\nmkdir -p \"$OUT\" \"$LOCAL\" /sync\nexec > >(tee -a \"$OUT/job.log\") 2>&1\nfinish() {\n  rc=$?\n  echo \"$rc\" > /sync/EVAL_DONE\n  if [[ -d \"$LOCAL\" ]]; then cp -a \"$LOCAL/.\" \"$OUT/\" || rc=8; fi\n  printf '{\"exit_code\":%s,\"finished_utc\":\"%s\"}\\n' \"$rc\" \"$(date -u +%FT%TZ)\" > \"$OUT/exit_status.json\"\n  trap - EXIT\n  exit \"$rc\"\n}\ntrap finish EXIT\ntest -s \"$SOURCE_RECON/SUCCESS.json\"\ntest -s \"$SOURCE_RECON/nurec_origin_offset.json\"\nEXPECTED=\"$RENDER_CLIENT_SHA256  navsafe/render/nurec_grpc.py\"\nprintf '%s\\n' \"$EXPECTED\" | sha256sum --check\n# Expose the setting's reconstruction under the clip identity expected by the loader.\nmkdir -p \"$RECON_ROOT\"\nln -s \"$SOURCE_RECON\" \"$RECON_ROOT/$CLIP_ID\"\ncommand -v conda >/dev/null && conda info --envs || true\nexport DEBIAN_FRONTEND=noninteractive\napt-get update -qq\napt-get install -y -qq git curl libglu1-mesa\
+          \ libxt6 libgl1 libglx0 libegl1 libglib2.0-0 libxrandr2 libxinerama1 libxcursor1 libxi6 libxext6 libxrender1 libx11-6 libxfixes3 libxdamage1 libsm6 libice6 libgomp1 >/dev/null\npython3 -m pip install --quiet uv\nexport UV_PROJECT_ENVIRONMENT=/root/navsafe-eval-venv UV_CACHE_DIR=/root/.cache/uv UV_LINK_MODE=copy\nuv sync --locked --python 3.12\nexport PATH=/root/navsafe-eval-venv/bin:$PATH PYTHONPATH=\"$REPO_ROOT\"\nexport ACCEPT_EULA=Y OMNI_KIT_ACCEPT_EULA=YES PYTHONUNBUFFERED=1\nexport NUREC_GRPC_HOST=127.0.0.1 NUREC_GRPC_PORT=8080\npython - <<'ENV_CHECK'\nimport torch,isaaclab,py123d\nfrom importlib.metadata import version\nprint('EVAL_ENV',version('py123d'),torch.__version__,torch.cuda.is_available())\nassert torch.cuda.is_available() and version('py123d')=='0.6.0'\nENV_CHECK\nDRIVER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1 | tr -d ' ')\nKITCACHE=\"/avl-west/navsafe_dev/kitcache/kitcache-3090-$DRIVER.tar\"\nif [[ -s \"$KITCACHE\" ]]; then\n  KITPKG=$(python\
+          \ -c 'import isaacsim,os; print(os.path.dirname(isaacsim.__file__))' | tail -1)\n  if tar -xf \"$KITCACHE\" -C \"$KITPKG\" kit && tar -xf \"$KITCACHE\" -C / var root; then\n    echo \"WARM_KIT_CACHE_RESTORED $KITCACHE\"\n    printf '%s\\n' \"$KITCACHE\" > \"$LOCAL/warm_kit_cache.txt\"\n  else\n    echo \"WARM_KIT_CACHE_RESTORE_FAILED $KITCACHE\" >&2\n  fi\nelse\n  echo \"WARM_KIT_CACHE_MISSING driver=$DRIVER\" >&2\nfi\n# Limit discovery to exactly this Arrow log: --py123d-scene-index 0 cannot drift.\nARROW=/root/navsafe-eval-arrow\nmkdir -p \"$ARROW/logs/nureasoning-mini_train\"\nln -s \"$BATCH_ROOT/arrow/logs/nureasoning-mini_train/$CLIP_ID\" \"$ARROW/logs/nureasoning-mini_train/$CLIP_ID\"\npython - <<'RENDER_READY'\nimport grpc,time,pathlib\nfrom nre.grpc.protos import common_pb2,sensorsim_pb2_grpc\nchannel=grpc.insecure_channel('127.0.0.1:8080')\nfor attempt in range(120):\n if pathlib.Path('/sync/SERVE_FAILED').exists(): raise RuntimeError('NuRec renderer failed; see renderer.log')\n\
+          \ try:\n  grpc.channel_ready_future(channel).result(timeout=10)\n  print('NUREC_RENDERER_READY',flush=True)\n  break\n except grpc.FutureTimeoutError: pass\nelse: raise RuntimeError('NuRec renderer not ready within1200 seconds')\nstub=sensorsim_pb2_grpc.SensorsimServiceStub(channel)\nconfig=dict(stub.get_server_config(common_pb2.Empty(),timeout=30).server_config)\nassert config.get('enable_editing_actors','').lower()=='false',config\nprint('ACTOR_POSE_POLICY baked_training_trajectories',flush=True)\nchannel.close()\nRENDER_READY\nSITE=$(python -c 'import sysconfig; print(sysconfig.get_paths()[\"purelib\"])')\ncat > \"$SITE/nur_baked_actor_poses.py\" <<'BAKED_HOOK'\n\"\"\"Render baked (training) actor trajectories: skip the NavSafe client's actor-editing guard.\"\"\"\nimport importlib.abc\nimport sys\n\nTARGET = \"navsafe.render.nurec_grpc\"\n\n\ndef _patch(module):\n    renderer = module.NuRecGrpcSceneRenderer\n    read_capability = renderer._read_actor_editing_capability\n   \
+          \ build_dynamic_objects = renderer._build_dynamic_objects\n\n    def capability(self):\n        self._nur_baked_actor_poses = not read_capability(self)\n        if self._nur_baked_actor_poses:\n            print(\"BAKED_ACTOR_POSES server editing disabled; no actor overrides are sent\", flush=True)\n        return True\n\n    def dynamic_objects(self):\n        return [] if getattr(self, \"_nur_baked_actor_poses\", False) else build_dynamic_objects(self)\n\n    renderer._read_actor_editing_capability = capability\n    renderer._build_dynamic_objects = dynamic_objects\n    renderer._nur_baked_patch = True\n\n\nclass _Loader(importlib.abc.Loader):\n    def __init__(self, loader):\n        self._loader = loader\n\n    def __getattr__(self, name):\n        return getattr(self._loader, name)\n\n    def create_module(self, spec):\n        return self._loader.create_module(spec)\n\n    def exec_module(self, module):\n        self._loader.exec_module(module)\n        _patch(module)\n\n\
+          \nclass _Finder(importlib.abc.MetaPathFinder):\n    def find_spec(self, name, path=None, target=None):\n        if name != TARGET:\n            return None\n        for finder in sys.meta_path:\n            if finder is self or not hasattr(finder, \"find_spec\"):\n                continue\n            spec = finder.find_spec(name, path, target)\n            if spec is not None and spec.loader is not None:\n                spec.loader = _Loader(spec.loader)\n                return spec\n        return None\n\n\nsys.meta_path.insert(0, _Finder())\nBAKED_HOOK\necho 'import nur_baked_actor_poses' > \"$SITE/nur_baked_actor_poses.pth\"\npython -c \"import navsafe.render.nurec_grpc as m; assert m.NuRecGrpcSceneRenderer._nur_baked_patch; print('BAKED_HOOK_ACTIVE')\"\nCOMMON=(--scenario-source py123d --py123d-data-root \"$ARROW\" --py123d-scene-index 0 --nurec-work-dir \"$RECON_ROOT\" --render-backend nurec_grpc --traffic-mode log_replay --execution-mode controller --controller lqr --replan-rate\
+          \ 5 --eval-seed 1 --enable-vis --keep-ego-replay-frames --camera-resolution-scale 1.0 --log-level INFO)\nfailed=0\necho \"EVAL_BEGIN $CLIP_ID full ego replay200\"\nif navsafe-eval \"${COMMON[@]}\" --model-type pdm_closed --checkpoint none --ego-replay-frames 200 --eval-frames 0 --output-dir \"$LOCAL/ego_replay_200\" 2>&1 | tee \"$OUT/ego_replay_200.log\"; then\n  echo 0 > \"$LOCAL/ego_replay_200.exit_code\"\nelse\n  status=$?; echo \"$status\" > \"$LOCAL/ego_replay_200.exit_code\"; failed=1\nfi\nif ! grep -q BAKED_ACTOR_POSES \"$OUT/ego_replay_200.log\"; then echo 'ERROR: baked hook was not active in the renderer process' >&2; failed=1; fi\nexport LOCAL\nif python - <<'VALIDATE_EVAL'\nimport os,json,pathlib\nroot=pathlib.Path(os.environ['LOCAL']);records=[]\nfor mode in ['ego_replay_200']:\n p=root/mode\n assert (root/(mode+'.exit_code')).read_text().strip()=='0',mode\n metrics=json.loads((p/'metrics.json').read_text())\n assert not metrics.get('infra_failure_error'),metrics\n\
+          \ assert all((p/'visualization'/name).is_file() and (p/'visualization'/name).stat().st_size>0 for name in ['topdown.gif','cam_f0.gif','combined.gif']),mode\n if mode=='ego_replay_200':\n  assert metrics['total_frames']==200 and metrics['success'],metrics\n  note='Visualization-only replay; current evaluator marks zero controlled frames unscorable.'\n else:\n  assert 20<=metrics['total_frames']<=200 and metrics.get('termination_reason')!='infra_failure',metrics\n  note='20 replay frames, up to180 controlled; normal episode termination may end early.'\n records.append({'mode':mode,'metrics':metrics,'note':note})\nrecord={'clip_id':os.environ['CLIP_ID'],'reconstruction_source':os.environ['SOURCE_RECON'],'experiment_id':os.environ['EXPERIMENT_ID'],'actor_pose_policy':'baked_training_trajectories','render_client_sha256':os.environ['RENDER_CLIENT_SHA256'],'visualization_enabled':True,'records':records}\n(root/'SUCCESS.json').write_text(json.dumps(record,indent=2)+'\\n')\nprint('EVAL_BOTH_DONE',record,flush=True)\n\
+          VALIDATE_EVAL\nthen :; else failed=1; fi\nexit \"$failed\"\n"
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      - name: sync
+        emptyDir: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - NVIDIA-GeForce-RTX-3090
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

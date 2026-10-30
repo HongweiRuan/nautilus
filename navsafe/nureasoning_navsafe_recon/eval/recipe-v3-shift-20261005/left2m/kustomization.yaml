@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- jobs/660c2f7a/sbtc-full-80k-lens.yaml
+- jobs/e08a9f05/sbtc-full-80k-lens.yaml
+- jobs/a12a8365/sbtc-full-80k-lens.yaml
+- jobs/834aa758/sbtc-full-80k-lens.yaml
+- jobs/e8f65885/sbtc-full-80k-lens.yaml
+- jobs/ae44365f/sbtc-full-80k-lens.yaml
+- jobs/c7534532/sbtc-full-80k-lens.yaml
+- jobs/a62db8cd/sbtc-full-80k-lens.yaml

@@ -1,0 +1,218 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-nuplan20-e3e0b3d6-v5-four-160k-20261009
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-nuplan20-dense
+    stage: train
+    experiment: dense-20261006
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: train
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          VARIANT=v1c
+          DEST="$ROOT/train_v4_20261009/v5-four/$C"
+          DIAG="$DEST/diagnostics/$HOSTNAME"
+          mkdir -p "$DIAG" /scratch/ncore /scratch/train_out
+          exec > >(tee -a /scratch/train.log) 2>&1
+          finish() {
+            rc=$?
+            trap - EXIT
+            cp /scratch/train.log "$DIAG/train.log" || true
+            printf '{"exit_code":%s,"finished_utc":"%s"}\n' "$rc" "$(date -u +%FT%TZ)" > "$DIAG/exit_status.json"
+            exit "$rc"
+          }
+          trap finish EXIT
+          if [ -s "$DEST/TRAIN_COMPLETE" ]; then echo ALREADY_TRAINED; exit 0; fi
+          for i in $(seq 1 480); do test -s "$ROOT/aux_lidar4_20261009/$C/ready" && break; sleep 30; done
+          test -s "$ROOT/aux_lidar4_20261009/$C/ready"
+          test -s "$ROOT/audits_20s/$C/ready"
+          L=/scratch/ncore
+          OUTL=/scratch/train_out
+          cp -a "$ROOT/inputs_lidar4_20261009/$C/clips/$C/." "$L/"
+          (cd "$L"; sha256sum -c "$ROOT/aux_lidar4_20261009/$C/aux.sha256")
+          (cd "$L"; for f in "$C".aux.*.zarr.itar; do ln -s "$f" "pai_$f"; done)
+          cp "$ROOT/source/nuplan_training_optimizations.py" /scratch/nuplan_opt.py
+          cp "$ROOT/source/preflight.py" /scratch/preflight.py
+          printf '%s\n' 'e57163240192ffd94462f4d3b028087c442243745146b4805d5e03ad21bc873c  /scratch/nuplan_opt.py' 'c038a37f57ecf25242b492f53b77bca02e02fa22519db142b669548c52b10841  /scratch/preflight.py' | sha256sum -c -
+          python3 - <<'V1C_PATCH'
+          import pathlib
+          p = pathlib.Path("/scratch/nuplan_opt.py"); s = p.read_text()
+          for a, b in [('if variant in ("v2", "eval_capture"):', 'if variant in ("v2", "eval_capture", "v1c"):'),
+                       ('elif variant not in ("v1", "eval_capture", "eval_legacy"):', 'elif variant not in ("v1", "v1c", "eval_capture", "eval_legacy"):'),
+                       ('if variant in ("v1", "v2"):', 'if variant in ("v1", "v2", "v1c"):')]:
+              assert s.count(a) == 1, a
+              s = s.replace(a, b)
+          p.write_text(s)
+          print("V1C_VARIANT_ADDED: lens + camera capture clock, actors stay in the global MCMC")
+          V1C_PATCH
+          CFGDIR=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main/configs/apps/prod/Hyperion-8.1
+          cp /avl-west/nre_overlays/car2sim_6cam_static.yaml "$CFGDIR/"
+          cat > /scratch/train_args.txt <<NRE_ARGS
+          --config-name=configs/apps/prod/Hyperion-8.1/car2sim_6cam_static.yaml
+          mode=train
+          logger=dummy
+          dataset.path=$L/pai_$C.json
+          out_dir=$OUTL
+          logger.run_id=$C
+          dataset.aux_data=True
+          dataset.camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1]
+          dataset.train_camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1]
+          dataset.val_camera_ids=[camera_pcam_f0,camera_pcam_b0,camera_pcam_l0,camera_pcam_r0,camera_pcam_l1]
+          dataset.n_train_sequential_image_subsample=4
+          dataset.n_val_image_subsample=4
+          dataset.lidar_ids=[lidar_top_structured,lidar_left_structured,lidar_right_structured,lidar_back_structured]
+          dataset.train_lidar_ids=[lidar_top_structured,lidar_left_structured,lidar_right_structured,lidar_back_structured]
+          dataset.val_lidar_ids=[lidar_top_structured]
+          dataset.n_train_sample_lidar_rays=2048
+          dataset.cuboid_tracks_params.track_label_sources=[GT_ANNOTATION]
+          model.layers.dynamic_rigids.tracks.label_classes=[NuPlanBoxDetectionLabel.VEHICLE,NuPlanBoxDetectionLabel.BICYCLE]
+          model.layers.dynamic_deformables.tracks.label_classes=[NuPlanBoxDetectionLabel.PEDESTRIAN]
+          model.layers.dynamic_rigids.initialization.name=camera-dynamic-tracks
+          +model.layers.dynamic_rigids.initialization.camera_ids=null
+          +model.layers.dynamic_rigids.initialization.step_frame=1
+          +model.layers.dynamic_rigids.initialization.fill_with_random_points=true
+          model.layers.dynamic_deformables.initialization.name=camera-dynamic-tracks
+          +model.layers.dynamic_deformables.initialization.camera_ids=null
+          +model.layers.dynamic_deformables.initialization.step_frame=1
+          +model.layers.dynamic_deformables.initialization.fill_with_random_points=true
+          model.layers.road.initialization.name=lidar-rig-trajectory
+          model.layers.road.initialization.default_scale=0.1
+          +model.layers.road.initialization.num_near_points=100000
+          +model.layers.road.initialization.num_far_points=100000
+          +model.layers.road.initialization.far_radius_factor=20
+          +model.layers.road.initialization.observation_scale_factor=0.01
+          +model.layers.road.initialization.lidar_ids=null
+          +model.layers.road.initialization.camera_ids=null
+          +model.layers.road.initialization.non_dynamic_points_only=true
+          dataset.n_samples_per_epoch=160000
+          model.strategy.add.max_n_gaussians=5000000
+          model.strategy.add.end_iteration=140000
+          model.strategy.relocate.end_iteration=140000
+          model.strategy.perturb.end_iteration=160000
+          system.optimizers.0.scheduler.args.T_max=160000
+          checkpoint.every_n_train_steps=160000
+          checkpoint.artifact.mesh.ground.enabled=false
+          dataset.samplers.batch_sampler.camera_pixel_sampler.subsample=2
+          loss.lidar.lambda_=0.03
+          dataset.samplers.batch_sampler.lidar_sensor_sampler.sample_all_sensors=false
+          NRE_ARGS
+          export NAVSAFE_MODULE=/scratch/nuplan_opt.py NAVSAFE_ARGS_FILE=/scratch/train_args.txt NAVSAFE_INPUT_AUDIT="$ROOT/audits_20s/$C/input_audit.json" NAVSAFE_VARIANT="$VARIANT" NAVSAFE_REPORT_DIR="$DEST/reports" NAVSAFE_BASELINE_CONFIG="$ROOT/audits_20s/$C/e3e0b3d6d5ae52a1s1_baseline_parsed.yaml"
+          nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+
+          # Save recovery checkpoints on the PVC; images and all GPU work stay local.
+          mkdir -p "$OUTL/$C"
+          /app/run run-script /scratch/nuplan_opt.py || echo "TRAINER_EXIT_NONZERO $?"
+          test -s "$OUTL/$C/artifacts/160000.usdz"
+          test -s "$OUTL/$C/artifacts/last.usdz" || cp "$OUTL/$C/artifacts/160000.usdz" "$OUTL/$C/artifacts/last.usdz"
+          mkdir -p "$DEST/artifacts"
+          cp -a "$OUTL/$C/artifacts/last.usdz" "$DEST/artifacts/last.usdz.copying"
+          mv "$DEST/artifacts/last.usdz.copying" "$DEST/artifacts/last.usdz"
+          cp -a "$OUTL/$C/config" "$DEST/"
+          echo TRAIN_20S_DONE "$C" "$VARIANT"
+          date -u +%FT%TZ > "$DEST/TRAIN_COMPLETE"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        resources:
+          requests:
+            cpu: '4'
+            memory: 20Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+          limits:
+            cpu: '4'
+            memory: 24Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 80Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      initContainers:
+      - name: wait-inputs
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command:
+        - bash
+        - -c
+        args:
+        - |
+          set -euo pipefail
+          ROOT=/avl-west/navsafe_nuplan_dense_20261006
+          C=e3e0b3d6d5ae52a1
+          echo WAITING_FOR_AUDITED_20S_INPUT_AND_GPU_VALIDATION "$C"
+          for i in $(seq 1 5760); do
+            if test -s "$ROOT/aux/$C/ready" && test -s "$ROOT/audits_20s/$C/ready" && test -s "$ROOT/eval/legacy-smoke/c895b062e3735053s1/EVAL_COMPLETE" && test -s "$ROOT/train/v1/c895b062e3735053/SMOKE_COMPLETE" && test -s "$ROOT/train/v2/c895b062e3735053/SMOKE_COMPLETE"; then echo DEPENDENCIES_READY "$C"; exit 0; fi
+            sleep 30
+          done
+          echo INPUT_DEPENDENCY_TIMEOUT >&2
+          exit 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: avl-west-vol
+          mountPath: /avl-west
+  activeDeadlineSeconds: 172800

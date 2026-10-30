@@ -1,0 +1,133 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-eval-ablcheck
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-eval
+    stage: eval
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 14400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - 'set -uo pipefail
+
+          FAILED=
+
+          L=/tmp/legacy_09d33cf8b87c5ae3; mkdir -p $L; for s in 1 2 3 4; do ln -sf /avl-west/navsafe_5s_500/09d33cf8b87c5ae3s$s/output_5cam/09d33cf8b87c5ae3s$s/artifacts/last.usdz $L/09d33cf8b87c5ae3s$s.usdz; done
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step1_one20s/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step1_one20s/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step1_one20s /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/step1_one20s"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step2_8cam3m/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step2_8cam3m/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step2_8cam3m /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/step2_8cam3m"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_a_base/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_a_base/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_a_base /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/abl_a_base"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_b_clock/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_b_clock/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_b_clock /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/abl_b_clock"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_c_sampling/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_c_sampling/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/abl_c_sampling /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/abl_c_sampling"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step3_grounddisks/RENDER_COMPLETE ] || TOKEN=09d33cf8b87c5ae3 NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step3_grounddisks/09d33cf8b87c5ae3/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/09d33cf8b87c5ae3/clips/09d33cf8b87c5ae3/pai_09d33cf8b87c5ae3.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/09d33cf8b87c5ae3/step3_grounddisks /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 09d33cf8b87c5ae3/step3_grounddisks"
+
+          L=/tmp/legacy_0b1af3d560f5570d; mkdir -p $L; for s in 1 2 3 4; do ln -sf /avl-west/navsafe_5s_500/0b1af3d560f5570ds$s/output_5cam/0b1af3d560f5570ds$s/artifacts/last.usdz $L/0b1af3d560f5570ds$s.usdz; done
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step1_one20s/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step1_one20s/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step1_one20s /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/step1_one20s"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step2_8cam3m/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step2_8cam3m/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step2_8cam3m /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/step2_8cam3m"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_a_base/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_a_base/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_a_base /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/abl_a_base"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_b_clock/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_b_clock/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_b_clock /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/abl_b_clock"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_c_sampling/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/abl_c_sampling/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/abl_c_sampling /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/abl_c_sampling"
+
+          [ -s /avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step3_grounddisks/RENDER_COMPLETE ] || TOKEN=0b1af3d560f5570d NEW_ART=/avl-west/navsafe_fidelity_ablation_20261012/train/step3_grounddisks/0b1af3d560f5570d/artifacts/last.usdz LEGACY_DIR=$L NCORE=/avl-west/navsafe_fidelity_ablation_20261012/inputs/0b1af3d560f5570d/clips/0b1af3d560f5570d/pai_0b1af3d560f5570d.json OUT=/avl-west/navsafe280_release_20261021/eval/ablation_actor_check/0b1af3d560f5570d/step3_grounddisks /app/run run-script /pipeline/render_legacy_vs_best.py || FAILED="$FAILED 0b1af3d560f5570d/step3_grounddisks"
+
+          echo RENDER_JOB_DONE failed: "$FAILED"
+
+          '
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: STEP
+          value: '10'
+        - name: OFFSETS
+          value: '0'
+        - name: HEIGHT
+          value: '720'
+        resources:
+          requests:
+            cpu: '2'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+          limits:
+            cpu: 2400m
+            memory: 19Gi
+            ephemeral-storage: 20Gi
+            nvidia.com/gpu: '1'
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-eval-r1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-04.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
