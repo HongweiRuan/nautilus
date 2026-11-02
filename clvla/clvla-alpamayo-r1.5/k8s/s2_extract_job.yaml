@@ -1,0 +1,44 @@
+# CPU-only: S2 frame extraction for scenes_v2 scenes that lack camera frames (select_scenes_v2.py extract); reads the clip tars on /avl-west.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-s2-extract
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: sel
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          set -uo pipefail; pip install -q numpy 2>&1 | tail -1
+          cp /cm/select_scenes_v2.py /tmp/ && cd /tmp && python -I select_scenes_v2.py extract --workers 12 2>&1 | tail -40; echo "=== rc ${PIPESTATUS[0]}"; echo EXTRACT_DONE
+        resources:
+          requests: {cpu: "6", memory: 12Gi}
+          limits: {cpu: "6", memory: 14Gi}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cm, mountPath: /cm}
+        - {name: avl-west, mountPath: /avl-west}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cm
+        configMap: {name: horuan-s2-select}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

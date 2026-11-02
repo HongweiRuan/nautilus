@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-isaac-ab
+  namespace: cogrob
+  labels:
+    app: horuan-isaac-ab
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: horuan-isaac-ab
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [ry-gpu-11.sdsc.optiputer.net]
+      tolerations:
+        - {key: nautilus.io/reservation, operator: Equal, value: cogrob, effect: NoSchedule}
+        - {key: nautilus.io/cogrob, operator: Exists, effect: NoSchedule}
+      initContainers:
+        - name: renderer
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          restartPolicy: Always
+          command: ["/opt/nvidia/nvidia_entrypoint.sh", "bash", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /tmp/shard
+              ln -sf $BUNDLES/$TOKEN/$TOKEN.usdz /tmp/shard/$TOKEN.usdz
+              exec /app/run serve-grpc --host 0.0.0.0 --port 8080 --enable-editing-actors --renderer default \
+                --cache-size 2 --artifact-glob "/tmp/shard/*.usdz"
+          env:
+            - name: NGC_API_KEY
+              valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+            - {name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True"}
+            - {name: TOKEN, value: "00185dab0ba153b9"}
+            - {name: BUNDLES, value: /avl-west/navsafe/20261101-method1-verifications/best}
+          resources:
+            requests: {cpu: 500m, memory: 8Gi, ephemeral-storage: 20Gi, nvidia.com/gpu: 1}
+            limits: {cpu: 600m, memory: 9Gi, ephemeral-storage: 20Gi, nvidia.com/gpu: 1}
+          volumeMounts:
+            - {name: avl-west, mountPath: /avl-west}
+            - {name: dshm, mountPath: /dev/shm}
+      containers:
+        - name: eval
+          image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+          command: ["bash", "-c"]
+          args:
+            - mkdir -p /hugsim-storage/navsafe_isaac_ab/runs/$RUN_ID && bash /hugsim-storage/navsafe_isaac_ab/ab_test.sh 2>&1 | tee /hugsim-storage/navsafe_isaac_ab/runs/$RUN_ID/ab.log; exit ${PIPESTATUS[0]}
+          env:
+            - {name: NVIDIA_DRIVER_CAPABILITIES, value: all}
+            - {name: TOKEN, value: "00185dab0ba153b9"}
+            - {name: BUNDLES, value: /avl-west/navsafe/20261101-method1-verifications/best}
+            - {name: EXPECT_SHA, value: 137e1e0a6fdd4ac55555bd6d4ce2988412e573fa}
+            - {name: RUN_ID, value: "20261101-r1"}
+          resources:
+            requests: {cpu: "3", memory: 24Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: 1}
+            limits: {cpu: "4", memory: 28Gi, ephemeral-storage: 120Gi, nvidia.com/gpu: 1}
+          volumeMounts:
+            - {name: hugsim, mountPath: /hugsim-storage}
+            - {name: avl-west, mountPath: /avl-west}
+            - {name: dshm, mountPath: /dev/shm}
+      volumes:
+        - {name: hugsim, persistentVolumeClaim: {claimName: horuan-hugsim-vol}}
+        - {name: avl-west, persistentVolumeClaim: {claimName: avl-west-vol}}
+        - {name: dshm, emptyDir: {medium: Memory, sizeLimit: 16Gi}}

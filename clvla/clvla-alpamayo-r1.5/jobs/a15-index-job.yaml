@@ -1,0 +1,42 @@
+# CPU-only: index the 1000 nuReasoning validation clips (location, scenario, ego speed) for clip selection.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-a15-index, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: index
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          pip -q install numpy
+          O=/hugsim-storage/alpamayo/a15/data/index; mkdir -p $O; rm -f $O/shard_*.jsonl
+          ls /avl-west/nuReasoning/data/validation/part_1/*.tar > $O/tars.txt
+          split -n l/32 -d $O/tars.txt $O/list_
+          for f in $O/list_*; do python /hugsim-storage/alpamayo/a15/scripts/index_clips.py $O/shard_${f##*_}.jsonl $(cat $f) > $f.log 2>&1 & done
+          wait; cat $O/shard_*.jsonl > $O/validation_index.jsonl; wc -l $O/validation_index.jsonl; echo INDEX_DONE
+        resources:
+          requests: {cpu: "8", memory: 24Gi}
+          limits: {cpu: "8", memory: 24Gi}
+        volumeMounts:
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+        - {mountPath: /avl-west, name: avl-west}
+      volumes:
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

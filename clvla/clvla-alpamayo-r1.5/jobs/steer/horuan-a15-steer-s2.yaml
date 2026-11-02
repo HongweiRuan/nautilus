@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-a15-steer-s2
+  namespace: cogrob
+  labels:
+    app: horuan-a15
+    exp: steer
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels:
+        app: horuan-a15
+        exp: steer
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists
+      containers:
+      - name: dc
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command:
+        - bash
+        - -lc
+        - mkdir -p /hugsim-storage/alpamayo/a15/logs /hugsim-storage/alpamayo/a15/outputs_steer/a15 && (set -x; export HF_HOME=/hugsim-storage/alpamayo/hf_home PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONUNBUFFERED=1; export A15_REVISION=7aba8293c09993f2e125c6819df05d7fa3e873ea; bash /hugsim-storage/alpamayo/a15/scripts/setup_env_a15.sh
+          || exit 1; PY=/root/a15/bin/python; $PY -m pip install -q --no-deps physical-ai-av==0.2.0; $PY -m pip install -q av pyarrow; cd /hugsim-storage/alpamayo/a15/scripts && MODEL=a15 SHARD=2/4 HF_HUB_OFFLINE=1 $PY steer.py --nr-scenes /hugsim-storage/alpamayo/a15/data/scenes.json --calib-pai /hugsim-storage/alpamayo/a15/data/dc_clips_pai.json
+          --out /hugsim-storage/alpamayo/a15/outputs_steer/a15) > /hugsim-storage/alpamayo/a15/logs/steer_s2_s2.log 2>&1
+        env:
+        - name: HF_HOME
+          value: /hugsim-storage/alpamayo/hf_home
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-a15
+              key: HF_TOKEN
+        resources:
+          requests:
+            cpu: '4'
+            memory: 40Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 100Gi
+          limits:
+            cpu: '4'
+            memory: 40Gi
+            nvidia.com/gpu: '1'
+            ephemeral-storage: 100Gi
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /hugsim-storage
+          name: hugsim
+        - mountPath: /avl-west
+          name: avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      - name: hugsim
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: avl-west
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+          readOnly: true

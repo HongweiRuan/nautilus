@@ -1,0 +1,45 @@
+# J-lens (backprop) pod for Alpamayo-R1 on ry-gpu-12 (2x RTX 3090; interactive pods may request at most 2 GPUs); model split across GPUs.
+# Repo + HF cache live on the hugsim PVC (/hugsim-storage/alpamayo); the uv venv
+# is on ephemeral /root and is rebuilt by setup.sh after a restart.
+# Nautilus removes interactive pods after 6 h.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-alpamayo-jlens
+  namespace: cogrob
+  labels: {k8s-app: horuan-alpamayo-jlens}
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [ry-gpu-12.sdsc.optiputer.net]
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  containers:
+  - name: alpamayo
+    image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+    command: [bash, -lc, "sleep infinity"]
+    env:
+    - name: HF_HOME
+      value: /hugsim-storage/alpamayo/hf_home
+    - name: HF_TOKEN
+      valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+    - name: UV_CACHE_DIR
+      value: /root/.cache/uv
+    resources:
+      requests: {cpu: "6", memory: 32Gi, nvidia.com/gpu: "2", ephemeral-storage: 100Gi}
+      limits:   {cpu: "6", memory: 32Gi, nvidia.com/gpu: "2", ephemeral-storage: 100Gi}
+    volumeMounts:
+    - {mountPath: /dev/shm, name: dshm}
+    - {mountPath: /hugsim-storage, name: hugsim-storage}
+  volumes:
+  - name: dshm
+    emptyDir: {medium: Memory, sizeLimit: 8Gi}
+  - name: hugsim-storage
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}

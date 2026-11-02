@@ -1,0 +1,49 @@
+# CPU-only, no waiting: unpack every remaining TURN_RIGHT validation clip (greedy stops when the index is exhausted), then
+# selection over clips + p5_clips + s2_clips, (c) extract frames for any new scenes. Reads tars on /avl-west (read-only).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-s2-fill-right
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: s2
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          set -uo pipefail; pip install -q numpy 2>&1 | tail -1; cp /cm/*.py /tmp/ && cd /tmp
+          R=/hugsim-storage/alpamayo/a15
+          echo "=== unpack (resume) $(date -u +%T)"; python -I s2_more_clips.py --want right=120 --per-clip 3 --workers 4 2>&1 | grep -E "chosen|families|extracted|Traceback|Error" | tail -40; echo "=== rc unpack ${PIPESTATUS[0]}"
+          echo "=== select $(date -u +%T)"; python -I select_scenes_v2.py select --per-cell 56 --per-clip 3 2>&1 | grep -v "^[0-9]*/[0-9]* " | tail -45; echo "=== rc select ${PIPESTATUS[0]}"
+          echo "=== extract $(date -u +%T)"; python -I select_scenes_v2.py extract --workers 3 2>&1 | tail -6; echo "=== rc extract ${PIPESTATUS[0]}"
+          echo S2_FINISH_DONE
+        resources:
+          requests: {cpu: "3", memory: 6Gi}
+          limits: {cpu: "3", memory: 7Gi}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cm, mountPath: /cm}
+        - {name: avl-west, mountPath: /avl-west}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cm
+        configMap: {name: horuan-s2-all}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

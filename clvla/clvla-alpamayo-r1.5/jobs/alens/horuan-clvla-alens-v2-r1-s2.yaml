@@ -1,0 +1,60 @@
+# A-lens v2, formal run on data/scenes_v2.json (S2 stratified scenes) + PAI clips, model r1, shard 2 of 4, 2 GPUs, 8 noises.
+# Output outputs_alens_v2/r1/. Scripts from ConfigMap horuan-alens-v2 (copied into the PVC scripts dir by the Job).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-alens-v2-r1-s2
+  namespace: cogrob
+  labels: {app: horuan-a15, exp: alens_v2_run}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 172800
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels: {app: horuan-a15, exp: alens_v2_run}
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-11.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: alens
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command: [bash, -lc]
+        args:
+        - |
+          R=/hugsim-storage/alpamayo/a15; mkdir -p $R/logs $R/outputs_alens_v2/r1
+          cp /cm/alens_a1_v2.py /cm/alens_v2_coords.py $R/scripts/ && md5sum /cm/*.py $R/scripts/alens_a1_v2.py $R/scripts/alens_v2_coords.py
+          (set -x; export HF_HOME=/hugsim-storage/alpamayo/hf_home PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONUNBUFFERED=1
+           bash $R/scripts/r1/setup_env_r1.sh || exit 1
+           PY=/root/ar1/bin/python; $PY -m pip install -q --no-deps physical-ai-av==0.2.0; $PY -m pip install -q av pyarrow
+           cd $R/scripts && MODEL=r1 SHARD=2/4 HF_HUB_OFFLINE=1 $PY alens_a1_v2.py --nr-scenes $R/data/scenes_v2.json --pai-clips $R/data/dc_clips_pai.json --out $R/outputs_alens_v2/r1 --n-noise 8
+          ) > $R/logs/alens_v2_r1_s2.log 2>&1; rc=$?; tail -5 $R/logs/alens_v2_r1_s2.log; echo "=== rc $rc"; exit $rc
+        env:
+        - {name: HF_HOME, value: /hugsim-storage/alpamayo/hf_home}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token-a15, key: HF_TOKEN}}
+        resources:
+          requests: {cpu: "2", memory: 64Gi, nvidia.com/gpu: "2", ephemeral-storage: 100Gi}
+          limits: {cpu: "2", memory: 64Gi, nvidia.com/gpu: "2", ephemeral-storage: 100Gi}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /hugsim-storage, name: hugsim}
+        - {mountPath: /avl-west, name: avl-west}
+        - {mountPath: /cm, name: cm}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}
+      - name: cm
+        configMap: {name: horuan-alens-v2}

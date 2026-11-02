@@ -1,0 +1,68 @@
+# Queue worker on ry-gpu-11 with 2 GPUs (2 of the CL-VLA 4 were free). Waits for queue2/GO_<name> before starting, so tasks and scripts
+# can be added first. Usage: kubectl apply -f worker_q2_w11_4g.yaml; then touch /hugsim-storage/alpamayo/a15/queue2/GO_i1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-a15-q2-w11-2g-i1b
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: horuan-a15
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+      containers:
+      - name: worker
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command:
+        - bash
+        - -lc
+        - |
+          cd /hugsim-storage/alpamayo/a15 && mkdir -p logs
+          python3 - <<'PY'
+          p = 'scripts/units_i1.py'; s = open(p).read()
+          a = 'nrm = H.norm(dim=-1).cpu().numpy(); proj = (H @ u).cpu().numpy()'
+          b = 'nrm = H.norm(dim=-1).float().cpu().numpy(); proj = (H @ u).float().cpu().numpy()  # .float(): autocast makes these bf16'
+          if a in s: open(p, 'w').write(s.replace(a, b)); print('patched units_i1.py')
+          PY
+          TASKQ=/hugsim-storage/alpamayo/a15/queue2 python3 scripts/taskq.py release i1_stats_a15 i1_stats_r1 i1_push_a15_s0 i1_push_a15_s1 i1_push_r1_s0 i1_push_r1_s1
+          bash scripts/worker.sh > logs/worker_q2_w11-2g-i1b_$(hostname).log 2>&1
+        env:
+        - name: TASKQ
+          value: /hugsim-storage/alpamayo/a15/queue2
+        - name: HF_HOME
+          value: /hugsim-storage/alpamayo/hf_home
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        resources:
+          limits: {cpu: "2", ephemeral-storage: 100Gi, memory: 80Gi, nvidia.com/gpu: "2"}
+          requests: {cpu: "2", ephemeral-storage: 100Gi, memory: 80Gi, nvidia.com/gpu: "2"}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+        - {mountPath: /avl-west, name: avl-west, readOnly: true}
+      restartPolicy: Never
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

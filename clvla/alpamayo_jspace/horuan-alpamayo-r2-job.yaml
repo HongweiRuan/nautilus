@@ -1,0 +1,39 @@
+# Round-2 J-space analysis as a Job (no 6 h limit). 4x RTX 3090 on ry-gpu-12. Scripts/outputs on the PVC.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-alpamayo-r2, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata: {labels: {k8s-app: horuan-alpamayo-r2}}
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-12.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: r2
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command: [bash, -lc, "bash /hugsim-storage/alpamayo/jspace/scripts/run_round2.sh > /hugsim-storage/alpamayo/jspace/outputs/r2_driver.log 2>&1"]
+        env:
+        - {name: HF_HOME, value: /hugsim-storage/alpamayo/hf_home}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+        resources:
+          requests: {cpu: "12", memory: 96Gi, nvidia.com/gpu: "4", ephemeral-storage: 150Gi}
+          limits:   {cpu: "12", memory: 96Gi, nvidia.com/gpu: "4", ephemeral-storage: 150Gi}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}

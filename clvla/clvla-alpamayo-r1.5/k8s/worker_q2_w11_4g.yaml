@@ -1,0 +1,59 @@
+# Queue worker on ry-gpu-11 with 4 GPUs (CL-VLA limit). Waits for queue2/GO_<name> before starting, so tasks and scripts
+# can be added first. Usage: kubectl apply -f worker_q2_w11_4g.yaml; then touch /hugsim-storage/alpamayo/a15/queue2/GO_i1
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-a15-q2-w11-4g-i1
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: horuan-a15
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+      containers:
+      - name: worker
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command:
+        - bash
+        - -lc
+        - mkdir -p /hugsim-storage/alpamayo/a15/logs && while [ ! -f /hugsim-storage/alpamayo/a15/queue2/GO_i1 ]; do sleep 10; done; bash /hugsim-storage/alpamayo/a15/scripts/worker.sh > /hugsim-storage/alpamayo/a15/logs/worker_q2_w11-4g-i1_$(hostname).log 2>&1
+        env:
+        - name: TASKQ
+          value: /hugsim-storage/alpamayo/a15/queue2
+        - name: HF_HOME
+          value: /hugsim-storage/alpamayo/hf_home
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        resources:
+          limits: {cpu: "2", ephemeral-storage: 100Gi, memory: 120Gi, nvidia.com/gpu: "4"}
+          requests: {cpu: "2", ephemeral-storage: 100Gi, memory: 120Gi, nvidia.com/gpu: "4"}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+        - {mountPath: /avl-west, name: avl-west, readOnly: true}
+      restartPolicy: Never
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

@@ -1,0 +1,41 @@
+# CPU-only: S2 stratified scene selection from the already-extracted nuReasoning clips (select_scenes_v2.py select).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-s2-select
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: sel
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          set -uo pipefail; pip install -q numpy 2>&1 | tail -1
+          cp /cm/select_scenes_v2.py /tmp/ && cd /tmp && python -I select_scenes_v2.py select --per-cell 56 --per-clip 3 2>&1 | tail -40; echo "=== rc ${PIPESTATUS[0]}"; echo SELECT_DONE
+        resources:
+          requests: {cpu: "2", memory: 6Gi}
+          limits: {cpu: "2", memory: 7Gi}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cm, mountPath: /cm}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cm
+        configMap: {name: horuan-s2-select}

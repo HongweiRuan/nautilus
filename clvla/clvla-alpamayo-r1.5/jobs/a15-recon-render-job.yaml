@@ -1,0 +1,59 @@
+# Render the sbtc-full-80k-lens reconstructions of the 8 nuReasoning mini scenes along the training (log) cameras
+# L0 / F / R0, for the VLA-equivalence check (Alpamayo on rendered vs. real images). 1 GPU, ry-gpu-12.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-a15-recon-render, namespace: cogrob, labels: {app: horuan-a15}}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata: {labels: {app: horuan-a15}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets: [{name: ngc-pull}]
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-12.sdsc.optiputer.net, ry-gpu-11.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, -c]
+        args:
+        - |
+          set -x
+          OUT=/hugsim-storage/alpamayo/a15/recon_check/renders; mkdir -p $OUT
+          for d in /avl-west/navsafe_nureasoning/recipe-v3-20261002/*-sbtc-full-80k-lens; do
+            c=$(basename $d | cut -c1-8)
+            [ -f $OUT/$c/.done ] && continue
+            mkdir -p /root/usdz && cp $d/artifacts/last.usdz /root/usdz/$c.usdz
+            /app/run render --artifact-path /root/usdz/$c.usdz --output-dir /root/r_$c \
+              --camera-id camera_pcam_l0 --camera-id camera_pcam_f0 --camera-id camera_pcam_r0 \
+              --image-scale 0.5 --image-format jpg --replicate-training-views > $OUT/render_$c.log 2>&1
+            echo "rc=$?" >> $OUT/render_$c.log
+            mkdir -p $OUT/$c && cp -a /root/r_$c/. $OUT/$c/ && touch $OUT/$c/.done
+            rm -rf /root/usdz/$c.usdz /root/r_$c
+          done
+          echo RENDER_ALL_DONE
+        env:
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+        resources:
+          requests: {cpu: "4", memory: 32Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+          limits: {cpu: "4", memory: 32Gi, nvidia.com/gpu: "1", ephemeral-storage: 60Gi}
+        volumeMounts:
+        - {mountPath: /hugsim-storage, name: hugsim}
+        - {mountPath: /avl-west, name: avl-west, readOnly: true}
+        - {mountPath: /dev/shm, name: dshm}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol}
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}

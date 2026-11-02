@@ -1,0 +1,42 @@
+# CPU-only: check hf-token access to Cosmos-Reason2-8B (gated) and cache its config/tokenizer files on the PVC.
+apiVersion: v1
+kind: Pod
+metadata: {name: horuan-a15-hfcheck, namespace: cogrob}
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  containers:
+  - name: hf
+    image: python:3.11-slim
+    command: [bash, -lc]
+    args:
+    - |
+      pip -q install huggingface_hub
+      python - <<'PY'
+      from huggingface_hub import hf_hub_download
+      for f in ["config.json","preprocessor_config.json","tokenizer_config.json","tokenizer.json","vocab.json","merges.txt","chat_template.json","generation_config.json","video_preprocessor_config.json"]:
+          try:
+              print(f, hf_hub_download("nvidia/Cosmos-Reason2-8B", f))
+          except Exception as e:
+              print("FAIL", f, type(e).__name__, str(e)[:200])
+      PY
+    env:
+    - {name: HF_HOME, value: /hugsim-storage/alpamayo/hf_home}
+    - name: HF_TOKEN
+      valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+    resources:
+      requests: {cpu: "1", memory: 2Gi}
+      limits: {cpu: "1", memory: 2Gi}
+    volumeMounts:
+    - {mountPath: /hugsim-storage, name: hugsim-storage}
+  volumes:
+  - name: hugsim-storage
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}

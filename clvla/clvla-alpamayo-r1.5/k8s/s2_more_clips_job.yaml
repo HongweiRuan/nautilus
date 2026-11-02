@@ -1,0 +1,48 @@
+# CPU-only: S2 gap filling - unpack more validation clips for the under-filled cells (s2_more_clips.py); reads the clip tars on /avl-west.
+# Set WANT (e.g. "left=40 right=30 accel=20") from data/scenes_v2_report.json before applying; DRY=1 writes only the plan.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-s2-more
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: sel
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          set -uo pipefail; pip install -q numpy 2>&1 | tail -1
+          cp /cm/s2_more_clips.py /tmp/ && cd /tmp && python -I s2_more_clips.py --want ${WANT} --per-clip 3 --workers 4 ${DRY:+--dry-run} 2>&1 | tail -60; echo "=== rc ${PIPESTATUS[0]}"; echo MORE_DONE
+        env:
+        - {name: WANT, value: "left=40 right=50"}
+        - {name: DRY, value: ""}
+        resources:
+          requests: {cpu: "2", memory: 4Gi}
+          limits: {cpu: "2", memory: 4Gi}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cm, mountPath: /cm}
+        - {name: avl-west, mountPath: /avl-west}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cm
+        configMap: {name: horuan-s2-more}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

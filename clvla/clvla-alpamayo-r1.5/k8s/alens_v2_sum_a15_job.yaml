@@ -1,0 +1,42 @@
+# CPU-only, short: print the key numbers of the formal 1.5 v2 analysis (summarize_v2.py).
+# table, derived concepts, dv readout). Output outputs_alens_v2/analysis_v2_a15_eq/. ConfigMap horuan-alens-v2-analyze.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-alens-v2-sum-a15
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net, ry-gpu-13.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: an
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          set -uo pipefail; pip install -q numpy 2>&1 | tail -1; cp /cm/*.py /tmp/ && cd /tmp
+          R=/hugsim-storage/alpamayo/a15; python -I summarize_v2.py $R/outputs_alens_v2/analysis_v2_a15; echo "=== rc $?"
+        resources:
+          requests: {cpu: "1", memory: 2Gi}
+          limits: {cpu: "1", memory: 2Gi}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: cm, mountPath: /cm}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: cm
+        configMap: {name: horuan-alens-v2-sum}

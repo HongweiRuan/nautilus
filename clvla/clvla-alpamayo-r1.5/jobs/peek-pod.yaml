@@ -1,0 +1,29 @@
+# CPU-only helper pod: read nuReasoning on avl-west-vol and the PVC horuan-hugsim-vol.
+apiVersion: v1
+kind: Pod
+metadata: {name: horuan-a15-peek, namespace: cogrob}
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  containers:
+  - name: peek
+    image: python:3.11-slim
+    command: [sleep, "21600"]
+    resources:
+      requests: {cpu: "2", memory: 8Gi}
+      limits: {cpu: "2", memory: 8Gi}
+    volumeMounts:
+    - {mountPath: /hugsim-storage, name: hugsim-storage}
+    - {mountPath: /avl-west, name: avl-west}
+  volumes:
+  - name: hugsim-storage
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+  - name: avl-west
+    persistentVolumeClaim: {claimName: avl-west-vol, readOnly: true}

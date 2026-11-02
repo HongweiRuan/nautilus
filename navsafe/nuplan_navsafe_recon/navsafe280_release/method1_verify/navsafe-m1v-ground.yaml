@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-m1v-ground
+  namespace: cogrob
+  labels: &id001
+    app: navsafe-method1-verify
+    stage: ground
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ground
+        image: python:3.11-slim
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - "set -uo pipefail\npip install -q --no-cache-dir torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu && pip install -q --no-cache-dir 'numpy<2' scipy || exit 1\nFAILED=\nfor t in 00185dab0ba153b9 112db94505025ec5 7c00774138ae5805 89e02236312d5038 a12d1a61d7cc50fe 53571ab149005b43 888d1fb945ed5982 d64a3964875f5b41 7956fe13f69e53dc 10cfd645bb645e2e; do for v in best rigboxuni colmap; do\n  b=/avl-west/navsafe/20261101-method1-verifications/$v/$t\n  for i in $(seq 1 720); do [ -e $b/READY ] && break; [ -d $b ] || [ -d $b.partial ] || break; sleep 30; done\n  [ -e $b/READY ] || { echo \"$v/$t: no bundle\"; continue; }\n  [ -s $b/ground/$t.npz ] && { echo \"$v/$t: has a map\"; continue; }\n  BUNDLES=/avl-west/navsafe/20261101-method1-verifications/$v python /avl-west/navsafe/20261101-method1-verifications/_tools/make_ground_maps.py $b/ground $t || FAILED=\"$FAILED $v/$t\"\ndone; done\necho \"GROUND_DONE failed:${FAILED:- none}\"\n[ -z \"$FAILED\" ]\n"
+        env: []
+        resources:
+          requests:
+            cpu: '4'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+          limits:
+            cpu: '4'
+            memory: 16Gi
+            ephemeral-storage: 20Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

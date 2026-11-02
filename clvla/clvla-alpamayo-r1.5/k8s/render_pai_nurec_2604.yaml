@@ -1,0 +1,65 @@
+# Render a few frames from PhysicalAI-AV NuRec 26.04 (HF branch 26.04) usdz scenes (HF nvidia/PhysicalAI-Autonomous-Vehicles-NuRec),
+# uploaded to /hugsim-storage/alpamayo/pai_nurec/<clip>/<clip>.usdz. Uses the same nre-ga renderer image as NavSafe-280.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horuan-clvla-pai-nurec-render2604
+  namespace: cogrob
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-11.sdsc.optiputer.net]}
+      containers:
+      - name: render
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        command: [/opt/nvidia/nvidia_entrypoint.sh, bash, -c]
+        args:
+        - |
+          set -uo pipefail
+          R=/hugsim-storage/alpamayo/pai_nurec_2604; OUT=$R/render; mkdir -p $OUT
+          /app/run render --help > $OUT/render_help.txt 2>&1 || true
+          for c in 00040136-e651-4abd-991d-0655ccda9430 000525f6-3999-4812-9924-8adff40ca514; do
+            for cam in camera_front_wide_120fov camera_front_tele_30fov camera_cross_left_120fov; do
+              echo "=== $c $cam $(date -u +%T)"
+              /app/run render --artifact-path "$R/$c/$c.usdz" --output-dir "$OUT/$c/$cam" --renderer default \
+                --image-format jpeg --frame-step 30 --height 540 --camera-id $cam 2>&1 | tail -40
+              echo "=== rc ${PIPESTATUS[0]}"
+            done
+            # a shifted view: 1.5 m to the left, same trajectory
+            cam=camera_front_wide_120fov
+            /app/run render --artifact-path "$R/$c/$c.usdz" --output-dir "$OUT/$c/${cam}_left1.5m" --renderer default \
+              --image-format jpeg --frame-step 30 --height 540 --camera-id $cam --rig-translation-offset 0 1.5 0 2>&1 | tail -20
+            echo "=== rc shift ${PIPESTATUS[0]}"
+          done
+          find $OUT -type f | sed 's#.*/render/##' | sort | head -100 > $OUT/listing.txt; wc -l $OUT/listing.txt
+          echo RENDER_DONE
+        env:
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+        - {name: NVIDIA_DRIVER_CAPABILITIES, value: all}
+        - {name: PYTORCH_CUDA_ALLOC_CONF, value: "expandable_segments:True"}
+        resources:
+          requests: {cpu: "3", memory: 20Gi, ephemeral-storage: 30Gi, nvidia.com/gpu: "1"}
+          limits: {cpu: "3", memory: 24Gi, ephemeral-storage: 30Gi, nvidia.com/gpu: "1"}
+        volumeMounts:
+        - {name: hugsim, mountPath: /hugsim-storage}
+        - {name: dshm, mountPath: /dev/shm}
+      volumes:
+      - name: hugsim
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 8Gi}

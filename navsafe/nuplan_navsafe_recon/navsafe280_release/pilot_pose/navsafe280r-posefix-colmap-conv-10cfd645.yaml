@@ -1,0 +1,120 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe280r-posefix-colmap-conv-10cfd645
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-pilot
+    stage: convert
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 86400
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: convert
+        image: robinwangucsd/metabench:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - 'set -euo pipefail
+
+          mkdir -p /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/lidar_calib /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/audit8 /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/aux/10cfd645bb645e2e
+
+          [ -s /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/lidar_calib/2021.05.25.14.16.10_veh-35_04097_04328.json ] || cp /avl-west/navsafe/navsafe280_release_20261021/lidar_calib/2021.05.25.14.16.10_veh-35_04097_04328.json /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/lidar_calib/2021.05.25.14.16.10_veh-35_04097_04328.json
+
+          bash /pipeline/convert.sh
+
+          grep -q "NCORE_POSE_DELTA=/avl-west/navsafe/colmap280/10cfd645bb645e2e/pose_delta.json" /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/prep/10cfd645bb645e2e/*/convert.log
+
+
+          grep -q "NCORE_RIG_BOXES=1, boxes turned" /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/prep/10cfd645bb645e2e/*/convert.log
+
+          cp /avl-west/navsafe/navsafe280_release_20261021/inputs/10cfd645bb645e2e/clips/10cfd645bb645e2e/10cfd645bb645e2e.aux.*.zarr.itar /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/inputs/10cfd645bb645e2e/clips/10cfd645bb645e2e/
+
+          cp /avl-west/navsafe/navsafe280_release_20261021/aux/10cfd645bb645e2e/aux.sha256 /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/aux/10cfd645bb645e2e/aux.sha256
+
+          (cd /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/inputs/10cfd645bb645e2e/clips/10cfd645bb645e2e && sha256sum -c --quiet /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/aux/10cfd645bb645e2e/aux.sha256)
+
+          [ -s /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/audit8/10cfd645bb645e2e.json ] || cp /avl-west/navsafe/navsafe280_release_20261021/audit8/10cfd645bb645e2e.json /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/audit8/10cfd645bb645e2e.json
+
+          date -u +%FT%TZ > /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap/aux/10cfd645bb645e2e/ready
+
+          echo POSEFIX_CLIP_READY 10cfd645bb645e2e
+
+          '
+        env:
+        - name: ROOT
+          value: /avl-west/navsafe/navsafe280_release_20261021/posefix_colmap
+        - name: C
+          value: 10cfd645bb645e2e
+        - name: LOG
+          value: 2021.05.25.14.16.10_veh-35_04097_04328
+        - name: T0
+          value: '1621970919450587'
+        - name: T1
+          value: '1621970939450674'
+        - name: NCORE_POSE_DELTA
+          value: /avl-west/navsafe/colmap280/10cfd645bb645e2e/pose_delta.json
+        - name: NCORE_RIG_BOXES
+          value: '1'
+        resources:
+          requests:
+            cpu: '3'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '3'
+            memory: 33Gi
+            ephemeral-storage: 60Gi
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-pilot-pose
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+      tolerations:
+      - effect: NoSchedule
+        key: nautilus.io/reservation
+        operator: Equal
+        value: cogrob
+      - effect: NoSchedule
+        key: nautilus.io/cogrob
+        operator: Exists

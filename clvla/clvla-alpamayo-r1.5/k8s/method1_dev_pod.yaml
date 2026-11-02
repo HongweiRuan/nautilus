@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-m1-dev
+  namespace: cogrob
+  labels: {app: horuan-a15, exp: method1-verif}
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 21600
+  containers:
+  - name: dev
+    image: robinwangucsd/metabench:latest
+    command: ["bash", "-c", "sleep 21000"]
+    resources:
+      requests: {cpu: "4", memory: 16Gi, ephemeral-storage: 60Gi}
+      limits: {cpu: "4", memory: 16Gi, ephemeral-storage: 60Gi}
+    volumeMounts:
+    - {mountPath: /hugsim-storage, name: hugsim}
+    - {mountPath: /avl-west, name: avl-west}
+  volumes:
+  - name: hugsim
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+  - name: avl-west
+    persistentVolumeClaim: {claimName: avl-west-vol}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-14.sdsc.optiputer.net]}
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}

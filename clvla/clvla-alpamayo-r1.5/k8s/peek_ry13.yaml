@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: horuan-a15-peek2
+  namespace: cogrob
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]
+  containers:
+  - name: peek
+    image: python:3.11-slim
+    command: [bash, -lc, "sleep 21600"]
+    resources:
+      requests: {cpu: "1", memory: 2Gi}
+      limits: {cpu: "2", memory: 4Gi}
+    volumeMounts:
+    - {name: hugsim, mountPath: /hugsim-storage}
+  volumes:
+  - name: hugsim
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}

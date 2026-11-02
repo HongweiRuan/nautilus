@@ -1,0 +1,48 @@
+# CPU-only: copy the PhysicalAI-AV clips that have human reasoning labels (val split, 290 clips; 7 cameras + egomotion
+# + calibration) to /avl-west/PhysicalAI-AV-subset, member by member (no whole chunks). Size cap 140 GB.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-a15-pai-fetch, namespace: cogrob}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 172800
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: fetch
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          pip -q install "huggingface_hub>=0.34" pandas pyarrow
+          O=/avl-west/PhysicalAI-AV-subset; mkdir -p $O/logs
+          for i in 0 1 2 3; do
+            python /hugsim-storage/alpamayo/a15/scripts/pai_fetch.py --split val --out $O --shard $i/4 > $O/logs/fetch_$i.log 2>&1 &
+            sleep 20
+          done
+          wait; tail -n 2 $O/logs/fetch_*.log; du -sh $O; echo FETCH_DONE
+        env:
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token-a15, key: HF_TOKEN}}
+        - {name: HF_HOME, value: /root/hf}
+        resources:
+          requests: {cpu: "4", memory: 16Gi}
+          limits: {cpu: "4", memory: 16Gi}
+        volumeMounts:
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+        - {mountPath: /avl-west, name: avl-west}
+      volumes:
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}
+      - name: avl-west
+        persistentVolumeClaim: {claimName: avl-west-vol}

@@ -19,10 +19,10 @@ spec:
         - sleep infinity
       resources:
         requests:
-          cpu: "2"
+          cpu: "1"
           memory: "8Gi"
         limits:
-          cpu: "2"
+          cpu: "1"
           memory: "8Gi"
       volumeMounts:
         - name: avl-west-vol

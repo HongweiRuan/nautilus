@@ -1,0 +1,124 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: navsafe-colmap280-0e6cae45
+  namespace: cogrob
+  labels: &id001
+    app: navsafe280-release-pilot
+    stage: colmap-pose
+    queue: public
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  activeDeadlineSeconds: 604800
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ngc-pull
+      containers:
+      - name: colmap
+        image: colmap/colmap:20260929.8466
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - "set -euo pipefail\nOUT=/avl-west/navsafe/colmap280/$C\nW=/work/colmap\nmkdir -p \"$OUT/$HOSTNAME\"\nexec > >(tee -a \"$OUT/$HOSTNAME/colmap.log\") 2>&1\nif [ -s \"$OUT/pose_delta.json\" ]; then echo ALREADY_DONE; exit 0; fi\nexport DEBIAN_FRONTEND=noninteractive QT_QPA_PLATFORM=offscreen\napt-get update -qq && apt-get install -y -qq python3 python3-numpy >/dev/null\ncolmap version 2>&1 | head -3 || true\ndate -u +%FT%TZ\n# option names are those of COLMAP 4.2.1; the GPU switch name is looked up\nEX=$(colmap feature_extractor -h 2>&1 | grep -o -- '--[A-Za-z]*\\.use_gpu' | head -1)\nMA=$(colmap matches_importer -h 2>&1 | grep -o -- '--[A-Za-z]*\\.use_gpu' | head -1)\n# thread count: the default is every core of the host, and one CPU SIFT extractor per thread ran out of 28 GiB (2026-10-31)\nEXT=$(colmap feature_extractor -h 2>&1 | grep -o -- '--[A-Za-z]*\\.num_threads' | head -1)\nMAT=$(colmap matches_importer -h 2>&1 | grep -o -- '--[A-Za-z]*\\.num_threads' | head -1)\necho \"gpu\
+          \ switches: $EX $MA, thread switches: $EXT $MAT\"\ntest -n \"$EXT\" && test -n \"$MAT\"\ncolmap feature_extractor --database_path $W/database.db --image_path $W/images --image_list_path $W/image_list.txt \\\n  --ImageReader.mask_path $W/masks --ImageReader.camera_model FULL_OPENCV --ImageReader.single_camera_per_folder 1 \\\n  $EX 0 $EXT 8 --SiftExtraction.max_num_features 6000 --FeatureExtraction.max_image_size 1920\ndate -u +%FT%TZ\ncolmap matches_importer --database_path $W/database.db --match_list_path $W/pairs.txt --match_type pairs $MA 0 $MAT 8\ndate -u +%FT%TZ\npython3 /pipeline/colmap_model.py make $W\nIN=$W/sparse/prior\nfor round in 1 2; do\n  mkdir -p $W/sparse/tri$round $W/sparse/ba$round\n  colmap point_triangulator --database_path $W/database.db --image_path $W/images --input_path $IN --output_path $W/sparse/tri$round --clear_points 1\n  colmap bundle_adjuster --input_path $W/sparse/tri$round --output_path $W/sparse/ba$round \\\n    --BundleAdjustment.refine_focal_length\
+          \ 0 --BundleAdjustment.refine_principal_point 0 --BundleAdjustment.refine_extra_params 0 --BundleAdjustment.refine_rig_from_world 1 --BundleAdjustment.refine_sensor_from_rig 0\n  colmap model_analyzer --path $W/sparse/ba$round 2>&1 | tail -12 || true\n  IN=$W/sparse/ba$round\ndone\ndate -u +%FT%TZ\nmkdir -p $W/sparse/txt\ncolmap model_converter --input_path $W/sparse/ba2 --output_path $W/sparse/txt --output_type TXT\ntar -C $W/sparse -czf \"$OUT/sparse_txt.tgz.partial\" txt && mv \"$OUT/sparse_txt.tgz.partial\" \"$OUT/sparse_txt.tgz\"\npython3 /pipeline/colmap_model.py extract $W $W/sparse/txt /work/pose_delta.json\ncp /work/pose_delta.json \"$OUT/pose_delta.json.partial\" && mv \"$OUT/pose_delta.json.partial\" \"$OUT/pose_delta.json\"\ndate -u +%FT%TZ > \"$OUT/ready\"\necho COLMAP_POSE_DONE\n"
+        env:
+        - name: C
+          value: 0e6cae45fdd5536b
+        resources:
+          requests:
+            cpu: '8'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '8'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+        volumeMounts: &id002
+        - name: dshm
+          mountPath: /dev/shm
+        - name: avl-west-vol
+          mountPath: /avl-west
+        - name: hugsim-storage
+          mountPath: /hugsim-storage
+        - name: pipeline
+          mountPath: /pipeline
+        - name: work
+          mountPath: /work
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 24Gi
+      - name: avl-west-vol
+        persistentVolumeClaim:
+          claimName: avl-west-vol
+      - name: hugsim-storage
+        persistentVolumeClaim:
+          claimName: horuan-hugsim-vol
+      - name: pipeline
+        configMap:
+          name: navsafe280r-pilot-pose
+      - name: work
+        emptyDir:
+          sizeLimit: 50Gi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - ry-gpu-11.sdsc.optiputer.net
+                - ry-gpu-12.sdsc.optiputer.net
+                - ry-gpu-13.sdsc.optiputer.net
+                - ry-gpu-14.sdsc.optiputer.net
+                - ry-gpu-08.sdsc.optiputer.net
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+      initContainers:
+      - name: export
+        image: nvcr.io/nvidia/nre/nre-ga@sha256:6e0caa70a9148490552520c3dde9ee665c8d094ca10b814601cb8bb306567c90
+        imagePullPolicy: IfNotPresent
+        command:
+        - /opt/nvidia/nvidia_entrypoint.sh
+        - bash
+        - -c
+        args:
+        - "set -euo pipefail\nOUT=/avl-west/navsafe/colmap280/$C\nmkdir -p \"$OUT/$HOSTNAME\" /work/ncore /work/colmap\nexec > >(tee -a \"$OUT/$HOSTNAME/export.log\") 2>&1\nif [ -s \"$OUT/pose_delta.json\" ]; then echo ALREADY_DONE; exit 0; fi\ncp -a /avl-west/navsafe/navsafe280_release_20261021/inputs/$C/clips/$C/. /work/ncore/\n(cd /work/ncore; for f in \"$C\".aux.*.zarr.itar; do ln -s \"$f\" \"pai_$f\"; done)\nRF=/app/internal/scripts/pycena/runtime/pycena_nrm_full.runfiles/_main\nexport PYTHONPATH=\"$RF\"\nCOLMAP_MANIFEST=/work/ncore/pai_$C.json COLMAP_AUDIT=/avl-west/navsafe/navsafe280_release_20261021/audit8/$C.json COLMAP_WORK=/work/colmap \\\n  \"$RF/internal/scripts/pycena/runtime/pycena_run_venv_deps.venv/bin/python\" /pipeline/colmap_export.py\nrm -rf /work/ncore\ncp /work/colmap/priors.json /work/colmap/pairs.txt \"$OUT/\"\necho EXPORT_STAGE_DONE\n"
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ngc-api-key
+              key: NGC_API_KEY
+        - name: HYDRA_FULL_ERROR
+          value: '1'
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: expandable_segments:True
+        - name: C
+          value: 0e6cae45fdd5536b
+        resources:
+          requests:
+            cpu: '8'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+          limits:
+            cpu: '8'
+            memory: 28Gi
+            ephemeral-storage: 60Gi
+        volumeMounts: *id002

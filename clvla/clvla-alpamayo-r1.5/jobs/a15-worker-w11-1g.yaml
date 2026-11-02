@@ -1,0 +1,39 @@
+# Alpamayo-1.5 rerun worker: 1 GPU(s) on ry-gpu-11. Runs tasks from /hugsim-storage/alpamayo/a15/queue (taskq.py).
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-a15-w11-1g, namespace: cogrob, labels: {app: horuan-a15}}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata: {labels: {app: horuan-a15}}
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-11.sdsc.optiputer.net]}
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      containers:
+      - name: worker
+        image: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel
+        command: [bash, -lc, "mkdir -p /hugsim-storage/alpamayo/a15/logs && bash /hugsim-storage/alpamayo/a15/scripts/worker.sh > /hugsim-storage/alpamayo/a15/logs/worker_w11-1g_$(hostname).log 2>&1"]
+        env:
+        - {name: HF_HOME, value: /hugsim-storage/alpamayo/hf_home}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token, key: HF_TOKEN}}
+        resources:
+          requests: {cpu: "4", memory: 40Gi, nvidia.com/gpu: "1", ephemeral-storage: 100Gi}
+          limits:   {cpu: "4", memory: 40Gi, nvidia.com/gpu: "1", ephemeral-storage: 100Gi}
+        volumeMounts:
+        - {mountPath: /dev/shm, name: dshm}
+        - {mountPath: /hugsim-storage, name: hugsim-storage}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 16Gi}
+      - name: hugsim-storage
+        persistentVolumeClaim: {claimName: horuan-hugsim-vol}

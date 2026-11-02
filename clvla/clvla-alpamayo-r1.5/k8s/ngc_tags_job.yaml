@@ -1,0 +1,44 @@
+# List the tags of the NRE images on nvcr.io (prints tags only, never the key).
+apiVersion: batch/v1
+kind: Job
+metadata: {name: horuan-clvla-ngc-tags, namespace: cogrob}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      tolerations:
+      - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+      - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+      containers:
+      - name: tags
+        image: python:3.11-slim
+        command: [bash, -lc]
+        args:
+        - |
+          python3 - <<'PY'
+          import os, json, urllib.request, base64
+          key = os.environ["NGC_API_KEY"]
+          for repo in ["nvidia/nre/nre-ga", "nvidia/nre/nre", "nvidia/nre/nre-tools-ga"]:
+              try:
+                  auth = base64.b64encode(f"$oauthtoken:{key}".encode()).decode()
+                  r = urllib.request.Request(f"https://nvcr.io/proxy_auth?scope=repository:{repo}:pull", headers={"Authorization": "Basic " + auth})
+                  tok = json.load(urllib.request.urlopen(r))["token"]
+                  r = urllib.request.Request(f"https://nvcr.io/v2/{repo}/tags/list", headers={"Authorization": "Bearer " + tok})
+                  d = json.load(urllib.request.urlopen(r)); print(repo, sorted(d.get("tags", []))[-40:])
+              except Exception as e:
+                  print(repo, "ERR", type(e).__name__, str(e)[:200])
+          PY
+        env:
+        - name: NGC_API_KEY
+          valueFrom: {secretKeyRef: {name: ngc-api-key, key: NGC_API_KEY}}
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {cpu: "1", memory: 1Gi}

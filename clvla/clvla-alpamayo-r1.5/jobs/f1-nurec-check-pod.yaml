@@ -1,0 +1,47 @@
+# CPU-only: list the PhysicalAI-AV NuRec dataset with the existing HF token (read-only; accepts no terms) to see how many
+# reconstructions of PhysicalAI-AV clips exist for the render-awareness study (finding 1), and how many match our clips.
+apiVersion: v1
+kind: Pod
+metadata: {name: horuan-a15-nurec-check, namespace: cogrob}
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - {key: kubernetes.io/hostname, operator: In, values: [ry-gpu-13.sdsc.optiputer.net, ry-gpu-14.sdsc.optiputer.net]}
+  tolerations:
+  - {effect: NoSchedule, key: nautilus.io/reservation, operator: Equal, value: cogrob}
+  - {effect: NoSchedule, key: nautilus.io/cogrob, operator: Exists}
+  containers:
+  - name: hf
+    image: python:3.11-slim
+    command: [bash, -lc]
+    args:
+    - |
+      pip -q install huggingface_hub
+      python - <<'PY'
+      import os, json
+      from huggingface_hub import HfApi
+      api = HfApi(token=os.environ["HF_TOKEN"])
+      for repo in ["nvidia/PhysicalAI-Autonomous-Vehicles-NuRec", "nvidia/PhysicalAI-AV-NuRec"]:
+          try:
+              files = api.list_repo_files(repo, repo_type="dataset")
+              us = [f for f in files if f.endswith(".usdz")]
+              print("REPO", repo, "files", len(files), "usdz", len(us)); print("SAMPLE", files[:15]); print("USDZ_SAMPLE", us[:10])
+              json.dump(files, open(f"/hugsim-storage/alpamayo/a15/data/nurec_files_{repo.split('/')[1]}.json", "w"))
+          except Exception as e:
+              print("FAIL", repo, type(e).__name__, str(e)[:300])
+      PY
+    env:
+    - name: HF_TOKEN
+      valueFrom: {secretKeyRef: {name: hf-token-a15, key: HF_TOKEN}}
+    resources:
+      requests: {cpu: "1", memory: 2Gi}
+      limits: {cpu: "1", memory: 2Gi}
+    volumeMounts:
+    - {mountPath: /hugsim-storage, name: hugsim-storage}
+  volumes:
+  - name: hugsim-storage
+    persistentVolumeClaim: {claimName: horuan-hugsim-vol}
